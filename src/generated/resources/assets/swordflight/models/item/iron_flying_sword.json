@@ -1,0 +1,14 @@
+{
+  "parent": "minecraft:item/handheld",
+  "overrides": [
+    {
+      "model": "swordflight:item/iron_flying_sword_formal",
+      "predicate": {
+        "swordflight:model_style": 0.2
+      }
+    }
+  ],
+  "textures": {
+    "layer0": "minecraft:item/iron_sword"
+  }
+}
