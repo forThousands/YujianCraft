@@ -3,6 +3,7 @@ package dev.swordflight.registry;
 import dev.swordflight.Swordflight;
 import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.material.FlyingSwordMaterial;
+import dev.swordflight.visual.FlyingSwordSeries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -26,17 +27,25 @@ public final class ModItems {
 
     private static final EnumMap<FlyingSwordMaterial, RegistryObject<Item>> MUTABLE_SWORDS =
             new EnumMap<>(FlyingSwordMaterial.class);
+    private static final EnumMap<FlyingSwordMaterial, RegistryObject<Item>> MUTABLE_SPIRITFORGED_SWORDS =
+            new EnumMap<>(FlyingSwordMaterial.class);
     public static final Map<FlyingSwordMaterial, RegistryObject<Item>> FLYING_SWORDS;
+    public static final Map<FlyingSwordMaterial, RegistryObject<Item>> SPIRITFORGED_FLYING_SWORDS;
     public static final RegistryObject<Item> FLYING_SWORD_WORKBENCH = ITEMS.register("flying_sword_workbench",
             () -> new BlockItem(ModBlocks.FLYING_SWORD_WORKBENCH.get(), new Item.Properties()));
 
     static {
         for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
             MUTABLE_SWORDS.put(material, ITEMS.register(material.itemId(),
-                    () -> new FlyingSwordItem(material,
+                    () -> new FlyingSwordItem(material, FlyingSwordSeries.STANDARD,
+                            new Item.Properties().stacksTo(1).durability(material.durability()))));
+            MUTABLE_SPIRITFORGED_SWORDS.put(material,
+                    ITEMS.register(FlyingSwordSeries.SPIRITFORGED.itemId(material),
+                    () -> new FlyingSwordItem(material, FlyingSwordSeries.SPIRITFORGED,
                             new Item.Properties().stacksTo(1).durability(material.durability()))));
         }
         FLYING_SWORDS = Collections.unmodifiableMap(MUTABLE_SWORDS);
+        SPIRITFORGED_FLYING_SWORDS = Collections.unmodifiableMap(MUTABLE_SPIRITFORGED_SWORDS);
     }
 
     public static final RegistryObject<Item> IRON_FLYING_SWORD = FLYING_SWORDS.get(FlyingSwordMaterial.IRON);
@@ -51,6 +60,9 @@ public final class ModItems {
                         for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
                             output.accept(getFlyingSword(material));
                         }
+                        for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
+                            output.accept(getFlyingSword(material, FlyingSwordSeries.SPIRITFORGED));
+                        }
                         output.accept(FLYING_SWORD_WORKBENCH.get());
                     })
                     .build()
@@ -60,7 +72,12 @@ public final class ModItems {
     }
 
     public static Item getFlyingSword(FlyingSwordMaterial material) {
-        return FLYING_SWORDS.get(material).get();
+        return getFlyingSword(material, FlyingSwordSeries.STANDARD);
+    }
+
+    public static Item getFlyingSword(FlyingSwordMaterial material, FlyingSwordSeries series) {
+        return (series == FlyingSwordSeries.SPIRITFORGED
+                ? SPIRITFORGED_FLYING_SWORDS : FLYING_SWORDS).get(material).get();
     }
 
     public static void register(IEventBus bus) {

@@ -6,12 +6,16 @@ import dev.swordflight.combat.AttackMode;
 import dev.swordflight.combat.SwordSettings;
 import dev.swordflight.combat.TargetingMode;
 import dev.swordflight.combat.TargetLockManager;
+import dev.swordflight.combat.ManualGuidanceManager;
+import dev.swordflight.flight.SwordRidingManager;
 import dev.swordflight.registry.ModItems;
 import dev.swordflight.material.FlyingSwordMaterial;
 import dev.swordflight.config.SwordBalanceConfig;
 import dev.swordflight.combat.SwordEffectEngine;
 import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.upgrade.SwordModuleData;
+import dev.swordflight.upgrade.FlyingSwordModule;
+import dev.swordflight.visual.FlyingSwordSeries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -47,6 +51,12 @@ public final class FlyingSwordEntity extends Entity {
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Integer> DATA_MATERIAL =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_SERIES =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_WHITE_HOT =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_RIDE_SUPPORT =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
 
     private UUID ownerId;
     private UUID targetId;
@@ -61,7 +71,11 @@ public final class FlyingSwordEntity extends Entity {
     private TargetingMode targetingMode = TargetingMode.AUTOMATIC;
     private AttackMode attackMode = AttackMode.SORTIE;
     private FlyingSwordMaterial material = FlyingSwordMaterial.IRON;
+    private FlyingSwordSeries series = FlyingSwordSeries.STANDARD;
     private CompoundTag installedModules = new CompoundTag();
+    private boolean rideSupport;
+    private Vec3 manualLaunchDirection;
+    private int manualLaunchTicks;
 
     public FlyingSwordEntity(EntityType<? extends FlyingSwordEntity> type, Level level) {
         super(type, level);
@@ -69,18 +83,41 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     public void bindTo(ServerPlayer owner, int slot, FormationMode mode, SwordSettings settings,
-                       FlyingSwordMaterial material, CompoundTag installedModules) {
+                       FlyingSwordMaterial material, FlyingSwordSeries series, CompoundTag installedModules) {
         ownerId = owner.getUUID();
         entityData.set(DATA_OWNER_ID, Optional.of(ownerId));
         formationSlot = slot;
         formationMode = mode;
         applySettings(settings);
         this.material = material;
+        this.series = series;
         this.installedModules = installedModules.copy();
         entityData.set(DATA_MATERIAL, material.ordinal());
+        entityData.set(DATA_SERIES, series.ordinal());
+        entityData.set(DATA_WHITE_HOT,
+                SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_FORMATION_SLOT, slot);
         entityData.set(DATA_FORMATION_MODE, mode.ordinal());
         attackCooldown = 20 + slot * 7;
+    }
+
+    public void bindAsRideSupport(ServerPlayer owner, FlyingSwordMaterial material,
+                                  FlyingSwordSeries series, CompoundTag installedModules) {
+        ownerId = owner.getUUID();
+        entityData.set(DATA_OWNER_ID, Optional.of(ownerId));
+        this.material = material;
+        this.series = series;
+        this.installedModules = installedModules.copy();
+        rideSupport = true;
+        phase = FlightPhase.RIDE_SUPPORT;
+        formationSlot = 0;
+        entityData.set(DATA_MATERIAL, material.ordinal());
+        entityData.set(DATA_SERIES, series.ordinal());
+        entityData.set(DATA_FORMATION_SLOT, 0);
+        entityData.set(DATA_DOCKED, false);
+        entityData.set(DATA_RIDE_SUPPORT, true);
+        entityData.set(DATA_WHITE_HOT,
+                SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
     }
 
     public void setFormationMode(FormationMode mode) {
@@ -104,6 +141,48 @@ public final class FlyingSwordEntity extends Entity {
         return material;
     }
 
+    public FlyingSwordSeries getSeriesType() {
+        return series;
+    }
+
+    public int getFormationSlot() {
+        return formationSlot;
+    }
+
+    public FormationMode getFormationModeType() {
+        return formationMode;
+    }
+
+    public boolean isFormationSword() {
+        return !rideSupport;
+    }
+
+    public boolean isReadyForManualLaunch() {
+        return !rideSupport && phase == FlightPhase.DOCKED && attackCooldown <= 0;
+    }
+
+    public void beginManualGuidance(Vec3 aimDirection, Vec3 launchDirection) {
+        if (!isReadyForManualLaunch()) return;
+        targetId = null;
+        fixedWaypoint = null;
+        manualLaunchDirection = safeDirection(launchDirection, aimDirection);
+        manualLaunchTicks = 7;
+        setDeltaMovement(manualLaunchDirection.scale(0.24D));
+        phase = FlightPhase.MANUAL_GUIDANCE;
+    }
+
+    public void lockManualTarget(UUID target) {
+        if (rideSupport || phase != FlightPhase.MANUAL_GUIDANCE || target == null) return;
+        targetId = target;
+        manualLaunchDirection = null;
+        manualLaunchTicks = 0;
+        phase = FlightPhase.HOMING;
+    }
+
+    public void cancelManualFlight() {
+        if (phase == FlightPhase.MANUAL_GUIDANCE) beginReturn();
+    }
+
     @Override
     protected void defineSynchedData() {
         entityData.define(DATA_FORMATION_MODE, FormationMode.FAN.ordinal());
@@ -111,6 +190,9 @@ public final class FlyingSwordEntity extends Entity {
         entityData.define(DATA_DOCKED, true);
         entityData.define(DATA_OWNER_ID, Optional.empty());
         entityData.define(DATA_MATERIAL, FlyingSwordMaterial.IRON.ordinal());
+        entityData.define(DATA_SERIES, FlyingSwordSeries.STANDARD.ordinal());
+        entityData.define(DATA_WHITE_HOT, false);
+        entityData.define(DATA_RIDE_SUPPORT, false);
     }
 
     @Override
@@ -129,6 +211,16 @@ public final class FlyingSwordEntity extends Entity {
             return;
         }
 
+        if (rideSupport) {
+            if (!SwordRidingManager.isRidingOn(owner, getUUID())) {
+                discard();
+                return;
+            }
+            tickRideSupport(owner);
+            entityData.set(DATA_DOCKED, false);
+            return;
+        }
+
         if (phase == FlightPhase.DOCKED && attackCooldown > 0) {
             attackCooldown--;
         }
@@ -143,6 +235,8 @@ public final class FlyingSwordEntity extends Entity {
             case RETURN_APPROACH -> tickReturnApproach(owner);
             case DOCKING -> tickDocking(owner);
             case RELENTLESS_ARC -> tickRelentlessArc(serverLevel);
+            case MANUAL_GUIDANCE -> tickManualGuidance(owner);
+            case RIDE_SUPPORT -> discard();
         }
         entityData.set(DATA_DOCKED, phase == FlightPhase.DOCKED);
     }
@@ -156,6 +250,30 @@ public final class FlyingSwordEntity extends Entity {
         if (attackCooldown <= 0) {
             findTarget(owner).ifPresent(target -> beginAttack(owner, target));
         }
+    }
+
+    private void tickRideSupport(ServerPlayer owner) {
+        Vec3 forward = Vec3.directionFromRotation(0.0F, owner.getYRot()).normalize();
+        Vec3 supportPosition = owner.position().add(forward.scale(0.10D)).add(0.0D, -0.28D, 0.0D);
+        setPos(supportPosition);
+        setDeltaMovement(owner.getDeltaMovement());
+        faceDirection(forward, 1.0D);
+    }
+
+    private void tickManualGuidance(ServerPlayer owner) {
+        Vec3 aimedDirection = ManualGuidanceManager.getAimDirection(owner, this);
+        if (aimedDirection == null) {
+            beginReturn();
+            return;
+        }
+        Vec3 guidedDirection = aimedDirection;
+        if (manualLaunchTicks > 0 && manualLaunchDirection != null) {
+            double aimWeight = 1.0D - manualLaunchTicks / 7.0D;
+            guidedDirection = safeDirection(manualLaunchDirection.scale(1.0D - aimWeight)
+                    .add(aimedDirection.scale(aimWeight)), aimedDirection);
+            manualLaunchTicks--;
+        }
+        flyToward(position().add(guidedDirection.scale(24.0D)), 0.16D, 1.02D);
     }
 
     private void beginAttack(ServerPlayer owner, LivingEntity target) {
@@ -195,18 +313,21 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void tickHoming(ServerPlayer owner, ServerLevel serverLevel) {
-        LivingEntity locked = TargetLockManager.getLockedTarget(owner);
-        if (locked != null) {
-            targetId = locked.getUUID();
-        } else if (targetingMode == TargetingMode.CROSSHAIR_LOCK) {
-                beginReturn();
-                return;
+        if (targetingMode != TargetingMode.MANUAL_GUIDANCE) {
+            LivingEntity locked = TargetLockManager.getLockedTarget(owner);
+            if (locked != null) {
+                targetId = locked.getUUID();
+            } else if (targetingMode == TargetingMode.CROSSHAIR_LOCK) {
+                    beginReturn();
+                    return;
+            }
         }
 
         Entity rawTarget = targetId == null ? null : serverLevel.getEntity(targetId);
         double baseRange = targetingMode == TargetingMode.CROSSHAIR_LOCK
                 ? crosshairLockRadius : automaticTargetRadius;
-        double maximumRange = baseRange + 12.0D;
+        double maximumRange = targetingMode == TargetingMode.MANUAL_GUIDANCE
+                ? Double.POSITIVE_INFINITY : baseRange + 12.0D;
         if (!(rawTarget instanceof LivingEntity target) || !target.isAlive()
                 || target.distanceToSqr(owner) > maximumRange * maximumRange) {
             beginReturn();
@@ -275,13 +396,20 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void beginReturn() {
+        if (targetingMode == TargetingMode.MANUAL_GUIDANCE && level() instanceof ServerLevel serverLevel
+                && ownerId != null) {
+            Player owner = serverLevel.getPlayerByUUID(ownerId);
+            if (owner instanceof ServerPlayer serverPlayer) {
+                ManualGuidanceManager.onSwordReturning(serverPlayer, this);
+            }
+        }
         targetId = null;
         fixedWaypoint = null;
         phase = FlightPhase.RETURN_RALLY;
     }
 
     private void damageSourceSword(ServerPlayer owner) {
-        ItemStack stack = FlyingSwordItem.findFlyingSword(owner, material);
+        ItemStack stack = FlyingSwordItem.findFlyingSword(owner, material, series);
         if (stack.isEmpty()) {
             discard();
             return;
@@ -289,8 +417,8 @@ public final class FlyingSwordEntity extends Entity {
         if (stack.getTag() != null && stack.getTag().getBoolean("Unbreakable")) return;
         if (stack.hurt(1, owner.getRandom(), owner)) {
             stack.shrink(1);
-            owner.level().getEntitiesOfClass(FlyingSwordEntity.class, owner.getBoundingBox().inflate(64.0D),
-                            sword -> sword.isOwnedBy(owner) && sword.material == material)
+            FlyingSwordItem.getOwnedFormationSwords(owner).stream()
+                    .filter(sword -> sword.material == material && sword.series == series)
                     .forEach(Entity::discard);
         }
     }
@@ -324,7 +452,7 @@ public final class FlyingSwordEntity extends Entity {
     private Optional<LivingEntity> findTarget(ServerPlayer owner) {
         LivingEntity locked = TargetLockManager.getLockedTarget(owner);
         if (locked != null) return Optional.of(locked);
-        if (targetingMode == TargetingMode.CROSSHAIR_LOCK) return Optional.empty();
+        if (targetingMode != TargetingMode.AUTOMATIC) return Optional.empty();
         AABB area = owner.getBoundingBox().inflate(automaticTargetRadius,
                 Math.max(7.0D, automaticTargetRadius * 0.6D), automaticTargetRadius);
         return level().getEntitiesOfClass(LivingEntity.class, area,
@@ -371,7 +499,7 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     public ItemStack getDisplayItem() {
-        ItemStack display = new ItemStack(ModItems.getFlyingSword(getVisualMaterial()));
+        ItemStack display = new ItemStack(ModItems.getFlyingSword(getVisualMaterial(), getVisualSeries()));
         display.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
         return display;
     }
@@ -397,6 +525,18 @@ public final class FlyingSwordEntity extends Entity {
         return FlyingSwordMaterial.fromOrdinal(entityData.get(DATA_MATERIAL));
     }
 
+    public FlyingSwordSeries getVisualSeries() {
+        return FlyingSwordSeries.fromOrdinal(entityData.get(DATA_SERIES));
+    }
+
+    public boolean hasVisualWhiteHotModule() {
+        return entityData.get(DATA_WHITE_HOT);
+    }
+
+    public boolean isVisualRideSupport() {
+        return entityData.get(DATA_RIDE_SUPPORT);
+    }
+
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         if (tag.hasUUID("Owner")) ownerId = tag.getUUID("Owner");
@@ -414,8 +554,11 @@ public final class FlyingSwordEntity extends Entity {
         attackMode = AttackMode.fromOrdinal(tag.getInt("AttackMode"));
         material = tag.contains("Material")
                 ? FlyingSwordMaterial.fromOrdinal(tag.getInt("Material")) : FlyingSwordMaterial.IRON;
+        series = tag.contains("Series")
+                ? FlyingSwordSeries.fromOrdinal(tag.getInt("Series")) : FlyingSwordSeries.STANDARD;
         installedModules = tag.contains(SwordModuleData.ROOT_TAG)
                 ? tag.getCompound(SwordModuleData.ROOT_TAG).copy() : new CompoundTag();
+        rideSupport = tag.getBoolean("RideSupport");
         int phaseIndex = Mth.clamp(tag.getInt("FlightPhase"), 0, FlightPhase.values().length - 1);
         phase = FlightPhase.values()[phaseIndex];
         entityData.set(DATA_FORMATION_SLOT, formationSlot);
@@ -423,6 +566,15 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_DOCKED, phase == FlightPhase.DOCKED);
         entityData.set(DATA_OWNER_ID, Optional.ofNullable(ownerId));
         entityData.set(DATA_MATERIAL, material.ordinal());
+        entityData.set(DATA_SERIES, series.ordinal());
+        entityData.set(DATA_WHITE_HOT,
+                SwordModuleData.getLevel(installedModules, FlyingSwordModule.WHITE_HOT) > 0);
+        entityData.set(DATA_RIDE_SUPPORT, rideSupport);
+        if (tag.contains("ManualLaunchX")) {
+            manualLaunchDirection = new Vec3(tag.getDouble("ManualLaunchX"), tag.getDouble("ManualLaunchY"),
+                    tag.getDouble("ManualLaunchZ"));
+            manualLaunchTicks = tag.getInt("ManualLaunchTicks");
+        }
         if (tag.contains("WaypointX")) {
             fixedWaypoint = new Vec3(tag.getDouble("WaypointX"), tag.getDouble("WaypointY"), tag.getDouble("WaypointZ"));
         }
@@ -441,12 +593,20 @@ public final class FlyingSwordEntity extends Entity {
         tag.putInt("TargetingMode", targetingMode.ordinal());
         tag.putInt("AttackMode", attackMode.ordinal());
         tag.putInt("Material", material.ordinal());
+        tag.putInt("Series", series.ordinal());
         if (!installedModules.isEmpty()) tag.put(SwordModuleData.ROOT_TAG, installedModules.copy());
+        tag.putBoolean("RideSupport", rideSupport);
         tag.putInt("FlightPhase", phase.ordinal());
         if (fixedWaypoint != null) {
             tag.putDouble("WaypointX", fixedWaypoint.x);
             tag.putDouble("WaypointY", fixedWaypoint.y);
             tag.putDouble("WaypointZ", fixedWaypoint.z);
+        }
+        if (manualLaunchDirection != null) {
+            tag.putDouble("ManualLaunchX", manualLaunchDirection.x);
+            tag.putDouble("ManualLaunchY", manualLaunchDirection.y);
+            tag.putDouble("ManualLaunchZ", manualLaunchDirection.z);
+            tag.putInt("ManualLaunchTicks", manualLaunchTicks);
         }
     }
 

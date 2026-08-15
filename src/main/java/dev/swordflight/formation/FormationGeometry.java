@@ -6,6 +6,11 @@ import net.minecraft.world.phys.Vec3;
 /** All editable formation geometry and return-lane waypoints live here. */
 public final class FormationGeometry {
     private static final int FORMATION_SIZE = 6;
+    private static final double RING_CENTER_HEIGHT = 1.32D;
+    private static final double RING_VERTICAL_RADIUS = 1.28D;
+    private static final double RING_HORIZONTAL_RADIUS = 1.70D;
+    private static final double RING_BACK_OFFSET = 0.82D;
+    private static final double RING_ANGLE_OFFSET = -Math.PI / 2.0D;
 
     private FormationGeometry() {
     }
@@ -17,11 +22,13 @@ public final class FormationGeometry {
     public static Vec3 dockPosition(Vec3 ownerPosition, float ownerYaw, int slot, FormationMode mode) {
         Basis basis = basis(ownerYaw);
         if (mode.usesRingGeometry()) {
-            double angle = (Math.PI * 2.0D * slot / FORMATION_SIZE) - Math.PI / 2.0D;
+            // Preserve the original six-slot layout and centre. Only the horizontal and vertical
+            // radii are enlarged, so the formation keeps its established visual rhythm.
+            double angle = Math.PI * 2.0D * slot / FORMATION_SIZE + RING_ANGLE_OFFSET;
             return ownerPosition
-                    .add(0.0D, 1.32D + Math.sin(angle) * 1.15D, 0.0D)
-                    .add(basis.forward.scale(-0.82D))
-                    .add(basis.right.scale(Math.cos(angle) * 1.56D));
+                    .add(0.0D, RING_CENTER_HEIGHT + Math.sin(angle) * RING_VERTICAL_RADIUS, 0.0D)
+                    .add(basis.forward.scale(-RING_BACK_OFFSET))
+                    .add(basis.right.scale(Math.cos(angle) * RING_HORIZONTAL_RADIUS));
         }
 
         double horizontal = (slot - 2.5D) * 0.56D;
@@ -68,7 +75,8 @@ public final class FormationGeometry {
         Vec3 dock = dockPosition(owner, slot, mode, tickCount);
         Vec3 outward = dockDirection(owner, dock, mode);
         if (mode.usesRingGeometry()) {
-            Vec3 center = owner.position().add(0.0D, 1.32D, 0.0D).add(basis(owner).forward.scale(-0.82D));
+            Vec3 center = owner.position().add(0.0D, RING_CENTER_HEIGHT, 0.0D)
+                    .add(basis(owner).forward.scale(-RING_BACK_OFFSET));
             outward = dock.subtract(center).normalize();
         }
         return dock.add(outward.scale(0.82D)).add(0.0D, 0.28D, 0.0D);

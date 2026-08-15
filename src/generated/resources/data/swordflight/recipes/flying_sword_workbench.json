@@ -2,17 +2,17 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "C": {
-      "item": "minecraft:crafting_table"
-    },
-    "D": {
+    "A": {
       "item": "minecraft:diamond"
+    },
+    "B": {
+      "item": "minecraft:crafting_table"
     }
   },
   "pattern": [
-    "DDD",
-    "DCD",
-    "DDD"
+    "AAA",
+    "ABA",
+    "AAA"
   ],
   "result": {
     "item": "swordflight:flying_sword_workbench"

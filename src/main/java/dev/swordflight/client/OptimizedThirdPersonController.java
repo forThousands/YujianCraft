@@ -108,7 +108,9 @@ public final class OptimizedThirdPersonController {
         Vec3 screenOrigin = camera.getPosition();
         double eyeToCamera = eye.distanceTo(screenOrigin);
         double interactionRange = minecraft.gameMode.getPickRange();
-        double livingRange = Math.max(interactionRange, ClientSettingsState.get().crosshairLockRadius());
+        double livingRange = ClientSettingsState.get().targetingMode()
+                == dev.swordflight.combat.TargetingMode.MANUAL_GUIDANCE
+                ? 512.0D : Math.max(interactionRange, ClientSettingsState.get().crosshairLockRadius());
 
         double interactionRayLength = interactionRange + eyeToCamera;
         Vec3 interactionEnd = screenOrigin.add(screenDirection.scale(interactionRayLength));

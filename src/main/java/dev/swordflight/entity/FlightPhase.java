@@ -9,5 +9,7 @@ public enum FlightPhase {
     RETURN_RALLY,
     RETURN_APPROACH,
     DOCKING,
-    RELENTLESS_ARC
+    RELENTLESS_ARC,
+    MANUAL_GUIDANCE,
+    RIDE_SUPPORT
 }

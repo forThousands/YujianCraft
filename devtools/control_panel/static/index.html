@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="swordflight-token" content="__CONTROL_TOKEN__">
+  <title>SwordFlight · 御剑开发台</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="seal"><span>剑</span></div>
+        <div><strong>御剑开发台</strong><span>SwordFlight Control</span></div>
+      </div>
+      <nav id="nav">
+        <button data-target="materials" class="active"><i>01</i>飞剑材质</button>
+        <button data-target="combat"><i>02</i>战斗规则</button>
+        <button data-target="effects"><i>03</i>命中特效</button>
+        <button data-target="riding"><i>04</i>御剑飞行</button>
+        <button data-target="recipes"><i>05</i>合成配方</button>
+        <button data-target="release"><i>06</i>构建发布</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot"></span><span id="connectionText">正在连接本地后端</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">LOCAL DEVELOPMENT CONSOLE</p>
+          <h1>战斗与灵效参数</h1>
+        </div>
+        <div class="top-actions">
+          <div class="version-pill"><span>当前版本</span><strong id="version">—</strong></div>
+          <span id="dirtyBadge" class="dirty-badge clean">已保存</span>
+          <button id="saveButton" class="button secondary">保存数值</button>
+          <button id="quickBuildButton" class="button primary">一键构建</button>
+        </div>
+      </header>
+
+      <div id="loading" class="loading-card">
+        <span class="loader"></span>
+        <div><strong>正在读取项目参数</strong><p>解析 Java 默认值与本地构建环境……</p></div>
+      </div>
+
+      <div id="content" hidden>
+        <section id="materials" class="panel-section">
+          <div class="section-heading">
+            <div><span class="section-index">壹</span><h2>飞剑材质</h2></div>
+            <p>统一调整每种材质的基础耐久、单次穿刺伤害、飞行速度与灵光颜色。</p>
+          </div>
+          <div id="materialGrid" class="material-grid"></div>
+        </section>
+
+        <section id="combat" class="panel-section">
+          <div class="section-heading">
+            <div><span class="section-index">贰</span><h2>战斗规则</h2></div>
+            <p>这些是新飞剑与新配置的源码默认值；现有物品 NBT 不会被强制覆盖。</p>
+          </div>
+          <div id="combatGrid" class="parameter-grid"></div>
+        </section>
+
+        <section id="effects" class="panel-section">
+          <div class="section-heading split-heading">
+            <div><div><span class="section-index">叁</span><h2>命中特效</h2></div>
+              <p>按模块分组管理伤害、持续时间、数量和全局触发间隔。</p></div>
+            <label class="search-box"><span>⌕</span><input id="effectSearch" placeholder="搜索效果参数"></label>
+          </div>
+          <div id="effectGroups" class="effect-groups"></div>
+        </section>
+
+        <section id="riding" class="panel-section">
+          <div class="section-heading">
+            <div><span class="section-index">肆</span><h2>御剑飞行</h2></div>
+            <p>调整原生水平飞行倍率、明确升降速度，以及双击空格的判定宽容度。</p>
+          </div>
+          <div id="ridingGrid" class="parameter-grid"></div>
+        </section>
+
+        <section id="recipes" class="panel-section">
+          <div class="section-heading split-heading">
+            <div><div><span class="section-index">伍</span><h2>合成配方</h2></div>
+              <p>九宫格直接对应工作台槽位；同一种材料占用几个格，就会消耗几个物品。</p></div>
+            <button id="addRecipeButton" class="button secondary">＋ 新建配方</button>
+          </div>
+          <div class="recipe-workspace">
+            <aside class="recipe-list-pane">
+              <label class="search-box recipe-search"><span>⌕</span><input id="recipeSearch" placeholder="搜索配方或产物"></label>
+              <div id="recipeList" class="recipe-list"></div>
+            </aside>
+            <article class="recipe-editor">
+              <div class="recipe-editor-head">
+                <div><span class="recipe-kicker">CRAFTING DEFINITION</span><h3 id="recipeEditorTitle">配方</h3></div>
+                <div><button id="cloneRecipeButton" class="button ghost">复制</button><button id="deleteRecipeButton" class="button danger-button">删除</button></div>
+              </div>
+              <div class="recipe-meta-grid">
+                <label><span>配方 ID</span><input id="recipeId" class="path-input" spellcheck="false"></label>
+                <label><span>合成类型</span><select id="recipeType" class="path-input"><option value="shaped">有序合成</option><option value="shapeless">无序合成</option></select></label>
+                <label><span>配方分类</span><select id="recipeCategory" class="path-input"><option value="combat">战斗装备</option><option value="decorations">装饰方块</option><option value="misc">杂项</option></select></label>
+              </div>
+              <div class="crafting-stage">
+                <div>
+                  <span class="stage-label" id="gridModeLabel">3 × 3 有序合成槽</span>
+                  <div id="recipeGrid" class="crafting-grid"></div>
+                </div>
+                <div class="craft-arrow">➜</div>
+                <div class="result-stack">
+                  <span class="stage-label">合成产物</span>
+                  <div class="result-slot"><span id="resultGlyph">剑</span></div>
+                  <input id="recipeResult" list="itemCatalog" class="path-input" placeholder="swordflight:item_id" spellcheck="false">
+                  <label class="result-count">数量 <input id="recipeCount" type="number" min="1" max="64" step="1"></label>
+                </div>
+              </div>
+              <div class="ingredient-summary"><strong>材料统计</strong><div id="ingredientSummary"></div></div>
+              <datalist id="itemCatalog"></datalist>
+            </article>
+          </div>
+        </section>
+
+        <section id="release" class="panel-section release-section">
+          <div class="section-heading">
+            <div><span class="section-index">陆</span><h2>构建与发布</h2></div>
+            <p>保存全部参数、递增语义化版本、构建标准 JAR、归档并替换测试游戏模组。</p>
+          </div>
+          <div class="release-layout">
+            <div class="release-card">
+              <h3>版本策略</h3>
+              <div class="segmented" id="versionIncrement">
+                <button data-value="patch" class="active">修订版 <small>0.9.1 → 0.9.2</small></button>
+                <button data-value="minor">功能版 <small>0.9.1 → 0.10.0</small></button>
+                <button data-value="major">大版本 <small>0.9.1 → 1.0.0</small></button>
+              </div>
+              <label class="field-label">测试游戏 mods 目录</label>
+              <input id="modsDir" class="path-input" spellcheck="false">
+              <label class="check-row"><input id="installAfterBuild" type="checkbox" checked><span>构建成功后自动替换测试游戏中的 SwordFlight</span></label>
+            </div>
+            <div class="release-card">
+              <h3>测试世界同步</h3>
+              <p class="muted">Forge 会保留已有世界的服务端覆盖值。需要立即测试新伤害与特效时，可选择同步；默认不修改世界。</p>
+              <select id="worldSelect" class="path-input"></select>
+              <label class="check-row"><input id="syncWorld" type="checkbox"><span>构建前同步所选世界的材质与效果 TOML</span></label>
+              <button id="syncOnlyButton" class="button ghost">仅同步测试世界</button>
+            </div>
+          </div>
+          <button id="releaseButton" class="release-button"><span>铸</span><div><strong>保存并构建下一版本</strong><small id="releaseHint">将生成标准化版本包</small></div><b>→</b></button>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <aside id="buildDrawer" class="build-drawer" aria-hidden="true">
+    <div class="drawer-head"><div><span class="status-orb"></span><strong id="buildTitle">构建准备中</strong></div><button id="closeDrawer">×</button></div>
+    <div class="progress-track"><span id="buildProgress"></span></div>
+    <pre id="buildLog">等待构建日志……</pre>
+    <div class="drawer-result" id="buildResult"></div>
+  </aside>
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

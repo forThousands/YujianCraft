@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
-import dev.swordflight.visual.FlyingSwordModelStyle;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 
@@ -23,12 +22,13 @@ public final class ClientOptions {
     private static JsonObject document = defaultsDocument();
     private static boolean showDeveloperOptions;
     private static boolean optimizedThirdPerson;
+    private static boolean swordRidingEnabled;
     private static boolean flightSound;
     private static boolean swordTrail;
     private static boolean swordBodyGlow;
+    private static boolean swordEnergyHighlight;
     private static boolean swordOutline;
     private static boolean inventoryGlint;
-    private static FlyingSwordModelStyle swordModelStyle;
 
     private ClientOptions() {
     }
@@ -46,21 +46,23 @@ public final class ClientOptions {
             if (migrateDocument()) saveDocument(path);
             showDeveloperOptions = booleanValue("showDeveloperOptions", false);
             optimizedThirdPerson = booleanValue("optimizedThirdPerson", false);
+            swordRidingEnabled = booleanValue("swordRidingEnabled", true);
             flightSound = booleanValue("flightSound", true);
             swordTrail = booleanValue("swordTrail", true);
             swordBodyGlow = booleanValue("swordBodyGlow", true);
+            swordEnergyHighlight = booleanValue("swordEnergyHighlight", false);
             swordOutline = booleanValue("swordOutline", false);
             inventoryGlint = booleanValue("inventoryGlint", true);
-            swordModelStyle = FlyingSwordModelStyle.fromName(stringValue("swordModelStyle", "original"));
         } catch (Exception exception) {
             showDeveloperOptions = false;
             optimizedThirdPerson = false;
+            swordRidingEnabled = true;
             flightSound = true;
             swordTrail = true;
             swordBodyGlow = true;
+            swordEnergyHighlight = false;
             swordOutline = false;
             inventoryGlint = true;
-            swordModelStyle = FlyingSwordModelStyle.ORIGINAL;
             LOGGER.error("Could not load Swordflight client options from {}", path, exception);
         }
     }
@@ -73,16 +75,23 @@ public final class ClientOptions {
         return optimizedThirdPerson;
     }
 
+    public static boolean swordRidingEnabled() { return swordRidingEnabled; }
+
     public static boolean flightSound() { return flightSound; }
     public static boolean swordTrail() { return swordTrail; }
     public static boolean swordBodyGlow() { return swordBodyGlow; }
+    public static boolean swordEnergyHighlight() { return swordEnergyHighlight; }
     public static boolean swordOutline() { return swordOutline; }
     public static boolean inventoryGlint() { return inventoryGlint; }
-    public static FlyingSwordModelStyle swordModelStyle() { return swordModelStyle; }
 
     public static synchronized void setOptimizedThirdPerson(boolean enabled) {
         optimizedThirdPerson = enabled;
         setBoolean("optimizedThirdPerson", enabled);
+    }
+
+    public static synchronized void setSwordRidingEnabled(boolean enabled) {
+        swordRidingEnabled = enabled;
+        setBoolean("swordRidingEnabled", enabled);
     }
 
     public static synchronized void setFlightSound(boolean enabled) {
@@ -100,6 +109,11 @@ public final class ClientOptions {
         setBoolean("swordBodyGlow", enabled);
     }
 
+    public static synchronized void setSwordEnergyHighlight(boolean enabled) {
+        swordEnergyHighlight = enabled;
+        setBoolean("swordEnergyHighlight", enabled);
+    }
+
     public static synchronized void setSwordOutline(boolean enabled) {
         swordOutline = enabled;
         setBoolean("swordOutline", enabled);
@@ -108,17 +122,6 @@ public final class ClientOptions {
     public static synchronized void setInventoryGlint(boolean enabled) {
         inventoryGlint = enabled;
         setBoolean("inventoryGlint", enabled);
-    }
-
-    public static synchronized void setSwordModelStyle(FlyingSwordModelStyle style) {
-        swordModelStyle = style;
-        document.addProperty("swordModelStyle", style.serializedName());
-        try {
-            Files.createDirectories(path().getParent());
-            saveDocument(path());
-        } catch (IOException exception) {
-            LOGGER.error("Could not save Swordflight client options to {}", path(), exception);
-        }
     }
 
     private static void setBoolean(String key, boolean enabled) {
@@ -142,15 +145,16 @@ public final class ClientOptions {
 
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 5);
+        root.addProperty("schemaVersion", 10);
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", false);
+        root.addProperty("swordRidingEnabled", true);
         root.addProperty("flightSound", true);
         root.addProperty("swordTrail", true);
         root.addProperty("swordBodyGlow", true);
+        root.addProperty("swordEnergyHighlight", false);
         root.addProperty("swordOutline", false);
         root.addProperty("inventoryGlint", true);
-        root.addProperty("swordModelStyle", "original");
         root.addProperty("developerOptionsHint",
                 "Set showDeveloperOptions to true and reopen the in-game config screen. OP permission is still required.");
         return root;
@@ -159,36 +163,45 @@ public final class ClientOptions {
     private static boolean migrateDocument() {
         boolean changed = false;
         int schemaVersion = document.has("schemaVersion") ? document.get("schemaVersion").getAsInt() : 0;
-        if (schemaVersion < 5) {
-            document.addProperty("schemaVersion", 5);
-            // 0.7.4 returns to the vanilla silhouette by design. Migrate the 0.7.1-0.7.3
-            // formal prototype default once; users can still select the archived experiment later.
-            document.addProperty("swordModelStyle", "original");
+        if (schemaVersion < 6) {
+            changed = true;
+        }
+        if (schemaVersion < 7) {
+            // The former client-wide model switch became a separately craftable sword series.
+            document.remove("swordModelStyle");
+            changed = true;
+        }
+        if (schemaVersion < 8) {
+            changed = true;
+        }
+        if (document.has("swordWhiteHotHighlight")) {
+            // White-hot is now an item module installed with a magma block, never a
+            // client-global presentation toggle. Remove the obsolete key regardless of
+            // the recorded schema so hand-edited and pre-release configs migrate too.
+            document.remove("swordWhiteHotHighlight");
+            changed = true;
+        }
+        if (schemaVersion < 9) {
+            document.addProperty("schemaVersion", 9);
+            changed = true;
+        }
+        if (schemaVersion < 10) {
+            document.addProperty("schemaVersion", 10);
             changed = true;
         }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", false);
+        changed |= addBooleanIfMissing("swordRidingEnabled", true);
         changed |= addBooleanIfMissing("flightSound", true);
         changed |= addBooleanIfMissing("swordTrail", true);
         changed |= addBooleanIfMissing("swordBodyGlow", true);
+        changed |= addBooleanIfMissing("swordEnergyHighlight", false);
         changed |= addBooleanIfMissing("swordOutline", false);
         changed |= addBooleanIfMissing("inventoryGlint", true);
-        changed |= addStringIfMissing("swordModelStyle", "original");
         return changed;
     }
 
     private static boolean addBooleanIfMissing(String key, boolean value) {
-        if (document.has(key)) return false;
-        document.addProperty(key, value);
-        return true;
-    }
-
-    private static String stringValue(String key, String fallback) {
-        return document.has(key) && document.get(key).isJsonPrimitive()
-                ? document.get(key).getAsString() : fallback;
-    }
-
-    private static boolean addStringIfMissing(String key, String value) {
         if (document.has(key)) return false;
         document.addProperty(key, value);
         return true;

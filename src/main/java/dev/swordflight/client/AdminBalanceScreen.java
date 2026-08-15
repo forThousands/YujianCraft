@@ -5,7 +5,6 @@ import dev.swordflight.config.EffectParameter;
 import dev.swordflight.config.SwordBalanceConfig;
 import dev.swordflight.combat.SwordSettings;
 import dev.swordflight.material.FlyingSwordMaterial;
-import dev.swordflight.visual.FlyingSwordModelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -25,6 +24,7 @@ public final class AdminBalanceScreen extends Screen {
     private Tab tab = Tab.SWORDS;
     private FlyingSwordMaterial material = FlyingSwordMaterial.IRON;
     private EffectConfigGroup effectGroup = EffectConfigGroup.GLOBAL;
+    private int presentationPage;
     private boolean balanceSynced;
     private boolean settingsSynced;
     private boolean requested;
@@ -146,45 +146,38 @@ public final class AdminBalanceScreen extends Screen {
     }
 
     private void buildPresentationControls(int left, int top, int panelWidth) {
+        int pageCount = 2;
         Button category = addRenderableWidget(Button.builder(
-                        Component.translatable("screen.swordflight.balance.presentation_group"), button -> { })
+                        Component.translatable("screen.swordflight.balance.presentation_group_page",
+                                presentationPage + 1, pageCount), button -> { })
                 .bounds(left, top, 100, 19).build());
         category.active = false;
+        Button previous = addRenderableWidget(Button.builder(Component.literal("<"),
+                        button -> { presentationPage = Math.max(0, presentationPage - 1); buildWidgets(); })
+                .bounds(left, top + 25, 48, 20).build());
+        Button next = addRenderableWidget(Button.builder(Component.literal(">"),
+                        button -> { presentationPage = Math.min(pageCount - 1, presentationPage + 1); buildWidgets(); })
+                .bounds(left + 52, top + 25, 48, 20).build());
+        previous.active = presentationPage > 0;
+        next.active = presentationPage < pageCount - 1;
+
         int controlsLeft = left + 108;
         int controlsWidth = panelWidth - 108;
-        addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.flight_sound",
-                ClientOptions::flightSound, ClientOptions::setFlightSound, true);
-        addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_trail",
-                ClientOptions::swordTrail, ClientOptions::setSwordTrail, true);
-        addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.swordflight.balance.sword_body_glow",
-                ClientOptions::swordBodyGlow, ClientOptions::setSwordBodyGlow, true);
-        addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.swordflight.balance.sword_outline",
-                ClientOptions::swordOutline, ClientOptions::setSwordOutline, false);
-        addToggleRow(controlsLeft, top + 100, controlsWidth, "screen.swordflight.balance.inventory_glint",
-                ClientOptions::inventoryGlint, ClientOptions::setInventoryGlint, true);
-        addModelStyleRow(controlsLeft, top + 125, controlsWidth);
-    }
-
-    private void addModelStyleRow(int left, int y, int width) {
-        int resetWidth = 46;
-        FlyingSwordModelStyle style = ClientOptions.swordModelStyle();
-        Button cycle = addRenderableWidget(Button.builder(
-                        Component.translatable("screen.swordflight.balance.sword_model_style",
-                                Component.translatable(style.translationKey())),
-                        button -> {
-                            ClientOptions.setSwordModelStyle(ClientOptions.swordModelStyle().next());
-                            buildWidgets();
-                        })
-                .bounds(left, y, width - resetWidth - 3, 20).build());
-        Button reset = addRenderableWidget(Button.builder(
-                        Component.translatable("screen.swordflight.config.reset_short"),
-                        button -> {
-                            ClientOptions.setSwordModelStyle(FlyingSwordModelStyle.ORIGINAL);
-                            buildWidgets();
-                        })
-                .bounds(left + width - resetWidth, y, resetWidth, 20).build());
-        editingButtons.add(cycle);
-        editingButtons.add(reset);
+        if (presentationPage == 0) {
+            addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.flight_sound",
+                    ClientOptions::flightSound, ClientOptions::setFlightSound, true);
+            addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_trail",
+                    ClientOptions::swordTrail, ClientOptions::setSwordTrail, true);
+            addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.swordflight.balance.sword_body_glow",
+                    ClientOptions::swordBodyGlow, ClientOptions::setSwordBodyGlow, true);
+            addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.swordflight.balance.inventory_glint",
+                    ClientOptions::inventoryGlint, ClientOptions::setInventoryGlint, true);
+        } else {
+            addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.sword_energy_highlight",
+                    ClientOptions::swordEnergyHighlight, ClientOptions::setSwordEnergyHighlight, false);
+            addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_outline",
+                    ClientOptions::swordOutline, ClientOptions::setSwordOutline, false);
+        }
     }
 
     private void addToggleRow(int left, int y, int width, String translationKey,

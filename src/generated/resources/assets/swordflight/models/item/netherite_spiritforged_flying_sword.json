@@ -1,0 +1,12 @@
+{
+  "parent": "swordflight:item/flying_sword_style_formal",
+  "textures": {
+    "accent": "minecraft:block/amethyst_block",
+    "blade_dark": "minecraft:block/netherite_block",
+    "blade_light": "minecraft:block/netherite_block",
+    "edge": "minecraft:block/crying_obsidian",
+    "grip": "minecraft:block/crimson_planks",
+    "guard": "minecraft:block/polished_blackstone",
+    "particle": "minecraft:block/netherite_block"
+  }
+}

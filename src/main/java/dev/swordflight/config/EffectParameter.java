@@ -22,18 +22,18 @@ public enum EffectParameter {
     POISON_DAMAGE_II(EffectConfigGroup.POISON, "poison_damage_ii", 1.0, 0, 50, 0.5, false),
     POISON_DAMAGE_III(EffectConfigGroup.POISON, "poison_damage_iii", 1.5, 0, 50, 0.5, false),
 
-    EXPLOSION_DAMAGE_I(EffectConfigGroup.EXPLOSION, "explosion_damage_i", 4, 0, 100, 0.5, false),
-    EXPLOSION_DAMAGE_II(EffectConfigGroup.EXPLOSION, "explosion_damage_ii", 7, 0, 100, 0.5, false),
-    EXPLOSION_DAMAGE_III(EffectConfigGroup.EXPLOSION, "explosion_damage_iii", 12, 0, 100, 0.5, false),
+    EXPLOSION_DAMAGE_I(EffectConfigGroup.EXPLOSION, "explosion_damage_i", 4.0, 0, 100, 0.5, false),
+    EXPLOSION_DAMAGE_II(EffectConfigGroup.EXPLOSION, "explosion_damage_ii", 7.0, 0, 100, 0.5, false),
+    EXPLOSION_DAMAGE_III(EffectConfigGroup.EXPLOSION, "explosion_damage_iii", 12.0, 0, 100, 0.5, false),
 
     ARROW_COUNT_I(EffectConfigGroup.ARROW_RAIN, "arrow_count_i", 2, 1, 24, 1, true),
     ARROW_COUNT_II(EffectConfigGroup.ARROW_RAIN, "arrow_count_ii", 4, 1, 24, 1, true),
     ARROW_COUNT_III(EffectConfigGroup.ARROW_RAIN, "arrow_count_iii", 7, 1, 24, 1, true),
     ARROW_DAMAGE(EffectConfigGroup.ARROW_RAIN, "arrow_damage", 2.5, 0, 50, 0.5, false),
 
-    DAMAGE_BONUS_I(EffectConfigGroup.REFINEMENT, "damage_bonus_i", 1, 0, 50, 0.5, false),
-    DAMAGE_BONUS_II(EffectConfigGroup.REFINEMENT, "damage_bonus_ii", 3, 0, 50, 0.5, false),
-    DAMAGE_BONUS_III(EffectConfigGroup.REFINEMENT, "damage_bonus_iii", 7, 0, 50, 0.5, false),
+    DAMAGE_BONUS_I(EffectConfigGroup.REFINEMENT, "damage_bonus_i", 1.0, 0, 50, 0.5, false),
+    DAMAGE_BONUS_II(EffectConfigGroup.REFINEMENT, "damage_bonus_ii", 3.0, 0, 50, 0.5, false),
+    DAMAGE_BONUS_III(EffectConfigGroup.REFINEMENT, "damage_bonus_iii", 7.0, 0, 50, 0.5, false),
     DURABILITY_BONUS_I(EffectConfigGroup.REFINEMENT, "durability_bonus_i", 500, 0, 50000, 100, true),
     DURABILITY_BONUS_II(EffectConfigGroup.REFINEMENT, "durability_bonus_ii", 2000, 0, 50000, 100, true),
     DURABILITY_BONUS_III(EffectConfigGroup.REFINEMENT, "durability_bonus_iii", 8000, 0, 50000, 100, true);

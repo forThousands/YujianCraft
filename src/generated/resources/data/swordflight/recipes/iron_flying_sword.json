@@ -2,17 +2,17 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
-    "D": {
+    "A": {
       "item": "minecraft:diamond"
     },
-    "S": {
+    "B": {
       "item": "minecraft:iron_sword"
     }
   },
   "pattern": [
-    "DDD",
-    "DSD",
-    "DDD"
+    "AAA",
+    "ABA",
+    "AAA"
   ],
   "result": {
     "item": "swordflight:iron_flying_sword"

@@ -27,5 +27,11 @@ gradle-*-bin*.zip
 # versioned local handoff artifacts (publish these through GitHub Releases when needed)
 releases
 
+# local visual control-panel state and automatic source backups
+devtools/control_panel/.local.json
+devtools/control_panel/backups/
+__pycache__/
+*.py[cod]
+
 # Files from Forge MDK
 forge*changelog.txt

@@ -2,7 +2,8 @@ package dev.swordflight.combat;
 
 public enum TargetingMode {
     AUTOMATIC("automatic"),
-    CROSSHAIR_LOCK("crosshair_lock");
+    CROSSHAIR_LOCK("crosshair_lock"),
+    MANUAL_GUIDANCE("manual_guidance");
 
     private final String name;
 
@@ -15,10 +16,10 @@ public enum TargetingMode {
     }
 
     public TargetingMode next() {
-        return this == AUTOMATIC ? CROSSHAIR_LOCK : AUTOMATIC;
+        return values()[(ordinal() + 1) % values().length];
     }
 
     public static TargetingMode fromOrdinal(int ordinal) {
-        return ordinal == CROSSHAIR_LOCK.ordinal() ? CROSSHAIR_LOCK : AUTOMATIC;
+        return ordinal >= 0 && ordinal < values().length ? values()[ordinal] : AUTOMATIC;
     }
 }

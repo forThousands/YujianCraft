@@ -12,7 +12,8 @@ public enum FlyingSwordModule {
     ARROW_RAIN("arrow_rain", Items.ARROW, 3, ModuleCategory.EFFECT),
     DAMAGE("damage", Items.EMERALD, 3, ModuleCategory.ATTRIBUTE),
     DURABILITY("durability", Items.DIAMOND, 3, ModuleCategory.ATTRIBUTE),
-    UNBREAKABLE("unbreakable", Items.NETHER_STAR, 1, ModuleCategory.ATTRIBUTE);
+    UNBREAKABLE("unbreakable", Items.NETHER_STAR, 1, ModuleCategory.ATTRIBUTE),
+    WHITE_HOT("white_hot", Items.MAGMA_BLOCK, 1, ModuleCategory.PRESENTATION);
 
     private final String serializedName;
     private final Item ingredient;

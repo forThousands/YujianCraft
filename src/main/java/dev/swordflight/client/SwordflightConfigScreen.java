@@ -18,6 +18,7 @@ public final class SwordflightConfigScreen extends Screen {
     private Button targetingButton;
     private Button attackButton;
     private Button thirdPersonButton;
+    private Button swordRidingButton;
     private Button developerButton;
     private boolean synced;
 
@@ -32,7 +33,7 @@ public final class SwordflightConfigScreen extends Screen {
         settings = ClientSettingsState.get();
         serverEditingButtons.clear();
         int centerX = width / 2;
-        int top = height / 2 - 58;
+        int top = height / 2 - 70;
 
         targetingButton = addModeRow(centerX, top, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
@@ -50,18 +51,22 @@ public final class SwordflightConfigScreen extends Screen {
                 () -> ClientOptions.setOptimizedThirdPerson(!ClientOptions.optimizedThirdPerson()),
                 () -> ClientOptions.setOptimizedThirdPerson(false), false);
 
+        swordRidingButton = addModeRow(centerX, top + 75, this::toggleSwordRidingOption,
+                () -> setSwordRidingOption(false), false);
+
         addRenderableWidget(Button.builder(Component.translatable("screen.swordflight.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                             settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, AttackMode.SORTIE));
                     ClientOptions.setOptimizedThirdPerson(false);
+                    setSwordRidingOption(true);
                     refreshLabels();
-                }).bounds(centerX - 145, top + 84, 92, 20).build());
+                }).bounds(centerX - 145, top + 109, 92, 20).build());
         developerButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.swordflight.config.developer"),
                         button -> minecraft.setScreen(new AdminBalanceScreen(this)))
-                .bounds(centerX - 47, top + 84, 92, 20).build());
+                .bounds(centerX - 47, top + 109, 92, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(centerX + 51, top + 84, 94, 20).build());
+                .bounds(centerX + 51, top + 109, 94, 20).build());
 
         refreshLabels();
         setEditingEnabled(false);
@@ -92,6 +97,18 @@ public final class SwordflightConfigScreen extends Screen {
         ClientSettingsState.update(updated);
     }
 
+    private void toggleSwordRidingOption() {
+        setSwordRidingOption(!ClientOptions.swordRidingEnabled());
+    }
+
+    private void setSwordRidingOption(boolean enabled) {
+        if (!enabled && ClientSwordRidingState.isActive()) {
+            dev.swordflight.network.ModNetwork.CHANNEL.sendToServer(
+                    new dev.swordflight.network.ModNetwork.ToggleSwordRidingPacket());
+        }
+        ClientOptions.setSwordRidingEnabled(enabled);
+    }
+
     public void onSettingsSynced(SwordSettings syncedSettings) {
         settings = syncedSettings;
         synced = true;
@@ -120,12 +137,16 @@ public final class SwordflightConfigScreen extends Screen {
             thirdPersonButton.setMessage(Component.translatable("screen.swordflight.config.optimized_third_person",
                     Component.translatable(ClientOptions.optimizedThirdPerson() ? "options.on" : "options.off")));
         }
+        if (swordRidingButton != null) {
+            swordRidingButton.setMessage(Component.translatable("screen.swordflight.config.sword_riding",
+                    Component.translatable(ClientOptions.swordRidingEnabled() ? "options.on" : "options.off")));
+        }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        int top = height / 2 - 58;
+        int top = height / 2 - 70;
         graphics.drawCenteredString(font, title, width / 2, top - 30, 0xFFFFFF);
         graphics.drawCenteredString(font, Component.translatable("screen.swordflight.config.description"),
                 width / 2, top - 16, 0xA0A0A0);

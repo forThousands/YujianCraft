@@ -6,12 +6,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public enum FlyingSwordMaterial {
-    WOODEN("wooden", Items.WOODEN_SWORD, Items.OAK_PLANKS, 384, 4.0D, 0.90D, 0xD49A55),
+    WOODEN("wooden", Items.WOODEN_SWORD, Items.OAK_PLANKS, 384, 4.0D, 0.9D, 0xD49A55),
     STONE("stone", Items.STONE_SWORD, Items.COBBLESTONE, 768, 5.0D, 0.95D, 0xAEB8C4),
-    IRON("iron", Items.IRON_SWORD, Items.IRON_INGOT, 1536, 6.0D, 1.00D, 0xE7F2FF),
+    IRON("iron", Items.IRON_SWORD, Items.IRON_INGOT, 1536, 6.0D, 1.0D, 0xE7F2FF),
     GOLDEN("golden", Items.GOLDEN_SWORD, Items.GOLD_INGOT, 512, 4.0D, 1.15D, 0xFFD34F),
     DIAMOND("diamond", Items.DIAMOND_SWORD, Items.DIAMOND, 3072, 7.0D, 1.05D, 0x43F2E6),
-    NETHERITE("netherite", Items.NETHERITE_SWORD, Items.NETHERITE_INGOT, 4096, 8.0D, 1.10D, 0xAF70FF);
+    NETHERITE("netherite", Items.NETHERITE_SWORD, Items.NETHERITE_INGOT, 4096, 8.0D, 1.1D, 0xAF70FF);
 
     private final String serializedName;
     private final Item vanillaSword;

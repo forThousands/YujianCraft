@@ -6,9 +6,11 @@ import dev.swordflight.combat.SwordSettings;
 import dev.swordflight.registry.ModEntities;
 import dev.swordflight.material.FlyingSwordMaterial;
 import dev.swordflight.combat.SwordEffectEngine;
+import dev.swordflight.combat.ManualGuidanceManager;
 import dev.swordflight.upgrade.FlyingSwordModule;
 import dev.swordflight.upgrade.SwordModuleData;
 import dev.swordflight.client.ClientOptions;
+import dev.swordflight.visual.FlyingSwordSeries;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -26,16 +28,19 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 
 import java.util.List;
+import java.util.ArrayList;
 
 public final class FlyingSwordItem extends Item {
     public static final int FORMATION_SIZE = 6;
     public static final String ENTITY_DISPLAY_TAG = "SwordflightEntityDisplay";
     private static final String MODE_TAG = "FormationMode";
     private final FlyingSwordMaterial material;
+    private final FlyingSwordSeries series;
 
-    public FlyingSwordItem(FlyingSwordMaterial material, Properties properties) {
+    public FlyingSwordItem(FlyingSwordMaterial material, FlyingSwordSeries series, Properties properties) {
         super(properties);
         this.material = material;
+        this.series = series;
     }
 
     @Override
@@ -46,25 +51,13 @@ public final class FlyingSwordItem extends Item {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
-        AABB searchArea = player.getBoundingBox().inflate(48.0D);
-        List<FlyingSwordEntity> activeSwords = level.getEntitiesOfClass(
-                FlyingSwordEntity.class,
-                searchArea,
-                sword -> sword.isOwnedBy(player)
-        );
+        List<FlyingSwordEntity> activeSwords = getOwnedFormationSwords(serverPlayer);
 
         if (!activeSwords.isEmpty()) {
+            ManualGuidanceManager.cancel(serverPlayer);
             activeSwords.forEach(Entity::discard);
         } else {
-            for (int slot = 0; slot < FORMATION_SIZE; slot++) {
-                FlyingSwordEntity sword = ModEntities.FLYING_SWORD.get().create(serverLevel);
-                if (sword != null) {
-                    sword.bindTo(serverPlayer, slot, getFormationMode(stack), SwordSettings.read(stack), material,
-                            SwordModuleData.copyModules(stack));
-                    sword.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), 0.0F);
-                    serverLevel.addFreshEntity(sword);
-                }
-            }
+            summonFormation(serverPlayer, stack);
         }
 
         level.playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
@@ -83,6 +76,10 @@ public final class FlyingSwordItem extends Item {
                 Component.translatable(settings.targetingMode().translationKey())).withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.swordflight.attack",
                 Component.translatable(settings.attackMode().translationKey())).withStyle(ChatFormatting.GRAY));
+        if (settings.targetingMode() == dev.swordflight.combat.TargetingMode.MANUAL_GUIDANCE) {
+            tooltip.add(Component.translatable("tooltip.swordflight.manual_controls")
+                    .withStyle(ChatFormatting.GOLD));
+        }
         tooltip.add(Component.translatable("tooltip.swordflight.minimum_dock",
                 String.format(java.util.Locale.ROOT, "%.2f", settings.minimumDockTicks() / 20.0D))
                 .withStyle(ChatFormatting.GRAY));
@@ -138,6 +135,10 @@ public final class FlyingSwordItem extends Item {
         return material;
     }
 
+    public FlyingSwordSeries getSeries() {
+        return series;
+    }
+
     public static void toggleFormationMode(ServerPlayer player) {
         ItemStack stack = findFlyingSword(player);
         if (stack.isEmpty()) {
@@ -147,9 +148,7 @@ public final class FlyingSwordItem extends Item {
 
         FormationMode mode = getFormationMode(stack).next();
         stack.getOrCreateTag().putString(MODE_TAG, mode.serializedName());
-        player.level().getEntitiesOfClass(FlyingSwordEntity.class, player.getBoundingBox().inflate(64.0D),
-                        sword -> sword.isOwnedBy(player))
-                .forEach(sword -> sword.setFormationMode(mode));
+        getOwnedFormationSwords(player).forEach(sword -> sword.setFormationMode(mode));
         player.displayClientMessage(Component.translatable("message.swordflight.formation_changed",
                 Component.translatable(mode.translationKey())), true);
     }
@@ -164,9 +163,35 @@ public final class FlyingSwordItem extends Item {
         if (!stack.isEmpty()) {
             settings.write(stack);
         }
-        player.level().getEntitiesOfClass(FlyingSwordEntity.class, player.getBoundingBox().inflate(64.0D),
-                        sword -> sword.isOwnedBy(player))
-                .forEach(sword -> sword.applySettings(settings));
+        getOwnedFormationSwords(player).forEach(sword -> sword.applySettings(settings));
+    }
+
+    public static List<FlyingSwordEntity> getOwnedFormationSwords(ServerPlayer player) {
+        List<FlyingSwordEntity> result = new ArrayList<>();
+        for (Entity entity : player.serverLevel().getAllEntities()) {
+            if (entity instanceof FlyingSwordEntity sword && sword.isOwnedBy(player)
+                    && sword.isFormationSword()) result.add(sword);
+        }
+        return result;
+    }
+
+    public static List<FlyingSwordEntity> ensureFormation(ServerPlayer player, ItemStack stack) {
+        List<FlyingSwordEntity> existing = getOwnedFormationSwords(player);
+        if (!existing.isEmpty() || !(stack.getItem() instanceof FlyingSwordItem item)) return existing;
+        item.summonFormation(player, stack);
+        return getOwnedFormationSwords(player);
+    }
+
+    private void summonFormation(ServerPlayer player, ItemStack stack) {
+        ServerLevel level = player.serverLevel();
+        for (int slot = 0; slot < FORMATION_SIZE; slot++) {
+            FlyingSwordEntity sword = ModEntities.FLYING_SWORD.get().create(level);
+            if (sword == null) continue;
+            sword.bindTo(player, slot, getFormationMode(stack), SwordSettings.read(stack), material,
+                    series, SwordModuleData.copyModules(stack));
+            sword.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), 0.0F);
+            level.addFreshEntity(sword);
+        }
     }
 
     public static ItemStack findFlyingSword(ServerPlayer player) {
@@ -185,12 +210,15 @@ public final class FlyingSwordItem extends Item {
         return ItemStack.EMPTY;
     }
 
-    public static ItemStack findFlyingSword(ServerPlayer player, FlyingSwordMaterial material) {
+    public static ItemStack findFlyingSword(ServerPlayer player, FlyingSwordMaterial material,
+                                            FlyingSwordSeries series) {
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             ItemStack stack = player.getInventory().getItem(slot);
-            if (stack.getItem() instanceof FlyingSwordItem sword && sword.material == material) return stack;
+            if (stack.getItem() instanceof FlyingSwordItem sword
+                    && sword.material == material && sword.series == series) return stack;
         }
-        if (player.getOffhandItem().getItem() instanceof FlyingSwordItem sword && sword.material == material) {
+        if (player.getOffhandItem().getItem() instanceof FlyingSwordItem sword
+                && sword.material == material && sword.series == series) {
             return player.getOffhandItem();
         }
         return ItemStack.EMPTY;

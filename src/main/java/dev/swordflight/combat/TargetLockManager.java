@@ -39,7 +39,8 @@ public final class TargetLockManager {
 
         ItemStack sword = FlyingSwordItem.findFlyingSword(player);
         boolean hasActiveSwords = !player.level().getEntitiesOfClass(FlyingSwordEntity.class,
-                player.getBoundingBox().inflate(64.0D), entity -> entity.isOwnedBy(player)).isEmpty();
+                player.getBoundingBox().inflate(64.0D),
+                entity -> entity.isOwnedBy(player) && entity.isFormationSword()).isEmpty();
         if (sword.isEmpty() || !hasActiveSwords) {
             clear(player);
             return;

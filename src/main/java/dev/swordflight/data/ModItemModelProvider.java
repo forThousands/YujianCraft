@@ -6,8 +6,7 @@ import net.minecraft.data.PackOutput;
 import net.minecraftforge.client.model.generators.ItemModelProvider;
 import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.client.model.generators.ItemModelBuilder;
-import net.minecraft.resources.ResourceLocation;
-import dev.swordflight.visual.FlyingSwordModelStyle;
+import dev.swordflight.visual.FlyingSwordSeries;
 
 public final class ModItemModelProvider extends ItemModelProvider {
     public ModItemModelProvider(PackOutput output, ExistingFileHelper existingFileHelper) {
@@ -20,18 +19,12 @@ public final class ModItemModelProvider extends ItemModelProvider {
             // Keep every flying sword on the exact same baked-model transform. Inheriting the
             // vanilla sword model adds another model layer and produced material-dependent FIXED
             // transforms in the entity renderer; only the texture is meant to vary here.
-            ItemModelBuilder original = singleTexture(material.itemId(), mcLoc("item/handheld"), "layer0",
+            singleTexture(material.itemId(), mcLoc("item/handheld"), "layer0",
                     mcLoc("item/" + material.serializedName() + "_sword"));
-            ResourceLocation property = modLoc("model_style");
-            for (FlyingSwordModelStyle style : FlyingSwordModelStyle.values()) {
-                if (style == FlyingSwordModelStyle.ORIGINAL) continue;
-                if (style == FlyingSwordModelStyle.FORMAL && material != FlyingSwordMaterial.IRON) continue;
-                ItemModelBuilder styled = withExistingParent(
-                        material.itemId() + "_" + style.serializedName(),
-                        modLoc("item/flying_sword_style_" + style.serializedName()));
-                applyMaterialTextures(styled, material);
-                original.override().predicate(property, style.predicateValue()).model(styled).end();
-            }
+            ItemModelBuilder spiritforged = withExistingParent(
+                    FlyingSwordSeries.SPIRITFORGED.itemId(material),
+                    modLoc("item/flying_sword_style_formal"));
+            applyMaterialTextures(spiritforged, material);
         }
     }
 

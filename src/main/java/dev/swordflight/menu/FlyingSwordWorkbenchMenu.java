@@ -146,10 +146,12 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
 
     private static void recallActiveFormation(Player player, ItemStack sword) {
         if (!(sword.getItem() instanceof FlyingSwordItem swordItem)) return;
-        player.level().getEntitiesOfClass(FlyingSwordEntity.class, player.getBoundingBox().inflate(64.0D),
-                        entity -> entity.isOwnedBy(player)
-                                && entity.getMaterialType() == swordItem.getMaterialType())
-                .forEach(net.minecraft.world.entity.Entity::discard);
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            FlyingSwordItem.getOwnedFormationSwords(serverPlayer).stream()
+                    .filter(entity -> entity.getMaterialType() == swordItem.getMaterialType()
+                            && entity.getSeriesType() == swordItem.getSeries())
+                    .forEach(net.minecraft.world.entity.Entity::discard);
+        }
     }
 
     @Override

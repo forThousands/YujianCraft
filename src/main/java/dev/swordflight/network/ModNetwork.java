@@ -4,16 +4,21 @@ import dev.swordflight.Swordflight;
 import dev.swordflight.client.ClientSettingsState;
 import dev.swordflight.client.ClientBalanceState;
 import dev.swordflight.client.ClientTargetState;
+import dev.swordflight.client.ClientManualGuidanceState;
+import dev.swordflight.client.ClientSwordRidingState;
 import dev.swordflight.combat.SwordSettings;
 import dev.swordflight.config.SwordBalanceConfig;
 import dev.swordflight.config.EffectBalanceConfig;
 import dev.swordflight.config.EffectParameter;
 import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.combat.TargetLockManager;
+import dev.swordflight.combat.ManualGuidanceManager;
+import dev.swordflight.flight.SwordRidingManager;
 import dev.swordflight.material.FlyingSwordMaterial;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkDirection;
@@ -29,7 +34,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "6";
+    private static final String PROTOCOL = "7";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Swordflight.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -74,6 +79,24 @@ public final class ModNetwork {
         CHANNEL.registerMessage(10, ClientAimTargetPacket.class,
                 ClientAimTargetPacket::encode, ClientAimTargetPacket::decode,
                 ModNetwork::handleClientAimTarget, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(11, ToggleSwordRidingPacket.class,
+                (message, buffer) -> { }, buffer -> new ToggleSwordRidingPacket(),
+                ModNetwork::handleToggleSwordRiding, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(12, SwordRidingStatePacket.class,
+                SwordRidingStatePacket::encode, SwordRidingStatePacket::decode,
+                ModNetwork::handleSwordRidingState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(13, ManualLaunchPacket.class,
+                ManualLaunchPacket::encode, ManualLaunchPacket::decode,
+                ModNetwork::handleManualLaunch, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(14, ManualAimPacket.class,
+                ManualAimPacket::encode, ManualAimPacket::decode,
+                ModNetwork::handleManualAim, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(15, ManualLockPacket.class,
+                ManualLockPacket::encode, ManualLockPacket::decode,
+                ModNetwork::handleManualLock, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(16, ManualGuidanceStatePacket.class,
+                ManualGuidanceStatePacket::encode, ManualGuidanceStatePacket::decode,
+                ModNetwork::handleManualGuidanceState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
@@ -203,6 +226,62 @@ public final class ModNetwork {
         context.setPacketHandled(true);
     }
 
+    private static void handleToggleSwordRiding(ToggleSwordRidingPacket message,
+                                                Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) SwordRidingManager.toggle(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleSwordRidingState(SwordRidingStatePacket message,
+                                               Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientSwordRidingState.setActive(message.active)));
+        context.setPacketHandled(true);
+    }
+
+    private static void handleManualLaunch(ManualLaunchPacket message,
+                                           Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) ManualGuidanceManager.launchReadySalvo(sender, message.direction());
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleManualAim(ManualAimPacket message,
+                                        Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) ManualGuidanceManager.acceptAim(sender, message.direction());
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleManualLock(ManualLockPacket message,
+                                         Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) ManualGuidanceManager.lockSalvoTarget(sender, message.entityId);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleManualGuidanceState(ManualGuidanceStatePacket message,
+                                                  Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientManualGuidanceState.setGuiding(message.guiding)));
+        context.setPacketHandled(true);
+    }
+
     public static void sendSettings(ServerPlayer player, SwordSettings settings) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
@@ -215,6 +294,14 @@ public final class ModNetwork {
 
     public static void sendLockedTarget(ServerPlayer player, UUID targetId) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new LockedTargetPacket(targetId));
+    }
+
+    public static void sendSwordRidingState(ServerPlayer player, boolean active) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordRidingStatePacket(active));
+    }
+
+    public static void sendManualGuidanceState(ServerPlayer player, boolean guiding) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ManualGuidanceStatePacket(guiding));
     }
 
     public record ToggleFormationPacket() {
@@ -240,6 +327,75 @@ public final class ModNetwork {
 
         private static ClientAimTargetPacket decode(FriendlyByteBuf buffer) {
             return new ClientAimTargetPacket(buffer.readInt());
+        }
+    }
+
+    public record ToggleSwordRidingPacket() {
+    }
+
+    public record SwordRidingStatePacket(boolean active) {
+        private static void encode(SwordRidingStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeBoolean(message.active);
+        }
+
+        private static SwordRidingStatePacket decode(FriendlyByteBuf buffer) {
+            return new SwordRidingStatePacket(buffer.readBoolean());
+        }
+    }
+
+    public record ManualLaunchPacket(float x, float y, float z) {
+        public ManualLaunchPacket(Vec3 direction) {
+            this((float) direction.x, (float) direction.y, (float) direction.z);
+        }
+
+        private Vec3 direction() { return new Vec3(x, y, z); }
+
+        private static void encode(ManualLaunchPacket message, FriendlyByteBuf buffer) {
+            buffer.writeFloat(message.x);
+            buffer.writeFloat(message.y);
+            buffer.writeFloat(message.z);
+        }
+
+        private static ManualLaunchPacket decode(FriendlyByteBuf buffer) {
+            return new ManualLaunchPacket(buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
+        }
+    }
+
+    public record ManualAimPacket(float x, float y, float z) {
+        public ManualAimPacket(Vec3 direction) {
+            this((float) direction.x, (float) direction.y, (float) direction.z);
+        }
+
+        private Vec3 direction() { return new Vec3(x, y, z); }
+
+        private static void encode(ManualAimPacket message, FriendlyByteBuf buffer) {
+            buffer.writeFloat(message.x);
+            buffer.writeFloat(message.y);
+            buffer.writeFloat(message.z);
+        }
+
+        private static ManualAimPacket decode(FriendlyByteBuf buffer) {
+            return new ManualAimPacket(buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
+        }
+    }
+
+    public record ManualLockPacket(int entityId) {
+        private static void encode(ManualLockPacket message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.entityId);
+        }
+
+        private static ManualLockPacket decode(FriendlyByteBuf buffer) {
+            return new ManualLockPacket(buffer.readInt());
+        }
+    }
+
+    public record ManualGuidanceStatePacket(boolean guiding) {
+        private static void encode(ManualGuidanceStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeBoolean(message.guiding);
+        }
+
+        private static ManualGuidanceStatePacket decode(FriendlyByteBuf buffer) {
+            return new ManualGuidanceStatePacket(buffer.readBoolean());
         }
     }
 

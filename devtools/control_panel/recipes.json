@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "recipes": [
+    {
+      "id": "diamond_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:diamond_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "diamond_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:diamond_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:diamond_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    },
+    {
+      "id": "flying_sword_workbench",
+      "type": "shaped",
+      "category": "decorations",
+      "result": "swordflight:flying_sword_workbench",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:crafting_table",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "golden_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:golden_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:golden_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "golden_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:golden_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:golden_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    },
+    {
+      "id": "iron_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:iron_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:iron_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "iron_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:iron_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:iron_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    },
+    {
+      "id": "netherite_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:netherite_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:netherite_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "netherite_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:netherite_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:netherite_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    },
+    {
+      "id": "stone_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:stone_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:stone_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "stone_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:stone_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:stone_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    },
+    {
+      "id": "wooden_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:wooden_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:wooden_sword",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond",
+        "minecraft:diamond"
+      ]
+    },
+    {
+      "id": "wooden_spiritforged_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "swordflight:wooden_spiritforged_flying_sword",
+      "count": 1,
+      "grid": [
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "swordflight:wooden_flying_sword",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard",
+        "minecraft:amethyst_shard"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "parent": "swordflight:item/flying_sword_style_formal",
+  "textures": {
+    "accent": "minecraft:block/lapis_block",
+    "blade_dark": "minecraft:block/stone",
+    "blade_light": "minecraft:block/stone",
+    "edge": "minecraft:block/smooth_stone",
+    "grip": "minecraft:block/dark_oak_planks",
+    "guard": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/stone"
+  }
+}

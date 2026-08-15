@@ -17,7 +17,7 @@ public final class ModEntities {
             "flying_sword",
             () -> EntityType.Builder.<FlyingSwordEntity>of(FlyingSwordEntity::new, MobCategory.MISC)
                     .sized(0.6F, 0.2F)
-                    .clientTrackingRange(64)
+                    .clientTrackingRange(512)
                     .updateInterval(1)
                     .build(Swordflight.MOD_ID + ":flying_sword")
     );
