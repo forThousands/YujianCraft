@@ -318,28 +318,28 @@ public final class ClientModEvents {
             if (path.size() < 2) return;
 
             int color = sword.getVisualMaterial().glowColor();
-            int red = glowChannel(color >> 16 & 0xFF);
-            int green = glowChannel(color >> 8 & 0xFF);
-            int blue = glowChannel(color & 0xFF);
+            int red = color >> 16 & 0xFF;
+            int green = color >> 8 & 0xFF;
+            int blue = color & 0xFF;
             VertexConsumer vertices = buffers.getBuffer(RenderType.lightning());
             Matrix4f pose = poseStack.last().pose();
             Vec3 cameraPosition = entityRenderDispatcher.camera.getPosition();
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
-                    red, green, blue, 0.24D, glowAlpha(140));
+                    red, green, blue, 0.24D, 140);
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
                     mixWithWhite(red, 0.48F), mixWithWhite(green, 0.48F), mixWithWhite(blue, 0.48F),
-                    0.092D, glowAlpha(235));
+                    0.092D, 235);
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
                     mixWithWhite(red, 0.88F), mixWithWhite(green, 0.88F), mixWithWhite(blue, 0.88F),
-                    0.026D, glowAlpha(255));
+                    0.026D, 255);
         }
 
         private static void renderBladeAura(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
                                             MultiBufferSource buffers, boolean formalModel) {
             int color = sword.getVisualMaterial().glowColor();
-            int red = glowChannel(color >> 16 & 0xFF);
-            int green = glowChannel(color >> 8 & 0xFF);
-            int blue = glowChannel(color & 0xFF);
+            int red = color >> 16 & 0xFF;
+            int green = color >> 8 & 0xFF;
+            int blue = color & 0xFF;
             float pulse = 0.88F + 0.12F * Mth.sin((sword.tickCount + partialTick) * 0.18F
                     + sword.getVisualFormationSlot() * 0.9F);
             int flightAge = ClientFlightEffects.flightAge(sword);
@@ -377,22 +377,19 @@ public final class ClientModEvents {
             // spine and moving pulse while the complete shells remain deliberately restrained.
             float[] coreFaceRadius = {0.013F, 0.017F, 0.018F, 0.015F, 0.002F};
             float[] coreDepthRadius = {0.011F, 0.014F, 0.015F, 0.013F, 0.002F};
-            int coreAlphaScale = glowAlpha(Mth.clamp(
-                    (int) ((238.0F + launchSurge * 30.0F) * pulse), 0, 255));
+            int coreAlphaScale = Mth.clamp((int) ((238.0F + launchSurge * 30.0F) * pulse), 0, 255);
             renderSpiritPrism(shell, poseStack.last(), y, coreFaceRadius, coreDepthRadius,
                     new float[]{0.62F, 0.88F, 1.0F, 0.92F, 0.14F},
                     mixWithWhite(red, 0.90F), mixWithWhite(green, 0.90F), mixWithWhite(blue, 0.90F),
                     coreAlphaScale);
 
             float[] shellAlpha = {0.54F, 0.78F, 1.0F, 0.82F, 0.08F};
-            int shellAlphaScale = glowAlpha(Mth.clamp(
-                    (int) ((122.0F + launchSurge * 54.0F) * pulse), 0, 255));
+            int shellAlphaScale = Mth.clamp((int) ((122.0F + launchSurge * 54.0F) * pulse), 0, 255);
             renderSpiritPrism(shell, poseStack.last(), y, faceRadius, depthRadius, shellAlpha,
                     mixWithWhite(red, 0.12F), mixWithWhite(green, 0.12F), mixWithWhite(blue, 0.12F),
                     shellAlphaScale);
 
-            int outerAlphaScale = glowAlpha(Mth.clamp(
-                    (int) ((54.0F + launchSurge * 34.0F) * pulse), 0, 255));
+            int outerAlphaScale = Mth.clamp((int) ((54.0F + launchSurge * 34.0F) * pulse), 0, 255);
             renderSpiritPrism(shell, poseStack.last(), y, outerFaceRadius, outerDepthRadius,
                     new float[]{0.30F, 0.58F, 1.0F, 0.70F, 0.04F},
                     red, green, blue, outerAlphaScale);
@@ -416,8 +413,7 @@ public final class ClientModEvents {
                     radiusAt(y, depthRadius, pulseCenter) + 0.014F,
                     radiusAt(y, depthRadius, pulseEnd) + 0.008F
             };
-            int pulseAlphaScale = glowAlpha(Mth.clamp(
-                    (int) ((244.0F + launchSurge * 24.0F) * pulse), 0, 255));
+            int pulseAlphaScale = Mth.clamp((int) ((244.0F + launchSurge * 24.0F) * pulse), 0, 255);
             VertexConsumer flowingEnergy = buffers.getBuffer(RenderType.entityTranslucentEmissive(
                     SPIRIT_PULSE_TEXTURE, false));
             renderSpiritPrism(flowingEnergy, poseStack.last(), pulseY, pulseFace, pulseDepth,
@@ -468,8 +464,8 @@ public final class ClientModEvents {
                         anchorY - backward,
                         sin * (startDepth + outward) + cos * curve * 1.35F);
 
-                int outerAlpha = glowAlpha(Mth.clamp(Math.round(104.0F * visibility), 0, 255));
-                int coreAlpha = glowAlpha(Mth.clamp(Math.round(220.0F * visibility), 0, 255));
+                int outerAlpha = Mth.clamp(Math.round(104.0F * visibility), 0, 255);
+                int coreAlpha = Mth.clamp(Math.round(220.0F * visibility), 0, 255);
                 renderWispSegment(wisps, pose, start, middlePoint, 0.018F,
                         red, green, blue, outerAlpha, Math.round(outerAlpha * 0.82F));
                 renderWispSegment(wisps, pose, middlePoint, end, 0.013F,
@@ -587,42 +583,28 @@ public final class ClientModEvents {
             return Mth.clamp(Math.round(channel + (255 - channel) * amount), 0, 255);
         }
 
-        private static int glowAlpha(int alpha) {
-            return Mth.clamp(Math.round(alpha
-                    * ClientOptions.glowBrightness().alphaMultiplier()), 0, 255);
-        }
-
-        private static int glowChannel(int channel) {
-            SwordGlowBrightness brightness = ClientOptions.glowBrightness();
-            int adjusted = Mth.clamp(Math.round(channel * brightness.colorMultiplier()), 0, 255);
-            return brightness.whiteMix() > 0.0F
-                    ? mixWithWhite(adjusted, brightness.whiteMix()) : adjusted;
-        }
-
         private static final class EnergyVertexConsumer extends VertexConsumerWrapper {
             private final int alpha;
             private final float whiteMix;
 
             private EnergyVertexConsumer(VertexConsumer parent, int alpha, float whiteMix) {
                 super(parent);
-                this.alpha = glowAlpha(alpha);
+                this.alpha = Mth.clamp(alpha, 0, 255);
                 this.whiteMix = Mth.clamp(whiteMix, 0.0F, 1.0F);
             }
 
             @Override
             public VertexConsumer color(int red, int green, int blue, int sourceAlpha) {
-                parent.color(glowChannel(mixWithWhite(red, whiteMix)),
-                        glowChannel(mixWithWhite(green, whiteMix)),
-                        glowChannel(mixWithWhite(blue, whiteMix)),
+                parent.color(mixWithWhite(red, whiteMix), mixWithWhite(green, whiteMix),
+                        mixWithWhite(blue, whiteMix),
                         Mth.clamp(Math.round(sourceAlpha * (alpha / 255.0F)), 0, 255));
                 return this;
             }
 
             @Override
             public void defaultColor(int red, int green, int blue, int sourceAlpha) {
-                parent.defaultColor(glowChannel(mixWithWhite(red, whiteMix)),
-                        glowChannel(mixWithWhite(green, whiteMix)),
-                        glowChannel(mixWithWhite(blue, whiteMix)),
+                parent.defaultColor(mixWithWhite(red, whiteMix), mixWithWhite(green, whiteMix),
+                        mixWithWhite(blue, whiteMix),
                         Mth.clamp(Math.round(sourceAlpha * (alpha / 255.0F)), 0, 255));
             }
         }
