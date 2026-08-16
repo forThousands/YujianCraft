@@ -4,10 +4,8 @@ import dev.swordflight.Swordflight;
 import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.entity.FlyingSwordEntity;
 import dev.swordflight.network.ModNetwork;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -53,19 +51,19 @@ public final class TargetLockManager {
                 clear(player);
                 return;
             }
-            if (resolve(player.serverLevel(), state.lockedId) == null) clear(player);
+            if (resolve(player, state.lockedId) == null) clear(player);
             return;
         }
 
         state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
         state.manualOverride = false;
-        LivingEntity locked = resolve(player.serverLevel(), state.lockedId);
+        LivingEntity locked = resolve(player, state.lockedId);
         if (locked == null) {
             setLocked(player, state, null);
         }
 
         boolean hasFreshClientAim = state.clientAimExpiresAt >= player.serverLevel().getGameTime();
-        LivingEntity aimed = hasFreshClientAim ? resolve(player.serverLevel(), state.clientAimedId)
+        LivingEntity aimed = hasFreshClientAim ? resolve(player, state.clientAimedId)
                 : findAimedEntity(player, settings.crosshairLockRadius()).orElse(null);
         if (aimed == null || aimed.getUUID().equals(state.lockedId)) {
             state.candidateId = null;
@@ -89,7 +87,7 @@ public final class TargetLockManager {
 
     public static LivingEntity getLockedTarget(ServerPlayer player) {
         LockState state = STATES.get(player.getUUID());
-        return state == null ? null : resolve(player.serverLevel(), state.lockedId);
+        return state == null ? null : resolve(player, state.lockedId);
     }
 
     public static boolean lockCrosshairNow(ServerPlayer player, int requestedEntityId) {
@@ -120,7 +118,7 @@ public final class TargetLockManager {
 
     private static LivingEntity validatedClientTarget(ServerPlayer player, int entityId, double lockRange) {
         if (entityId < 0 || !(player.serverLevel().getEntity(entityId) instanceof LivingEntity living)
-                || !(living instanceof Mob) || !living.isAlive() || living.isSpectator()) return null;
+                || !SwordTargetingRules.canActivelyTarget(player, living)) return null;
         if (living.distanceToSqr(player) > lockRange * lockRange || !player.hasLineOfSight(living)) return null;
         return living;
     }
@@ -137,8 +135,8 @@ public final class TargetLockManager {
         AABB search = new AABB(eye, end).inflate(3.0D);
 
         return player.level().getEntitiesOfClass(LivingEntity.class, search,
-                        entity -> entity instanceof Mob && entity.isAlive() && entity != player
-                                && !entity.isSpectator() && player.hasLineOfSight(entity))
+                        entity -> SwordTargetingRules.canActivelyTarget(player, entity)
+                                && player.hasLineOfSight(entity))
                 .stream()
                 .filter(entity -> isInsideCrosshairCone(eye, look, entity, lockRange))
                 .min(Comparator.comparingDouble(entity -> aimScore(eye, look, entity)));
@@ -160,9 +158,10 @@ public final class TargetLockManager {
         return perpendicularSquared / Math.max(1.0D, forward * forward) + forward * 1.0E-5D;
     }
 
-    private static LivingEntity resolve(ServerLevel level, UUID id) {
+    private static LivingEntity resolve(ServerPlayer owner, UUID id) {
         if (id == null) return null;
-        return level.getEntity(id) instanceof LivingEntity living && living.isAlive() ? living : null;
+        return owner.serverLevel().getEntity(id) instanceof LivingEntity living
+                && SwordTargetingRules.canActivelyTarget(owner, living) ? living : null;
     }
 
     private static void clear(ServerPlayer player) {

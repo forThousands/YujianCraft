@@ -12,6 +12,7 @@ import dev.swordflight.registry.ModItems;
 import dev.swordflight.material.FlyingSwordMaterial;
 import dev.swordflight.config.SwordBalanceConfig;
 import dev.swordflight.combat.SwordEffectEngine;
+import dev.swordflight.combat.SwordTargetingRules;
 import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.upgrade.SwordModuleData;
 import dev.swordflight.upgrade.FlyingSwordModule;
@@ -328,7 +329,8 @@ public final class FlyingSwordEntity extends Entity {
                 ? crosshairLockRadius : automaticTargetRadius;
         double maximumRange = targetingMode == TargetingMode.MANUAL_GUIDANCE
                 ? Double.POSITIVE_INFINITY : baseRange + 12.0D;
-        if (!(rawTarget instanceof LivingEntity target) || !target.isAlive()
+        if (!(rawTarget instanceof LivingEntity target)
+                || !SwordTargetingRules.canActivelyTarget(owner, target)
                 || target.distanceToSqr(owner) > maximumRange * maximumRange) {
             beginReturn();
             return;

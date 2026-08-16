@@ -9,7 +9,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
@@ -153,7 +152,7 @@ public final class ManualGuidanceManager {
 
     private static LivingEntity validateUnlimitedTarget(ServerPlayer player, int entityId) {
         if (entityId < 0 || !(player.serverLevel().getEntity(entityId) instanceof LivingEntity target)
-                || !(target instanceof Mob) || !target.isAlive() || target.isSpectator()
+                || !SwordTargetingRules.canActivelyTarget(player, target)
                 || !player.hasLineOfSight(target)) return null;
         Vec3 targetCenter = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
         Vec3 toTarget = targetCenter.subtract(player.getEyePosition());

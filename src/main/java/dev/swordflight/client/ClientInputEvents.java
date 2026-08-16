@@ -14,6 +14,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -168,7 +171,9 @@ public final class ClientInputEvents {
             return OptimizedThirdPersonController.getAimedLivingEntityId();
         }
         if (minecraft.hitResult instanceof EntityHitResult entityHit
-                && entityHit.getEntity() instanceof Mob mob && mob.isAlive()) return mob.getId();
+                && isPotentialSwordTarget(minecraft.player, entityHit.getEntity())) {
+            return entityHit.getEntity().getId();
+        }
 
         Vec3 start = minecraft.player.getEyePosition(1.0F);
         Vec3 direction = minecraft.player.getViewVector(1.0F).normalize();
@@ -179,8 +184,15 @@ public final class ClientInputEvents {
                 ? start.distanceToSqr(end) : start.distanceToSqr(blockHit.getLocation());
         EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(minecraft.player, start, end,
                 new AABB(start, end).inflate(1.0D),
-                entity -> entity instanceof Mob mob && mob.isAlive() && !mob.isSpectator(), maximumDistance);
+                entity -> isPotentialSwordTarget(minecraft.player, entity), maximumDistance);
         return entityHit == null ? -1 : entityHit.getEntity().getId();
+    }
+
+    private static boolean isPotentialSwordTarget(Player owner, Entity entity) {
+        if (!(entity instanceof LivingEntity living) || living == owner
+                || !living.isAlive() || living.isSpectator()) return false;
+        // The server performs the authoritative PvP/team-friendly-fire validation.
+        return living instanceof Mob || living instanceof Player;
     }
 
     @SubscribeEvent
