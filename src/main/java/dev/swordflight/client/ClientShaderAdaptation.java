@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
@@ -44,15 +45,25 @@ public final class ClientShaderAdaptation {
         ClientOptions.setGlowBrightness(shadersEnabled
                 ? SwordGlowBrightness.SOFT
                 : SwordGlowBrightness.DEFAULT);
-        minecraft.player.displayClientMessage(Component.translatable(shadersEnabled
+        minecraft.player.displayClientMessage(prefixedMessage(shadersEnabled
                         ? "message.swordflight.shader_adapted_on"
-                        : "message.swordflight.shader_adapted_off")
-                .withStyle(ChatFormatting.AQUA), false);
+                        : "message.swordflight.shader_adapted_off",
+                ChatFormatting.AQUA, ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage()), false);
         if (!safetyNoticeShown) {
             safetyNoticeShown = true;
-            minecraft.player.displayClientMessage(Component.translatable("message.swordflight.visual_safety_notice")
-                    .withStyle(ChatFormatting.YELLOW), false);
+            minecraft.player.displayClientMessage(prefixedMessage(
+                    "message.swordflight.visual_safety_notice", ChatFormatting.YELLOW), false);
         }
+    }
+
+    private static Component prefixedMessage(String messageKey, ChatFormatting color, Object... arguments) {
+        String englishName = ModList.get().getModContainerById(Swordflight.MOD_ID)
+                .map(container -> container.getModInfo().getDisplayName())
+                .orElse(Swordflight.MOD_ID);
+        return Component.translatable("message.swordflight.prefix",
+                        Component.translatable("mod.swordflight.chinese_name"), englishName)
+                .append(Component.translatable(messageKey, arguments))
+                .withStyle(color);
     }
 
     private static BooleanSupplier probe() {
