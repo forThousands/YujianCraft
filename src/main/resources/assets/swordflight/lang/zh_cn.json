@@ -39,7 +39,7 @@
   "tooltip.swordflight.manual_controls": "左键驭使当前就绪飞剑；移动视角以神识牵引；右键凝神锁敌",
   "message.swordflight.formation_changed": "飞剑切换为 %s",
   "message.swordflight.no_sword": "物品栏中没有飞剑",
-  "message.swordflight.riding_need_sword": "主手需要手持飞剑才能御剑飞行",
+  "message.swordflight.riding_need_sword": "物品栏中需要至少一柄飞剑才能御剑飞行",
   "message.swordflight.riding_started": "御剑而起：双击空格退出",
   "message.swordflight.riding_stopped": "已结束御剑飞行",
   "message.swordflight.manual_busy": "上一批神识御剑尚未完成攻击",

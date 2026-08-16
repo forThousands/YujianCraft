@@ -34,7 +34,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "7";
+    private static final String PROTOCOL = "8";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Swordflight.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -76,9 +76,6 @@ public final class ModNetwork {
         CHANNEL.registerMessage(9, UpdateEffectBalancePacket.class,
                 UpdateEffectBalancePacket::encode, UpdateEffectBalancePacket::decode,
                 ModNetwork::handleUpdateEffectBalance, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(10, ClientAimTargetPacket.class,
-                ClientAimTargetPacket::encode, ClientAimTargetPacket::decode,
-                ModNetwork::handleClientAimTarget, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(11, ToggleSwordRidingPacket.class,
                 (message, buffer) -> { }, buffer -> new ToggleSwordRidingPacket(),
                 ModNetwork::handleToggleSwordRiding, Optional.of(NetworkDirection.PLAY_TO_SERVER));
@@ -216,16 +213,6 @@ public final class ModNetwork {
         context.setPacketHandled(true);
     }
 
-    private static void handleClientAimTarget(ClientAimTargetPacket message,
-                                              Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
-            if (sender != null) TargetLockManager.acceptClientAim(sender, message.entityId);
-        });
-        context.setPacketHandled(true);
-    }
-
     private static void handleToggleSwordRiding(ToggleSwordRidingPacket message,
                                                 Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
@@ -317,16 +304,6 @@ public final class ModNetwork {
 
         private static LockCrosshairNowPacket decode(FriendlyByteBuf buffer) {
             return new LockCrosshairNowPacket(buffer.readInt());
-        }
-    }
-
-    public record ClientAimTargetPacket(int entityId) {
-        private static void encode(ClientAimTargetPacket message, FriendlyByteBuf buffer) {
-            buffer.writeInt(message.entityId);
-        }
-
-        private static ClientAimTargetPacket decode(FriendlyByteBuf buffer) {
-            return new ClientAimTargetPacket(buffer.readInt());
         }
     }
 

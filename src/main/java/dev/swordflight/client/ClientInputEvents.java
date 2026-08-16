@@ -26,7 +26,6 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = Swordflight.MOD_ID, value = Dist.CLIENT)
 public final class ClientInputEvents {
     private static final long SWORD_RIDING_DOUBLE_TAP_MS = 350L;
-    private static int aimSyncCountdown;
     private static int manualAimSyncCountdown;
     private static boolean blockAttackHandledThisTick;
     private static long lastJumpPressMillis = -1L;
@@ -45,7 +44,7 @@ public final class ClientInputEvents {
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
                 && ClientOptions.swordRidingEnabled()
-                && minecraft.player.getMainHandItem().getItem() instanceof FlyingSwordItem
+                && hasFlyingSword(minecraft.player)
                 && minecraft.options.keyJump.matches(event.getKey(), event.getScanCode())) {
             long now = net.minecraft.Util.getMillis();
             if (lastJumpPressMillis >= 0L && now >= lastJumpPressMillis
@@ -114,18 +113,6 @@ public final class ClientInputEvents {
             handleOptimizedBlockAttack(minecraft, blockHit);
             blockAttackHandledThisTick = true;
         }
-        if (minecraft.player == null || !ClientOptions.optimizedThirdPerson()
-                || minecraft.options.getCameraType() != net.minecraft.client.CameraType.THIRD_PERSON_BACK
-                || ClientSettingsState.get().targetingMode()
-                        != dev.swordflight.combat.TargetingMode.CROSSHAIR_LOCK
-                || !hasFlyingSword(minecraft.player)) {
-            aimSyncCountdown = 0;
-        } else if (aimSyncCountdown-- <= 0) {
-            aimSyncCountdown = 2;
-            int targetId = OptimizedThirdPersonController.getAimedLivingEntityId();
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ClientAimTargetPacket(targetId));
-        }
-
         if (minecraft.player != null && minecraft.screen == null && ClientManualGuidanceState.isGuiding()
                 && minecraft.player.getMainHandItem().getItem() instanceof FlyingSwordItem) {
             if (manualAimSyncCountdown-- <= 0) {

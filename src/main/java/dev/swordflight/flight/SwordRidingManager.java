@@ -46,7 +46,7 @@ public final class SwordRidingManager {
     }
 
     private static void start(ServerPlayer player) {
-        ItemStack stack = player.getMainHandItem();
+        ItemStack stack = FlyingSwordItem.findFlyingSword(player);
         if (!(stack.getItem() instanceof FlyingSwordItem swordItem)) {
             player.displayClientMessage(Component.translatable("message.swordflight.riding_need_sword"), true);
             ModNetwork.sendSwordRidingState(player, false);
@@ -95,7 +95,7 @@ public final class SwordRidingManager {
         RidingState state = STATES.get(player.getUUID());
         if (state == null) return;
         if (!player.isAlive() || player.isSpectator()
-                || !(player.getMainHandItem().getItem() instanceof FlyingSwordItem)
+                || FlyingSwordItem.findFlyingSword(player).isEmpty()
                 || !(player.serverLevel().getEntity(state.supportSwordId) instanceof FlyingSwordEntity)) {
             stop(player, true);
             return;

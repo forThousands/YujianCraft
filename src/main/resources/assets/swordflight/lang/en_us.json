@@ -39,7 +39,7 @@
   "tooltip.swordflight.manual_controls": "Left-click commands ready swords; guide by spirit sense; right-click locks",
   "message.swordflight.formation_changed": "Formation switched to %s",
   "message.swordflight.no_sword": "No flying sword found",
-  "message.swordflight.riding_need_sword": "Hold a flying sword in your main hand to sword-ride",
+  "message.swordflight.riding_need_sword": "Keep at least one flying sword in your inventory to sword-ride",
   "message.swordflight.riding_started": "Sword riding active; double-tap jump to exit",
   "message.swordflight.riding_stopped": "Sword riding ended",
   "message.swordflight.manual_busy": "The previous spirit-guided sword flight is still active",

@@ -22,7 +22,6 @@ import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = Swordflight.MOD_ID)
 public final class TargetLockManager {
-    private static final int SWITCH_HOLD_TICKS = 15;
     private static final Map<UUID, LockState> STATES = new HashMap<>();
 
     private TargetLockManager() {
@@ -55,34 +54,9 @@ public final class TargetLockManager {
             return;
         }
 
-        state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
+        if (state == null) return;
         state.manualOverride = false;
-        LivingEntity locked = resolve(player, state.lockedId);
-        if (locked == null) {
-            setLocked(player, state, null);
-        }
-
-        boolean hasFreshClientAim = state.clientAimExpiresAt >= player.serverLevel().getGameTime();
-        LivingEntity aimed = hasFreshClientAim ? resolve(player, state.clientAimedId)
-                : findAimedEntity(player, settings.crosshairLockRadius()).orElse(null);
-        if (aimed == null || aimed.getUUID().equals(state.lockedId)) {
-            state.candidateId = null;
-            state.candidateTicks = 0;
-            return;
-        }
-
-        if (aimed.getUUID().equals(state.candidateId)) {
-            state.candidateTicks++;
-        } else {
-            state.candidateId = aimed.getUUID();
-            state.candidateTicks = 1;
-        }
-
-        if (state.candidateTicks >= SWITCH_HOLD_TICKS) {
-            setLocked(player, state, aimed.getUUID());
-            state.candidateId = null;
-            state.candidateTicks = 0;
-        }
+        if (resolve(player, state.lockedId) == null) clear(player);
     }
 
     public static LivingEntity getLockedTarget(ServerPlayer player) {
@@ -99,21 +73,8 @@ public final class TargetLockManager {
 
         LockState state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
         state.manualOverride = settings.targetingMode() != TargetingMode.CROSSHAIR_LOCK;
-        state.candidateId = null;
-        state.candidateTicks = 0;
         setLocked(player, state, aimed.getUUID());
         return true;
-    }
-
-    public static void acceptClientAim(ServerPlayer player, int requestedEntityId) {
-        ItemStack sword = FlyingSwordItem.findFlyingSword(player);
-        if (sword.isEmpty()) return;
-        SwordSettings settings = SwordSettings.read(sword);
-        if (settings.targetingMode() != TargetingMode.CROSSHAIR_LOCK) return;
-        LivingEntity aimed = validatedClientTarget(player, requestedEntityId, settings.crosshairLockRadius());
-        LockState state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
-        state.clientAimedId = aimed == null ? null : aimed.getUUID();
-        state.clientAimExpiresAt = player.serverLevel().getGameTime() + 5L;
     }
 
     private static LivingEntity validatedClientTarget(ServerPlayer player, int entityId, double lockRange) {
@@ -179,10 +140,6 @@ public final class TargetLockManager {
 
     private static final class LockState {
         private UUID lockedId;
-        private UUID candidateId;
-        private int candidateTicks;
         private boolean manualOverride;
-        private UUID clientAimedId;
-        private long clientAimExpiresAt = Long.MIN_VALUE;
     }
 }
