@@ -7,9 +7,9 @@ import java.util.Locale;
  * untouched 0.9.6 renderer; its numeric values are documentation only and are never applied.
  */
 public enum SwordGlowBrightness {
+    DEFAULT("default", 188, 1.0F, 1.0F, 1.0F, 0.0F),
     SOFT("soft", 72, 0.55F, 0.60F, 0.52F, 0.0F),
     DIM("dim", 124, 0.78F, 0.80F, 0.76F, 0.0F),
-    DEFAULT("default", 188, 1.0F, 1.0F, 1.0F, 0.0F),
     BRIGHT("bright", 218, 1.16F, 1.14F, 1.15F, 0.08F),
     RADIANT("radiant", 250, 1.34F, 1.27F, 1.30F, 0.16F);
 

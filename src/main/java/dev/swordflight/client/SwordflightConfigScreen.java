@@ -56,15 +56,15 @@ public final class SwordflightConfigScreen extends Screen {
                 () -> setSwordRidingOption(false), false);
 
         glowBrightnessButton = addModeRow(centerX, top + 100,
-                () -> ClientOptions.setGlowBrightness(ClientOptions.glowBrightness().next()),
-                () -> ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
+                this::cycleGlowBrightnessOption,
+                () -> setGlowBrightnessOption(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
 
         addRenderableWidget(Button.builder(Component.translatable("screen.swordflight.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                             settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, AttackMode.SORTIE));
                     ClientOptions.setOptimizedThirdPerson(false);
                     setSwordRidingOption(true);
-                    ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
+                    setGlowBrightnessOption(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
                     refreshLabels();
                 }).bounds(centerX - 145, top + 134, 92, 20).build());
         developerButton = addRenderableWidget(Button.builder(
@@ -115,6 +115,23 @@ public final class SwordflightConfigScreen extends Screen {
         ClientOptions.setSwordRidingEnabled(enabled);
     }
 
+    private void cycleGlowBrightnessOption() {
+        if (!ClientOptions.swordBodyGlow()) {
+            setGlowBrightnessOption(SwordGlowBrightness.SOFT);
+            return;
+        }
+        if (ClientOptions.glowBrightness() == SwordGlowBrightness.DEFAULT) {
+            ClientOptions.setSwordBodyGlow(false);
+            return;
+        }
+        setGlowBrightnessOption(ClientOptions.glowBrightness().next());
+    }
+
+    private void setGlowBrightnessOption(SwordGlowBrightness brightness) {
+        ClientOptions.setGlowBrightness(brightness);
+        ClientOptions.setSwordBodyGlow(true);
+    }
+
     public void onSettingsSynced(SwordSettings syncedSettings) {
         settings = syncedSettings;
         synced = true;
@@ -149,7 +166,9 @@ public final class SwordflightConfigScreen extends Screen {
         }
         if (glowBrightnessButton != null) {
             glowBrightnessButton.setMessage(Component.translatable("screen.swordflight.config.glow_brightness",
-                    Component.translatable(ClientOptions.glowBrightness().translationKey())));
+                    Component.translatable(ClientOptions.swordBodyGlow()
+                            ? ClientOptions.glowBrightness().translationKey()
+                            : "glow_brightness.swordflight.off")));
         }
     }
 
