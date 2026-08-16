@@ -228,7 +228,14 @@ public final class ClientModEvents {
             }
             int swordLight = ClientOptions.swordBodyGlow() ? LightTexture.FULL_BRIGHT : packedLight;
             if (ClientOptions.swordBodyGlow()) {
-                renderEnergySword(sword, partialTick, poseStack, buffers);
+                SwordGlowBrightness brightness = ClientOptions.glowBrightness();
+                if (brightness.usesLegacyRenderer()) {
+                    // This is deliberately the untouched 0.9.6 body path. DEFAULT must never
+                    // travel through brightness arithmetic, even when that arithmetic is nominally 1.0.
+                    renderLegacyEnergySword(sword, partialTick, poseStack, buffers);
+                } else {
+                    renderLayeredEnergySword(sword, partialTick, poseStack, buffers, packedLight, brightness);
+                }
             } else {
                 itemRenderer.renderStatic(sword.getDisplayItem(), ItemDisplayContext.FIXED, swordLight,
                         OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
@@ -249,8 +256,8 @@ public final class ClientModEvents {
             super.render(sword, yaw, partialTick, poseStack, buffers, packedLight);
         }
 
-        private void renderEnergySword(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
-                                       MultiBufferSource buffers) {
+        private void renderLegacyEnergySword(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
+                                             MultiBufferSource buffers) {
             ItemStack stack = sword.getDisplayItem();
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
@@ -306,6 +313,73 @@ public final class ClientModEvents {
             poseStack.popPose();
         }
 
+        /**
+         * Non-default brightness path. The ordinary item pass is the opaque visual anchor and is
+         * never brightness-scaled; only the separate emissive passes are adjustable.
+         */
+        private void renderLayeredEnergySword(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
+                                              MultiBufferSource buffers, int packedLight,
+                                              SwordGlowBrightness brightness) {
+            ItemStack stack = sword.getDisplayItem();
+            itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, packedLight,
+                    OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
+
+            BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
+            poseStack.pushPose();
+            model = ForgeHooksClient.handleCameraTransforms(
+                    poseStack, model, ItemDisplayContext.FIXED, false);
+            poseStack.translate(-0.5F, -0.5F, -0.5F);
+
+            RenderType bodyRenderType = sword.hasVisualWhiteHotModule()
+                    ? SwordflightRenderTypes.WHITE_HOT_ENERGY
+                    : RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_BLOCKS, false);
+            VertexConsumer energyOverlay = new EnergyVertexConsumer(
+                    buffers.getBuffer(bodyRenderType), brightness.bodyOverlayAlpha(), brightness.whiteMix());
+            for (BakedModel pass : model.getRenderPasses(stack, true)) {
+                itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
+                        OverlayTexture.NO_OVERLAY, poseStack, energyOverlay);
+            }
+
+            // The option owns these layers completely: OFF draws none; ON only adds bloom and
+            // never changes either the opaque body or the main emissive overlay.
+            if (ClientOptions.swordEnergyHighlight()) {
+                float time = sword.tickCount + partialTick;
+                float slowPulse = 0.5F + 0.5F * Mth.sin(time * 0.115F
+                        + sword.getVisualFormationSlot() * 0.83F);
+                float hotPulse = 0.5F + 0.5F * Mth.sin(time * 0.197F
+                        + sword.getVisualFormationSlot() * 1.17F + 1.4F);
+
+                poseStack.pushPose();
+                poseStack.scale(1.012F, 1.012F, 1.018F);
+                int hotAlpha = scaleEffectAlpha(Math.round(214.0F + hotPulse * 41.0F),
+                        brightness.bloomStrength());
+                VertexConsumer hotSkin = new EnergyVertexConsumer(
+                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                TextureAtlas.LOCATION_BLOCKS, false)), hotAlpha,
+                        combineWhiteMix(0.92F + hotPulse * 0.08F, brightness.whiteMix()));
+                for (BakedModel pass : model.getRenderPasses(stack, true)) {
+                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
+                            OverlayTexture.NO_OVERLAY, poseStack, hotSkin);
+                }
+                poseStack.popPose();
+
+                poseStack.pushPose();
+                poseStack.scale(1.060F, 1.060F, 1.072F);
+                int bloomAlpha = scaleEffectAlpha(Math.round(102.0F + slowPulse * 68.0F),
+                        brightness.bloomStrength());
+                VertexConsumer materialBloom = new EnergyVertexConsumer(
+                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                TextureAtlas.LOCATION_BLOCKS, false)), bloomAlpha,
+                        combineWhiteMix(0.58F + slowPulse * 0.16F, brightness.whiteMix()));
+                for (BakedModel pass : model.getRenderPasses(stack, true)) {
+                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
+                            OverlayTexture.NO_OVERLAY, poseStack, materialBloom);
+                }
+                poseStack.popPose();
+            }
+            poseStack.popPose();
+        }
+
         private void renderTrail(FlyingSwordEntity sword, Vec3 renderedPosition, PoseStack poseStack,
                                  MultiBufferSource buffers) {
             List<Vec3> samples = ClientFlightEffects.trailPoints(sword);
@@ -321,17 +395,29 @@ public final class ClientModEvents {
             int red = color >> 16 & 0xFF;
             int green = color >> 8 & 0xFF;
             int blue = color & 0xFF;
+            SwordGlowBrightness brightness = ClientOptions.glowBrightness();
+            if (!brightness.usesLegacyRenderer()) {
+                red = mixWithWhite(red, brightness.whiteMix());
+                green = mixWithWhite(green, brightness.whiteMix());
+                blue = mixWithWhite(blue, brightness.whiteMix());
+            }
             VertexConsumer vertices = buffers.getBuffer(RenderType.lightning());
             Matrix4f pose = poseStack.last().pose();
             Vec3 cameraPosition = entityRenderDispatcher.camera.getPosition();
+            int outerAlpha = brightness.usesLegacyRenderer() ? 140
+                    : scaleEffectAlpha(140, brightness.trailStrength());
+            int middleAlpha = brightness.usesLegacyRenderer() ? 235
+                    : scaleEffectAlpha(235, brightness.trailStrength());
+            int coreAlpha = brightness.usesLegacyRenderer() ? 255
+                    : scaleEffectAlpha(255, brightness.trailStrength());
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
-                    red, green, blue, 0.24D, 140);
+                    red, green, blue, 0.24D, outerAlpha);
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
                     mixWithWhite(red, 0.48F), mixWithWhite(green, 0.48F), mixWithWhite(blue, 0.48F),
-                    0.092D, 235);
+                    0.092D, middleAlpha);
             renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
                     mixWithWhite(red, 0.88F), mixWithWhite(green, 0.88F), mixWithWhite(blue, 0.88F),
-                    0.026D, 255);
+                    0.026D, coreAlpha);
         }
 
         private static void renderBladeAura(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
@@ -340,6 +426,12 @@ public final class ClientModEvents {
             int red = color >> 16 & 0xFF;
             int green = color >> 8 & 0xFF;
             int blue = color & 0xFF;
+            SwordGlowBrightness brightness = ClientOptions.glowBrightness();
+            if (!brightness.usesLegacyRenderer()) {
+                red = mixWithWhite(red, brightness.whiteMix());
+                green = mixWithWhite(green, brightness.whiteMix());
+                blue = mixWithWhite(blue, brightness.whiteMix());
+            }
             float pulse = 0.88F + 0.12F * Mth.sin((sword.tickCount + partialTick) * 0.18F
                     + sword.getVisualFormationSlot() * 0.9F);
             int flightAge = ClientFlightEffects.flightAge(sword);
@@ -378,6 +470,9 @@ public final class ClientModEvents {
             float[] coreFaceRadius = {0.013F, 0.017F, 0.018F, 0.015F, 0.002F};
             float[] coreDepthRadius = {0.011F, 0.014F, 0.015F, 0.013F, 0.002F};
             int coreAlphaScale = Mth.clamp((int) ((238.0F + launchSurge * 30.0F) * pulse), 0, 255);
+            if (!brightness.usesLegacyRenderer()) {
+                coreAlphaScale = scaleEffectAlpha(coreAlphaScale, brightness.auraStrength());
+            }
             renderSpiritPrism(shell, poseStack.last(), y, coreFaceRadius, coreDepthRadius,
                     new float[]{0.62F, 0.88F, 1.0F, 0.92F, 0.14F},
                     mixWithWhite(red, 0.90F), mixWithWhite(green, 0.90F), mixWithWhite(blue, 0.90F),
@@ -385,11 +480,17 @@ public final class ClientModEvents {
 
             float[] shellAlpha = {0.54F, 0.78F, 1.0F, 0.82F, 0.08F};
             int shellAlphaScale = Mth.clamp((int) ((122.0F + launchSurge * 54.0F) * pulse), 0, 255);
+            if (!brightness.usesLegacyRenderer()) {
+                shellAlphaScale = scaleEffectAlpha(shellAlphaScale, brightness.auraStrength());
+            }
             renderSpiritPrism(shell, poseStack.last(), y, faceRadius, depthRadius, shellAlpha,
                     mixWithWhite(red, 0.12F), mixWithWhite(green, 0.12F), mixWithWhite(blue, 0.12F),
                     shellAlphaScale);
 
             int outerAlphaScale = Mth.clamp((int) ((54.0F + launchSurge * 34.0F) * pulse), 0, 255);
+            if (!brightness.usesLegacyRenderer()) {
+                outerAlphaScale = scaleEffectAlpha(outerAlphaScale, brightness.auraStrength());
+            }
             renderSpiritPrism(shell, poseStack.last(), y, outerFaceRadius, outerDepthRadius,
                     new float[]{0.30F, 0.58F, 1.0F, 0.70F, 0.04F},
                     red, green, blue, outerAlphaScale);
@@ -414,6 +515,9 @@ public final class ClientModEvents {
                     radiusAt(y, depthRadius, pulseEnd) + 0.008F
             };
             int pulseAlphaScale = Mth.clamp((int) ((244.0F + launchSurge * 24.0F) * pulse), 0, 255);
+            if (!brightness.usesLegacyRenderer()) {
+                pulseAlphaScale = scaleEffectAlpha(pulseAlphaScale, brightness.auraStrength());
+            }
             VertexConsumer flowingEnergy = buffers.getBuffer(RenderType.entityTranslucentEmissive(
                     SPIRIT_PULSE_TEXTURE, false));
             renderSpiritPrism(flowingEnergy, poseStack.last(), pulseY, pulseFace, pulseDepth,
@@ -422,13 +526,14 @@ public final class ClientModEvents {
                     pulseAlphaScale);
 
             renderSpiritWisps(sword, partialTick, poseStack.last().pose(), buffers,
-                    y, faceRadius, depthRadius, red, green, blue);
+                    y, faceRadius, depthRadius, red, green, blue, brightness);
         }
 
         private static void renderSpiritWisps(FlyingSwordEntity sword, float partialTick, Matrix4f pose,
                                               MultiBufferSource buffers, float[] y,
                                               float[] faceRadius, float[] depthRadius,
-                                              int red, int green, int blue) {
+                                              int red, int green, int blue,
+                                              SwordGlowBrightness brightness) {
             VertexConsumer wisps = buffers.getBuffer(RenderType.lightning());
             float time = sword.tickCount + partialTick;
             boolean docked = sword.isVisuallyDocked();
@@ -466,6 +571,10 @@ public final class ClientModEvents {
 
                 int outerAlpha = Mth.clamp(Math.round(104.0F * visibility), 0, 255);
                 int coreAlpha = Mth.clamp(Math.round(220.0F * visibility), 0, 255);
+                if (!brightness.usesLegacyRenderer()) {
+                    outerAlpha = scaleEffectAlpha(outerAlpha, brightness.auraStrength());
+                    coreAlpha = scaleEffectAlpha(coreAlpha, brightness.auraStrength());
+                }
                 renderWispSegment(wisps, pose, start, middlePoint, 0.018F,
                         red, green, blue, outerAlpha, Math.round(outerAlpha * 0.82F));
                 renderWispSegment(wisps, pose, middlePoint, end, 0.013F,
@@ -581,6 +690,16 @@ public final class ClientModEvents {
 
         private static int mixWithWhite(int channel, float amount) {
             return Mth.clamp(Math.round(channel + (255 - channel) * amount), 0, 255);
+        }
+
+        private static int scaleEffectAlpha(int alpha, float strength) {
+            return Mth.clamp(Math.round(alpha * strength), 0, 255);
+        }
+
+        private static float combineWhiteMix(float localMix, float profileMix) {
+            localMix = Mth.clamp(localMix, 0.0F, 1.0F);
+            profileMix = Mth.clamp(profileMix, 0.0F, 1.0F);
+            return 1.0F - (1.0F - localMix) * (1.0F - profileMix);
         }
 
         private static final class EnergyVertexConsumer extends VertexConsumerWrapper {
