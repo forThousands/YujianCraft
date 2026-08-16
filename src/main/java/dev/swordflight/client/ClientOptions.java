@@ -15,6 +15,14 @@ import java.nio.file.Path;
 
 /** Client-only preferences plus the intentionally file-gated developer menu switch. */
 public final class ClientOptions {
+    /** Package defaults edited by the visual development console. */
+    public static final boolean DEFAULT_FLIGHT_SOUND = true;
+    public static final boolean DEFAULT_SWORD_TRAIL = true;
+    public static final boolean DEFAULT_SWORD_BODY_GLOW = true;
+    public static final boolean DEFAULT_INVENTORY_GLINT = true;
+    public static final boolean DEFAULT_SWORD_ENERGY_HIGHLIGHT = false;
+    public static final boolean DEFAULT_SWORD_OUTLINE = false;
+
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String DIRECTORY_NAME = "swordflight";
@@ -47,22 +55,22 @@ public final class ClientOptions {
             showDeveloperOptions = booleanValue("showDeveloperOptions", false);
             optimizedThirdPerson = booleanValue("optimizedThirdPerson", false);
             swordRidingEnabled = booleanValue("swordRidingEnabled", true);
-            flightSound = booleanValue("flightSound", true);
-            swordTrail = booleanValue("swordTrail", true);
-            swordBodyGlow = booleanValue("swordBodyGlow", true);
-            swordEnergyHighlight = booleanValue("swordEnergyHighlight", false);
-            swordOutline = booleanValue("swordOutline", false);
-            inventoryGlint = booleanValue("inventoryGlint", true);
+            flightSound = booleanValue("flightSound", DEFAULT_FLIGHT_SOUND);
+            swordTrail = booleanValue("swordTrail", DEFAULT_SWORD_TRAIL);
+            swordBodyGlow = booleanValue("swordBodyGlow", DEFAULT_SWORD_BODY_GLOW);
+            swordEnergyHighlight = booleanValue("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
+            swordOutline = booleanValue("swordOutline", DEFAULT_SWORD_OUTLINE);
+            inventoryGlint = booleanValue("inventoryGlint", DEFAULT_INVENTORY_GLINT);
         } catch (Exception exception) {
             showDeveloperOptions = false;
             optimizedThirdPerson = false;
             swordRidingEnabled = true;
-            flightSound = true;
-            swordTrail = true;
-            swordBodyGlow = true;
-            swordEnergyHighlight = false;
-            swordOutline = false;
-            inventoryGlint = true;
+            flightSound = DEFAULT_FLIGHT_SOUND;
+            swordTrail = DEFAULT_SWORD_TRAIL;
+            swordBodyGlow = DEFAULT_SWORD_BODY_GLOW;
+            swordEnergyHighlight = DEFAULT_SWORD_ENERGY_HIGHLIGHT;
+            swordOutline = DEFAULT_SWORD_OUTLINE;
+            inventoryGlint = DEFAULT_INVENTORY_GLINT;
             LOGGER.error("Could not load Swordflight client options from {}", path, exception);
         }
     }
@@ -149,12 +157,12 @@ public final class ClientOptions {
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", false);
         root.addProperty("swordRidingEnabled", true);
-        root.addProperty("flightSound", true);
-        root.addProperty("swordTrail", true);
-        root.addProperty("swordBodyGlow", true);
-        root.addProperty("swordEnergyHighlight", false);
-        root.addProperty("swordOutline", false);
-        root.addProperty("inventoryGlint", true);
+        root.addProperty("flightSound", DEFAULT_FLIGHT_SOUND);
+        root.addProperty("swordTrail", DEFAULT_SWORD_TRAIL);
+        root.addProperty("swordBodyGlow", DEFAULT_SWORD_BODY_GLOW);
+        root.addProperty("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
+        root.addProperty("swordOutline", DEFAULT_SWORD_OUTLINE);
+        root.addProperty("inventoryGlint", DEFAULT_INVENTORY_GLINT);
         root.addProperty("developerOptionsHint",
                 "Set showDeveloperOptions to true and reopen the in-game config screen. OP permission is still required.");
         return root;
@@ -192,12 +200,12 @@ public final class ClientOptions {
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", false);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
-        changed |= addBooleanIfMissing("flightSound", true);
-        changed |= addBooleanIfMissing("swordTrail", true);
-        changed |= addBooleanIfMissing("swordBodyGlow", true);
-        changed |= addBooleanIfMissing("swordEnergyHighlight", false);
-        changed |= addBooleanIfMissing("swordOutline", false);
-        changed |= addBooleanIfMissing("inventoryGlint", true);
+        changed |= addBooleanIfMissing("flightSound", DEFAULT_FLIGHT_SOUND);
+        changed |= addBooleanIfMissing("swordTrail", DEFAULT_SWORD_TRAIL);
+        changed |= addBooleanIfMissing("swordBodyGlow", DEFAULT_SWORD_BODY_GLOW);
+        changed |= addBooleanIfMissing("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
+        changed |= addBooleanIfMissing("swordOutline", DEFAULT_SWORD_OUTLINE);
+        changed |= addBooleanIfMissing("inventoryGlint", DEFAULT_INVENTORY_GLINT);
         return changed;
     }
 

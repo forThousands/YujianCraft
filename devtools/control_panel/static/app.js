@@ -133,6 +133,29 @@ function renderEffects() {
   });
 }
 
+function renderPresentationDefaults() {
+  const descriptions = {
+    flightSound: '飞剑高速移动时播放空间化破空声',
+    swordTrail: '按材质颜色绘制性能友好的飞行尾迹',
+    swordBodyGlow: '飞剑本体使用全亮能量渲染与剑罡',
+    inventoryGlint: '物品栏中的飞剑默认显示附魔流光',
+    swordEnergyHighlight: '叠加更明亮的能量高光与外层辉光',
+    swordOutline: '为飞剑实体启用硬边缘发光轮廓',
+  };
+  const grid = $('#presentationGrid'); grid.innerHTML = '';
+  state.presentationDefaults.forEach(option => {
+    const card = document.createElement('button'); card.type = 'button';
+    card.className = `presentation-card${option.value ? ' enabled' : ''}`;
+    const copy = el('span'); copy.append(el('strong', '', option.label), el('small', '', descriptions[option.key] || option.constant));
+    const toggle = el('span', 'presentation-switch'); toggle.setAttribute('aria-hidden', 'true');
+    card.setAttribute('aria-pressed', String(option.value));
+    card.title = `${option.label}：${option.value ? '默认开启' : '默认关闭'}`;
+    card.append(copy, toggle);
+    card.addEventListener('click', () => { option.value = !option.value; renderPresentationDefaults(); markDirty(); });
+    grid.append(card);
+  });
+}
+
 function catalogEntry(itemId) {
   return (state.recipeCatalog || []).find(item => item.id === itemId);
 }
@@ -294,6 +317,7 @@ function valuesPayload() {
     combat: Object.fromEntries(state.combat.map(item => [item.key, item.value])),
     effects: Object.fromEntries(state.effects.map(item => [item.key, item.value])),
     riding: Object.fromEntries(state.riding.map(item => [item.key, item.value])),
+    presentationDefaults: Object.fromEntries(state.presentationDefaults.map(item => [item.key, item.value])),
     recipes: state.recipes,
   };
 }
@@ -304,7 +328,7 @@ async function loadState() {
     selectedRecipeIndex = 0;
     $('#version').textContent = state.version;
     $('#connectionText').textContent = '本地后端已连接';
-    renderMaterials(); renderFields('#combatGrid', state.combat); renderEffects(); renderFields('#ridingGrid', state.riding); renderRecipes(); renderRelease();
+    renderMaterials(); renderFields('#combatGrid', state.combat); renderEffects(); renderFields('#ridingGrid', state.riding); renderPresentationDefaults(); renderRecipes(); renderRelease();
     $('#loading').hidden = true; $('#content').hidden = false; markClean();
   } catch (error) {
     $('#loading').innerHTML = `<strong>无法读取项目：${escapeHtml(error.message)}</strong>`;

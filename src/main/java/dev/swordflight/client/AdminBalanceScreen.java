@@ -165,18 +165,19 @@ public final class AdminBalanceScreen extends Screen {
         int controlsWidth = panelWidth - 108;
         if (presentationPage == 0) {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.flight_sound",
-                    ClientOptions::flightSound, ClientOptions::setFlightSound, true);
+                    ClientOptions::flightSound, ClientOptions::setFlightSound, ClientOptions.DEFAULT_FLIGHT_SOUND);
             addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_trail",
-                    ClientOptions::swordTrail, ClientOptions::setSwordTrail, true);
+                    ClientOptions::swordTrail, ClientOptions::setSwordTrail, ClientOptions.DEFAULT_SWORD_TRAIL);
             addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.swordflight.balance.sword_body_glow",
-                    ClientOptions::swordBodyGlow, ClientOptions::setSwordBodyGlow, true);
+                    ClientOptions::swordBodyGlow, ClientOptions::setSwordBodyGlow, ClientOptions.DEFAULT_SWORD_BODY_GLOW);
             addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.swordflight.balance.inventory_glint",
-                    ClientOptions::inventoryGlint, ClientOptions::setInventoryGlint, true);
+                    ClientOptions::inventoryGlint, ClientOptions::setInventoryGlint, ClientOptions.DEFAULT_INVENTORY_GLINT);
         } else {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.sword_energy_highlight",
-                    ClientOptions::swordEnergyHighlight, ClientOptions::setSwordEnergyHighlight, false);
+                    ClientOptions::swordEnergyHighlight, ClientOptions::setSwordEnergyHighlight,
+                    ClientOptions.DEFAULT_SWORD_ENERGY_HIGHLIGHT);
             addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_outline",
-                    ClientOptions::swordOutline, ClientOptions::setSwordOutline, false);
+                    ClientOptions::swordOutline, ClientOptions::setSwordOutline, ClientOptions.DEFAULT_SWORD_OUTLINE);
         }
     }
 

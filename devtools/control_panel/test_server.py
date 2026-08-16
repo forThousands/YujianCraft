@@ -14,6 +14,7 @@ class ControlPanelTests(unittest.TestCase):
         self.assertGreaterEqual(len(state["effects"]), 27)
         self.assertEqual(3, len(state["combat"]))
         self.assertEqual(4, len(state["riding"]))
+        self.assertEqual(6, len(state["presentationDefaults"]))
         self.assertEqual(13, len(state["recipes"]))
         self.assertGreaterEqual(len(state["recipeCatalog"]), 13)
 
@@ -34,10 +35,22 @@ class ControlPanelTests(unittest.TestCase):
             "combat": {item["key"]: item["value"] for item in state["combat"]},
             "effects": {item["key"]: item["value"] for item in state["effects"]},
             "riding": {item["key"]: item["value"] for item in state["riding"]},
+            "presentationDefaults": {
+                item["key"]: item["value"] for item in state["presentationDefaults"]
+            },
         }
         normalized = server.normalized_payload(payload, state)
         self.assertEqual(set(payload["materials"]), set(normalized["materials"]))
         self.assertEqual(set(payload["effects"]), set(normalized["effects"]))
+        self.assertEqual(payload["presentationDefaults"], normalized["presentationDefaults"])
+
+    def test_package_presentation_boolean_round_trip(self):
+        source = "public static final boolean DEFAULT_TEST_EFFECT = true;\n"
+        self.assertTrue(server.parse_named_boolean(source, "DEFAULT_TEST_EFFECT"))
+        updated = server.replace_named_boolean(source, "DEFAULT_TEST_EFFECT", False)
+        self.assertFalse(server.parse_named_boolean(updated, "DEFAULT_TEST_EFFECT"))
+        with self.assertRaises(server.PanelError):
+            server.replace_named_boolean(source + source, "DEFAULT_TEST_EFFECT", False)
 
     def test_recipe_validation_and_path_safety(self):
         recipe = {

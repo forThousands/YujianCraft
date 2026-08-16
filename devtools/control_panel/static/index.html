@@ -21,8 +21,9 @@
         <button data-target="combat"><i>02</i>战斗规则</button>
         <button data-target="effects"><i>03</i>命中特效</button>
         <button data-target="riding"><i>04</i>御剑飞行</button>
-        <button data-target="recipes"><i>05</i>合成配方</button>
-        <button data-target="release"><i>06</i>构建发布</button>
+        <button data-target="presentation"><i>05</i>视听默认</button>
+        <button data-target="recipes"><i>06</i>合成配方</button>
+        <button data-target="release"><i>07</i>构建发布</button>
       </nav>
       <div class="sidebar-foot">
         <span class="dot"></span><span id="connectionText">正在连接本地后端</span>
@@ -82,9 +83,18 @@
           <div id="ridingGrid" class="parameter-grid"></div>
         </section>
 
+        <section id="presentation" class="panel-section">
+          <div class="section-heading">
+            <div><span class="section-index">伍</span><h2>封包视听默认值</h2></div>
+            <p>决定新安装与缺失配置项的初始表现；已有 client-options.json 不会被更新强制覆盖。</p>
+          </div>
+          <div id="presentationGrid" class="presentation-grid"></div>
+          <p class="section-note">这些是客户端表现默认值，不改变伤害或服务器战斗逻辑。游戏内开关仍仅供已启用开发者选项且拥有管理员权限的调试人员使用。</p>
+        </section>
+
         <section id="recipes" class="panel-section">
           <div class="section-heading split-heading">
-            <div><div><span class="section-index">伍</span><h2>合成配方</h2></div>
+            <div><div><span class="section-index">陆</span><h2>合成配方</h2></div>
               <p>九宫格直接对应工作台槽位；同一种材料占用几个格，就会消耗几个物品。</p></div>
             <button id="addRecipeButton" class="button secondary">＋ 新建配方</button>
           </div>
@@ -124,7 +134,7 @@
 
         <section id="release" class="panel-section release-section">
           <div class="section-heading">
-            <div><span class="section-index">陆</span><h2>构建与发布</h2></div>
+            <div><span class="section-index">柒</span><h2>构建与发布</h2></div>
             <p>保存全部参数、递增语义化版本、构建标准 JAR、归档并替换测试游戏模组。</p>
           </div>
           <div class="release-layout">

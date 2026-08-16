@@ -32,6 +32,7 @@ EFFECT_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/config/EffectParamet
 SETTINGS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/combat/SwordSettings.java"
 SERVER_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/flight/SwordRidingManager.java"
 CLIENT_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientSwordRidingController.java"
+CLIENT_OPTIONS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientOptions.java"
 INPUT_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientInputEvents.java"
 BALANCE_LIMITS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/config/SwordBalanceConfig.java"
 LANG_FILE = PROJECT_ROOT / "src/main/resources/assets/swordflight/lang/zh_cn.json"
@@ -94,6 +95,29 @@ def replace_named_number(text: str, name: str, value: float, java_type: str, suf
         raise PanelError(f"常量 {name} 应匹配 1 次，实际为 {len(matches)} 次")
     integer = java_type in {"int", "long"}
     literal = java_number(value, integer) + suffix
+    return pattern.sub(lambda match: match.group(1) + literal + match.group(3), text, count=1)
+
+
+def parse_named_boolean(text: str, name: str) -> bool:
+    pattern = re.compile(
+        rf'(?m)^\s*(?:public|private)\s+static\s+final\s+boolean\s+'
+        rf'{re.escape(name)}\s*=\s*(true|false);'
+    )
+    match = pattern.search(text)
+    if not match:
+        raise PanelError(f"找不到布尔常量 {name}")
+    return match.group(1) == "true"
+
+
+def replace_named_boolean(text: str, name: str, value: bool) -> str:
+    pattern = re.compile(
+        rf'(?m)^(\s*(?:public|private)\s+static\s+final\s+boolean\s+'
+        rf'{re.escape(name)}\s*=\s*)(true|false)(;.*)$'
+    )
+    matches = list(pattern.finditer(text))
+    if len(matches) != 1:
+        raise PanelError(f"布尔常量 {name} 应匹配 1 次，实际为 {len(matches)} 次")
+    literal = "true" if value else "false"
     return pattern.sub(lambda match: match.group(1) + literal + match.group(3), text, count=1)
 
 
@@ -388,6 +412,7 @@ def source_state() -> dict[str, Any]:
     server_riding = read_text(SERVER_RIDING_FILE)
     client_riding = read_text(CLIENT_RIDING_FILE)
     input_text = read_text(INPUT_FILE)
+    client_options_text = read_text(CLIENT_OPTIONS_FILE)
     local = load_local_settings()
     return {
         "version": parse_version(),
@@ -426,6 +451,20 @@ def source_state() -> dict[str, Any]:
              "value": parse_named_number(input_text, "SWORD_RIDING_DOUBLE_TAP_MS", "L"),
              "minimum": 150, "maximum": 800, "step": 10, "integer": True},
         ],
+        "presentationDefaults": [
+            {"key": "flightSound", "constant": "DEFAULT_FLIGHT_SOUND", "label": "飞行破空声",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_FLIGHT_SOUND")},
+            {"key": "swordTrail", "constant": "DEFAULT_SWORD_TRAIL", "label": "材质色发光尾迹",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_SWORD_TRAIL")},
+            {"key": "swordBodyGlow", "constant": "DEFAULT_SWORD_BODY_GLOW", "label": "剑身全亮",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_SWORD_BODY_GLOW")},
+            {"key": "inventoryGlint", "constant": "DEFAULT_INVENTORY_GLINT", "label": "物品栏附魔光",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_INVENTORY_GLINT")},
+            {"key": "swordEnergyHighlight", "constant": "DEFAULT_SWORD_ENERGY_HIGHLIGHT", "label": "能量高光",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_SWORD_ENERGY_HIGHLIGHT")},
+            {"key": "swordOutline", "constant": "DEFAULT_SWORD_OUTLINE", "label": "剑身发光轮廓",
+             "value": parse_named_boolean(client_options_text, "DEFAULT_SWORD_OUTLINE")},
+        ],
         "local": local,
         "worlds": find_worlds(local["modsDir"]),
         "recipes": recipes,
@@ -451,7 +490,9 @@ def normalized_payload(payload: dict[str, Any], current: dict[str, Any]) -> dict
     combat_input = payload.get("combat")
     effect_input = payload.get("effects")
     riding_input = payload.get("riding")
-    if not all(isinstance(group, dict) for group in (material_input, combat_input, effect_input, riding_input)):
+    presentation_input = payload.get("presentationDefaults")
+    if not all(isinstance(group, dict) for group in
+               (material_input, combat_input, effect_input, riding_input, presentation_input)):
         raise PanelError("缺少完整的数值分组")
 
     material_limits = current["materialLimits"]
@@ -480,11 +521,19 @@ def normalized_payload(payload: dict[str, Any], current: dict[str, Any]) -> dict
                                                     field["maximum"], field["integer"], field["label"])
         return result
 
+    presentation_defaults: dict[str, bool] = {}
+    for field in current["presentationDefaults"]:
+        value = presentation_input.get(field["key"])
+        if not isinstance(value, bool):
+            raise PanelError(f"{field['label']} 必须是布尔值")
+        presentation_defaults[field["key"]] = value
+
     return {
         "materials": materials,
         "combat": validate_fields(current["combat"], combat_input),
         "effects": validate_fields(current["effects"], effect_input),
         "riding": validate_fields(current["riding"], riding_input),
+        "presentationDefaults": presentation_defaults,
     }
 
 
@@ -506,7 +555,8 @@ def backup_sources(paths: list[Path], reason: str) -> Path:
 def save_source_values(payload: dict[str, Any]) -> dict[str, Any]:
     current = source_state()
     values = normalized_payload(payload, current)
-    paths = [MATERIAL_FILE, EFFECT_FILE, SETTINGS_FILE, SERVER_RIDING_FILE, CLIENT_RIDING_FILE, INPUT_FILE]
+    paths = [MATERIAL_FILE, EFFECT_FILE, SETTINGS_FILE, SERVER_RIDING_FILE, CLIENT_RIDING_FILE,
+             INPUT_FILE, CLIENT_OPTIONS_FILE]
     backup_sources(paths, "save")
 
     material_text = read_text(MATERIAL_FILE)
@@ -567,6 +617,10 @@ def save_source_values(payload: dict[str, Any]) -> dict[str, Any]:
                                          -values["riding"]["descendSpeed"], "double", "D")
     input_text = replace_named_number(read_text(INPUT_FILE), "SWORD_RIDING_DOUBLE_TAP_MS",
                                       values["riding"]["doubleTapWindow"], "long", "L")
+    client_options_text = read_text(CLIENT_OPTIONS_FILE)
+    presentation_constants = {field["key"]: field["constant"] for field in current["presentationDefaults"]}
+    for key, value in values["presentationDefaults"].items():
+        client_options_text = replace_named_boolean(client_options_text, presentation_constants[key], value)
 
     atomic_write(MATERIAL_FILE, material_text)
     atomic_write(EFFECT_FILE, effect_text)
@@ -574,6 +628,7 @@ def save_source_values(payload: dict[str, Any]) -> dict[str, Any]:
     atomic_write(SERVER_RIDING_FILE, server_riding)
     atomic_write(CLIENT_RIDING_FILE, client_riding)
     atomic_write(INPUT_FILE, input_text)
+    atomic_write(CLIENT_OPTIONS_FILE, client_options_text)
     if "recipes" in payload:
         save_recipes(payload["recipes"])
     return source_state()
