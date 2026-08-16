@@ -22,6 +22,7 @@ public final class ClientOptions {
     public static final boolean DEFAULT_INVENTORY_GLINT = true;
     public static final boolean DEFAULT_SWORD_ENERGY_HIGHLIGHT = false;
     public static final boolean DEFAULT_SWORD_OUTLINE = false;
+    public static final SwordGlowBrightness DEFAULT_GLOW_BRIGHTNESS = SwordGlowBrightness.DEFAULT;
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -37,6 +38,7 @@ public final class ClientOptions {
     private static boolean swordEnergyHighlight;
     private static boolean swordOutline;
     private static boolean inventoryGlint;
+    private static SwordGlowBrightness glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
 
     private ClientOptions() {
     }
@@ -61,6 +63,8 @@ public final class ClientOptions {
             swordEnergyHighlight = booleanValue("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
             swordOutline = booleanValue("swordOutline", DEFAULT_SWORD_OUTLINE);
             inventoryGlint = booleanValue("inventoryGlint", DEFAULT_INVENTORY_GLINT);
+            glowBrightness = SwordGlowBrightness.fromName(stringValue("glowBrightness",
+                    DEFAULT_GLOW_BRIGHTNESS.serializedName()));
         } catch (Exception exception) {
             showDeveloperOptions = false;
             optimizedThirdPerson = false;
@@ -71,6 +75,7 @@ public final class ClientOptions {
             swordEnergyHighlight = DEFAULT_SWORD_ENERGY_HIGHLIGHT;
             swordOutline = DEFAULT_SWORD_OUTLINE;
             inventoryGlint = DEFAULT_INVENTORY_GLINT;
+            glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
             LOGGER.error("Could not load Swordflight client options from {}", path, exception);
         }
     }
@@ -91,6 +96,7 @@ public final class ClientOptions {
     public static boolean swordEnergyHighlight() { return swordEnergyHighlight; }
     public static boolean swordOutline() { return swordOutline; }
     public static boolean inventoryGlint() { return inventoryGlint; }
+    public static SwordGlowBrightness glowBrightness() { return glowBrightness; }
 
     public static synchronized void setOptimizedThirdPerson(boolean enabled) {
         optimizedThirdPerson = enabled;
@@ -132,8 +138,22 @@ public final class ClientOptions {
         setBoolean("inventoryGlint", enabled);
     }
 
+    public static synchronized void setGlowBrightness(SwordGlowBrightness brightness) {
+        glowBrightness = brightness == null ? DEFAULT_GLOW_BRIGHTNESS : brightness;
+        setString("glowBrightness", glowBrightness.serializedName());
+    }
+
     private static void setBoolean(String key, boolean enabled) {
         document.addProperty(key, enabled);
+        saveOptionDocument();
+    }
+
+    private static void setString(String key, String value) {
+        document.addProperty(key, value);
+        saveOptionDocument();
+    }
+
+    private static void saveOptionDocument() {
         try {
             Files.createDirectories(path().getParent());
             saveDocument(path());
@@ -151,9 +171,14 @@ public final class ClientOptions {
                 ? document.get(key).getAsBoolean() : fallback;
     }
 
+    private static String stringValue(String key, String fallback) {
+        return document.has(key) && document.get(key).isJsonPrimitive()
+                ? document.get(key).getAsString() : fallback;
+    }
+
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 10);
+        root.addProperty("schemaVersion", 11);
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", false);
         root.addProperty("swordRidingEnabled", true);
@@ -163,6 +188,7 @@ public final class ClientOptions {
         root.addProperty("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
         root.addProperty("swordOutline", DEFAULT_SWORD_OUTLINE);
         root.addProperty("inventoryGlint", DEFAULT_INVENTORY_GLINT);
+        root.addProperty("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         root.addProperty("developerOptionsHint",
                 "Set showDeveloperOptions to true and reopen the in-game config screen. OP permission is still required.");
         return root;
@@ -197,6 +223,10 @@ public final class ClientOptions {
             document.addProperty("schemaVersion", 10);
             changed = true;
         }
+        if (schemaVersion < 11) {
+            document.addProperty("schemaVersion", 11);
+            changed = true;
+        }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", false);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
@@ -206,10 +236,17 @@ public final class ClientOptions {
         changed |= addBooleanIfMissing("swordEnergyHighlight", DEFAULT_SWORD_ENERGY_HIGHLIGHT);
         changed |= addBooleanIfMissing("swordOutline", DEFAULT_SWORD_OUTLINE);
         changed |= addBooleanIfMissing("inventoryGlint", DEFAULT_INVENTORY_GLINT);
+        changed |= addStringIfMissing("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         return changed;
     }
 
     private static boolean addBooleanIfMissing(String key, boolean value) {
+        if (document.has(key)) return false;
+        document.addProperty(key, value);
+        return true;
+    }
+
+    private static boolean addStringIfMissing(String key, String value) {
         if (document.has(key)) return false;
         document.addProperty(key, value);
         return true;

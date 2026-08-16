@@ -19,6 +19,7 @@ public final class SwordflightConfigScreen extends Screen {
     private Button attackButton;
     private Button thirdPersonButton;
     private Button swordRidingButton;
+    private Button glowBrightnessButton;
     private Button developerButton;
     private boolean synced;
 
@@ -33,7 +34,7 @@ public final class SwordflightConfigScreen extends Screen {
         settings = ClientSettingsState.get();
         serverEditingButtons.clear();
         int centerX = width / 2;
-        int top = height / 2 - 70;
+        int top = height / 2 - 58;
 
         targetingButton = addModeRow(centerX, top, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
@@ -54,19 +55,24 @@ public final class SwordflightConfigScreen extends Screen {
         swordRidingButton = addModeRow(centerX, top + 75, this::toggleSwordRidingOption,
                 () -> setSwordRidingOption(false), false);
 
+        glowBrightnessButton = addModeRow(centerX, top + 100,
+                () -> ClientOptions.setGlowBrightness(ClientOptions.glowBrightness().next()),
+                () -> ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
+
         addRenderableWidget(Button.builder(Component.translatable("screen.swordflight.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                             settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, AttackMode.SORTIE));
                     ClientOptions.setOptimizedThirdPerson(false);
                     setSwordRidingOption(true);
+                    ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
                     refreshLabels();
-                }).bounds(centerX - 145, top + 109, 92, 20).build());
+                }).bounds(centerX - 145, top + 134, 92, 20).build());
         developerButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.swordflight.config.developer"),
                         button -> minecraft.setScreen(new AdminBalanceScreen(this)))
-                .bounds(centerX - 47, top + 109, 92, 20).build());
+                .bounds(centerX - 47, top + 134, 92, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(centerX + 51, top + 109, 94, 20).build());
+                .bounds(centerX + 51, top + 134, 94, 20).build());
 
         refreshLabels();
         setEditingEnabled(false);
@@ -141,12 +147,16 @@ public final class SwordflightConfigScreen extends Screen {
             swordRidingButton.setMessage(Component.translatable("screen.swordflight.config.sword_riding",
                     Component.translatable(ClientOptions.swordRidingEnabled() ? "options.on" : "options.off")));
         }
+        if (glowBrightnessButton != null) {
+            glowBrightnessButton.setMessage(Component.translatable("screen.swordflight.config.glow_brightness",
+                    Component.translatable(ClientOptions.glowBrightness().translationKey())));
+        }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        int top = height / 2 - 70;
+        int top = height / 2 - 58;
         graphics.drawCenteredString(font, title, width / 2, top - 30, 0xFFFFFF);
         graphics.drawCenteredString(font, Component.translatable("screen.swordflight.config.description"),
                 width / 2, top - 16, 0xA0A0A0);
