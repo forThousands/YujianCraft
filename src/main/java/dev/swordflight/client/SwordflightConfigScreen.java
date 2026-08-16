@@ -19,6 +19,7 @@ public final class SwordflightConfigScreen extends Screen {
     private Button attackButton;
     private Button thirdPersonButton;
     private Button swordRidingButton;
+    private Button swordGlowButton;
     private Button glowBrightnessButton;
     private Button developerButton;
     private boolean synced;
@@ -34,7 +35,7 @@ public final class SwordflightConfigScreen extends Screen {
         settings = ClientSettingsState.get();
         serverEditingButtons.clear();
         int centerX = width / 2;
-        int top = height / 2 - 58;
+        int top = height / 2 - 61;
 
         targetingButton = addModeRow(centerX, top, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
@@ -55,24 +56,29 @@ public final class SwordflightConfigScreen extends Screen {
         swordRidingButton = addModeRow(centerX, top + 75, this::toggleSwordRidingOption,
                 () -> setSwordRidingOption(false), false);
 
-        glowBrightnessButton = addModeRow(centerX, top + 100,
-                this::cycleGlowBrightnessOption,
-                () -> setGlowBrightnessOption(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
+        swordGlowButton = addModeRow(centerX, top + 100,
+                () -> ClientOptions.setSwordBodyGlow(!ClientOptions.swordBodyGlow()),
+                () -> ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW), false);
+
+        glowBrightnessButton = addModeRow(centerX, top + 125,
+                () -> ClientOptions.setGlowBrightness(ClientOptions.glowBrightness().next()),
+                () -> ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
 
         addRenderableWidget(Button.builder(Component.translatable("screen.swordflight.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                             settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, AttackMode.SORTIE));
                     ClientOptions.setOptimizedThirdPerson(false);
                     setSwordRidingOption(true);
-                    setGlowBrightnessOption(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
+                    ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW);
+                    ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
                     refreshLabels();
-                }).bounds(centerX - 145, top + 134, 92, 20).build());
+                }).bounds(centerX - 145, top + 159, 92, 20).build());
         developerButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.swordflight.config.developer"),
                         button -> minecraft.setScreen(new AdminBalanceScreen(this)))
-                .bounds(centerX - 47, top + 134, 92, 20).build());
+                .bounds(centerX - 47, top + 159, 92, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(centerX + 51, top + 134, 94, 20).build());
+                .bounds(centerX + 51, top + 159, 94, 20).build());
 
         refreshLabels();
         setEditingEnabled(false);
@@ -115,23 +121,6 @@ public final class SwordflightConfigScreen extends Screen {
         ClientOptions.setSwordRidingEnabled(enabled);
     }
 
-    private void cycleGlowBrightnessOption() {
-        if (!ClientOptions.swordBodyGlow()) {
-            setGlowBrightnessOption(SwordGlowBrightness.SOFT);
-            return;
-        }
-        if (ClientOptions.glowBrightness() == SwordGlowBrightness.DEFAULT) {
-            ClientOptions.setSwordBodyGlow(false);
-            return;
-        }
-        setGlowBrightnessOption(ClientOptions.glowBrightness().next());
-    }
-
-    private void setGlowBrightnessOption(SwordGlowBrightness brightness) {
-        ClientOptions.setGlowBrightness(brightness);
-        ClientOptions.setSwordBodyGlow(true);
-    }
-
     public void onSettingsSynced(SwordSettings syncedSettings) {
         settings = syncedSettings;
         synced = true;
@@ -164,21 +153,26 @@ public final class SwordflightConfigScreen extends Screen {
             swordRidingButton.setMessage(Component.translatable("screen.swordflight.config.sword_riding",
                     Component.translatable(ClientOptions.swordRidingEnabled() ? "options.on" : "options.off")));
         }
+        if (swordGlowButton != null) {
+            swordGlowButton.setMessage(Component.translatable("screen.swordflight.config.sword_glow",
+                    Component.translatable(ClientOptions.swordBodyGlow() ? "options.on" : "options.off")));
+        }
         if (glowBrightnessButton != null) {
             glowBrightnessButton.setMessage(Component.translatable("screen.swordflight.config.glow_brightness",
-                    Component.translatable(ClientOptions.swordBodyGlow()
-                            ? ClientOptions.glowBrightness().translationKey()
-                            : "glow_brightness.swordflight.off")));
+                    Component.translatable(ClientOptions.glowBrightness().translationKey())));
         }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        int top = height / 2 - 58;
-        graphics.drawCenteredString(font, title, width / 2, top - 30, 0xFFFFFF);
+        int top = height / 2 - 61;
+        graphics.drawCenteredString(font, title, width / 2, top - 48, 0xFFFFFF);
         graphics.drawCenteredString(font, Component.translatable("screen.swordflight.config.description"),
-                width / 2, top - 16, 0xA0A0A0);
+                width / 2, top - 36, 0xA0A0A0);
+        int noticeWidth = Math.min(Math.max(width - 30, 120), 620);
+        graphics.drawWordWrap(font, Component.translatable("screen.swordflight.config.visual_notice"),
+                (width - noticeWidth) / 2, top - 27, noticeWidth, 0xFFD37A);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
