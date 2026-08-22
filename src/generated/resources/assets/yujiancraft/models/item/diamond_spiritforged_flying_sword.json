@@ -1,0 +1,12 @@
+{
+  "parent": "yujiancraft:item/flying_sword_style_formal",
+  "textures": {
+    "accent": "minecraft:block/sea_lantern",
+    "blade_dark": "minecraft:block/diamond_block",
+    "blade_light": "minecraft:block/diamond_block",
+    "edge": "minecraft:block/prismarine_bricks",
+    "grip": "minecraft:block/warped_planks",
+    "guard": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/diamond_block"
+  }
+}

@@ -1,8 +1,8 @@
-# Swordflight / 御剑工艺
+# 御剑工艺 / Yujian Craft
 
 面向 Minecraft 1.20.1 Forge 的原创御剑战斗模组。以原版材料、锻造与附魔语言为基础，提供可召回的飞剑阵列、主动或自动索敌、御剑飞行和可逆模块装配。
 
-> 当前版本：`0.9.16`（开发预览版）
+> 当前版本：`0.9.17`（开发预览版）
 > 运行环境：Minecraft `1.20.1`、Forge `47.4.22`、Java `17`
 
 ## 主要内容
@@ -21,13 +21,13 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/forThousands/SwordFlight/releases) 下载与游戏版本匹配的成品。玩家应下载 `Assets` 区域中的 `swordflight-<版本>.jar`，不要下载 GitHub 自动生成的 `Source code` 压缩包。
+从 [GitHub Releases](https://github.com/forThousands/YujianCraft/releases) 下载与游戏版本匹配的成品。玩家应下载 `Assets` 区域中的 `yujiancraft-<版本>.jar`，不要下载 GitHub 自动生成的 `Source code` 压缩包。
 
 1. 安装 Minecraft 1.20.1 与 Forge 47.4.22。
-2. 将发布页中的 `swordflight-<版本>.jar` 放入该游戏实例的 `mods` 文件夹。
+2. 将发布页中的 `yujiancraft-<版本>.jar` 放入该游戏实例的 `mods` 文件夹。
 3. 客户端与服务器使用相同版本；本模组不是纯客户端模组。
 
-开发预览版可能调整物品数据、配置格式与平衡数值。更新前建议备份世界。
+开发预览版可能调整物品数据、配置格式与平衡数值。更新前建议备份世界。`0.9.17` 将内部模组 ID 从 `swordflight` 改为 `yujiancraft`，旧版本物品、方块与配置不会自动迁移；升级已有世界前务必保留旧 JAR 和世界备份。
 
 版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -108,7 +108,7 @@
 
 `Ctrl+I` 中的普通选项包括索敌方式、攻击方式、第三人称、御剑飞行、飞剑光效和亮度档。
 
-首次启动会生成 `config/swordflight/client-options.json`。将其中的 `showDeveloperOptions` 改为 `true` 并重新打开界面后，拥有 OP 2 级权限的玩家可以看到开发者选项。开发者页面可调材质伤害、飞行倍率、效果数值、索敌半径、最短停靠和视听实验；五种模块外观、命中反馈与工作台预览均有独立开关。
+首次启动会生成 `config/yujiancraft/client-options.json`。将其中的 `showDeveloperOptions` 改为 `true` 并重新打开界面后，拥有 OP 2 级权限的玩家可以看到开发者选项。开发者页面可调材质伤害、飞行倍率、效果数值、索敌半径、最短停靠和视听实验；五种模块外观、命中反馈与工作台预览均有独立开关。
 
 - 伤害、目标、效果和管理员平衡参数由服务端执行或校验。
 - 相机、准心显示、亮度和本地视听实验属于客户端表现。
@@ -118,7 +118,7 @@
 
 ## 问题反馈
 
-Bug 与功能建议请提交到 [GitHub Issues](https://github.com/forThousands/SwordFlight/issues)。报告 Bug 时请注明 SwordFlight、Minecraft、Forge、Java、其他模组及光影版本，并附上可复现步骤。上传日志前请删除访问令牌、服务器地址、个人目录和其他隐私信息。
+Bug 与功能建议请提交到 [GitHub Issues](https://github.com/forThousands/YujianCraft/issues)。报告 Bug 时请注明 Yujian Craft、Minecraft、Forge、Java、其他模组及光影版本，并附上可复现步骤。上传日志前请删除访问令牌、服务器地址、个人目录和其他隐私信息。
 
 ## 原创边界与协议
 

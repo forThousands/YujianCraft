@@ -27,20 +27,20 @@ LOCAL_SETTINGS = PANEL_DIR / ".local.json"
 BACKUP_ROOT = PANEL_DIR / "backups"
 MAX_REQUEST_BYTES = 1_000_000
 
-MATERIAL_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/material/FlyingSwordMaterial.java"
-EFFECT_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/config/EffectParameter.java"
-SETTINGS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/combat/SwordSettings.java"
-SERVER_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/flight/SwordRidingManager.java"
-CLIENT_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientSwordRidingController.java"
-CLIENT_OPTIONS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientOptions.java"
-INPUT_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/client/ClientInputEvents.java"
-BALANCE_LIMITS_FILE = PROJECT_ROOT / "src/main/java/dev/swordflight/config/SwordBalanceConfig.java"
-LANG_FILE = PROJECT_ROOT / "src/main/resources/assets/swordflight/lang/zh_cn.json"
+MATERIAL_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/material/FlyingSwordMaterial.java"
+EFFECT_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/config/EffectParameter.java"
+SETTINGS_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/combat/SwordSettings.java"
+SERVER_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/flight/SwordRidingManager.java"
+CLIENT_RIDING_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/client/ClientSwordRidingController.java"
+CLIENT_OPTIONS_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/client/ClientOptions.java"
+INPUT_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/client/ClientInputEvents.java"
+BALANCE_LIMITS_FILE = PROJECT_ROOT / "src/main/java/dev/yujiancraft/config/SwordBalanceConfig.java"
+LANG_FILE = PROJECT_ROOT / "src/main/resources/assets/yujiancraft/lang/zh_cn.json"
 GRADLE_PROPERTIES = PROJECT_ROOT / "gradle.properties"
 PROJECT_README = PROJECT_ROOT / "README.md"
 RECIPE_MANIFEST = PANEL_DIR / "recipes.json"
-GENERATED_RECIPE_DIR = PROJECT_ROOT / "src/generated/resources/data/swordflight/recipes"
-GENERATED_ADVANCEMENT_ROOT = PROJECT_ROOT / "src/generated/resources/data/swordflight/advancements/recipes"
+GENERATED_RECIPE_DIR = PROJECT_ROOT / "src/generated/resources/data/yujiancraft/recipes"
+GENERATED_ADVANCEMENT_ROOT = PROJECT_ROOT / "src/generated/resources/data/yujiancraft/advancements/recipes"
 
 MATERIAL_PATTERN = re.compile(
     r'(?m)^(\s*)([A-Z]+)\("([a-z_]+)",\s*(Items\.[A-Z_]+),\s*(Items\.[A-Z_]+),\s*'
@@ -174,9 +174,9 @@ def load_translations() -> dict[str, str]:
 
 def item_label(item_id: str, translations: dict[str, str]) -> str:
     namespace, path = item_id.split(":", 1)
-    if namespace == "swordflight":
-        return translations.get(f"item.swordflight.{path}",
-                                translations.get(f"block.swordflight.{path}", path))
+    if namespace == "yujiancraft":
+        return translations.get(f"item.yujiancraft.{path}",
+                                translations.get(f"block.yujiancraft.{path}", path))
     vanilla = {
         "diamond": "钻石", "amethyst_shard": "紫水晶碎片", "crafting_table": "工作台",
         "wooden_sword": "木剑", "stone_sword": "石剑", "iron_sword": "铁剑",
@@ -292,7 +292,7 @@ def recipe_document(recipe: dict[str, Any]) -> dict[str, Any]:
 def advancement_document(recipe: dict[str, Any]) -> dict[str, Any]:
     ingredient = next(item for item in recipe["grid"] if item)
     criterion = "has_" + ingredient.split(":", 1)[1].replace("/", "_")
-    recipe_id = f"swordflight:{recipe['id']}"
+    recipe_id = f"yujiancraft:{recipe['id']}"
     return {
         "parent": "minecraft:recipes/root",
         "criteria": {
@@ -342,7 +342,7 @@ def save_recipes(raw_recipes: Any) -> list[dict[str, Any]]:
 def recipe_catalog(recipes: list[dict[str, Any]], translations: dict[str, str]) -> list[dict[str, str]]:
     item_ids = {item for recipe in recipes for item in recipe["grid"] if item}
     item_ids.update(recipe["result"] for recipe in recipes)
-    for source in (MATERIAL_FILE, PROJECT_ROOT / "src/main/java/dev/swordflight/upgrade/FlyingSwordModule.java"):
+    for source in (MATERIAL_FILE, PROJECT_ROOT / "src/main/java/dev/yujiancraft/upgrade/FlyingSwordModule.java"):
         for constant in re.findall(r"Items\.([A-Z0-9_]+)", read_text(source)):
             item_ids.add("minecraft:" + constant.lower())
     return [{"id": item_id, "label": item_label(item_id, translations)} for item_id in sorted(item_ids)]
@@ -376,7 +376,7 @@ def source_state() -> dict[str, Any]:
         materials.append({
             "enum": match.group(2),
             "key": key,
-            "label": translations.get(f"material.swordflight.{key}", key),
+            "label": translations.get(f"material.yujiancraft.{key}", key),
             "durability": int(match.group(6)),
             "damage": float(match.group(7)),
             "flightSpeed": float(match.group(8)),
@@ -398,7 +398,7 @@ def source_state() -> dict[str, Any]:
             "group": match.group(3),
             "groupLabel": group_labels.get(match.group(3), match.group(3)),
             "key": key,
-            "label": translations.get(f"effect_parameter.swordflight.{key}", key),
+            "label": translations.get(f"effect_parameter.yujiancraft.{key}", key),
             "value": float(match.group(5)),
             "minimum": float(match.group(6)),
             "maximum": float(match.group(7)),
@@ -685,8 +685,8 @@ def sync_world(world_path: str, payload: dict[str, Any]) -> None:
         raise PanelError("只能同步当前游戏目录 saves 下的世界")
     current = source_state()
     values = normalized_payload(payload, current)
-    sword_toml = world / "serverconfig/swordflight-server.toml"
-    effect_toml = world / "serverconfig/swordflight-effects-server.toml"
+    sword_toml = world / "serverconfig/yujiancraft-server.toml"
+    effect_toml = world / "serverconfig/yujiancraft-effects-server.toml"
     backup_sources([sword_toml, effect_toml], "world-sync")
     sword_values: dict[tuple[str, str], float] = {}
     for key, item in values["materials"].items():
@@ -742,7 +742,7 @@ def install_artifact(artifact: Path, mods_dir_text: str) -> Path:
     release_dir = (PROJECT_ROOT / "releases").resolve()
     if artifact.resolve().parent != release_dir:
         raise PanelError("构建产物不在 releases 目录")
-    installed = sorted(mods_dir.glob("swordflight-*.jar"))
+    installed = sorted({*mods_dir.glob("yujiancraft-*.jar"), *mods_dir.glob("swordflight-*.jar")})
     for old in installed:
         if old.name == artifact.name:
             continue
@@ -774,7 +774,7 @@ def run_build(request: dict[str, Any]) -> None:
 
         previous_version = parse_version()
         new_version = bump_version(previous_version, str(request.get("increment", "patch")))
-        release = PROJECT_ROOT / "releases" / f"swordflight-{new_version}.jar"
+        release = PROJECT_ROOT / "releases" / f"yujiancraft-{new_version}.jar"
         if release.exists():
             raise PanelError(f"版本归档已存在：{release.name}")
         set_version(new_version)
@@ -848,11 +848,11 @@ def begin_build(request: dict[str, Any]) -> None:
         BUILD.error = None
         BUILD.started_at = time.time()
         BUILD.finished_at = None
-    threading.Thread(target=run_build, args=(request,), daemon=True, name="swordflight-build").start()
+    threading.Thread(target=run_build, args=(request,), daemon=True, name="yujiancraft-build").start()
 
 
 class ControlPanelHandler(BaseHTTPRequestHandler):
-    server_version = "SwordflightControlPanel/1.0"
+    server_version = "YujianCraftControlPanel/1.0"
 
     @property
     def token(self) -> str:
@@ -863,7 +863,7 @@ class ControlPanelHandler(BaseHTTPRequestHandler):
 
     def authorized(self) -> bool:
         query = parse_qs(urlparse(self.path).query)
-        supplied = self.headers.get("X-Swordflight-Token") or (query.get("token") or [""])[0]
+        supplied = self.headers.get("X-YujianCraft-Token") or (query.get("token") or [""])[0]
         return secrets.compare_digest(supplied, self.token)
 
     def send_json(self, value: Any, status: int = 200) -> None:
@@ -954,7 +954,7 @@ class ControlPanelHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="SwordFlight 本地可视化开发控制台")
+    parser = argparse.ArgumentParser(description="Yujian Craft 本地可视化开发控制台")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0, help="0 表示自动选择空闲端口")
     parser.add_argument("--no-browser", action="store_true")
@@ -966,7 +966,7 @@ def main() -> None:
     server.control_token = token  # type: ignore[attr-defined]
     host, port = server.server_address[:2]
     url = f"http://127.0.0.1:{port}/?token={token}"
-    print("SwordFlight 可视化开发控制台")
+    print("Yujian Craft 可视化开发控制台")
     print(f"项目：{PROJECT_ROOT}")
     print(f"地址：{url}")
     print("按 Ctrl+C 关闭。")

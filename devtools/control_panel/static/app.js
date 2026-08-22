@@ -1,5 +1,5 @@
-const token = document.querySelector('meta[name="swordflight-token"]').content;
-const headers = { 'Content-Type': 'application/json', 'X-Swordflight-Token': token };
+const token = document.querySelector('meta[name="yujiancraft-token"]').content;
+const headers = { 'Content-Type': 'application/json', 'X-YujianCraft-Token': token };
 let state = null;
 let dirty = false;
 let increment = 'patch';
@@ -176,7 +176,7 @@ function itemColor(itemId) {
   const colors = {
     diamond: '#63dfda', amethyst: '#be88ef', gold: '#f0cf67', golden: '#f0cf67',
     iron: '#d1d7d8', stone: '#9ca3a2', wooden: '#ba8a58', netherite: '#8b6f79',
-    crafting: '#b88b5d', swordflight: '#64e0c2',
+    crafting: '#b88b5d', yujiancraft: '#64e0c2',
   };
   const text = itemId.toLowerCase();
   return Object.entries(colors).find(([key]) => text.includes(key))?.[1] || '#81979a';
@@ -303,7 +303,7 @@ function updateVersionPreview() {
     const next = nextVersion(state.version, button.dataset.value);
     button.querySelector('small').textContent = `${state.version} → ${next}`;
   });
-  $('#releaseHint').textContent = `将生成 swordflight-${nextVersion(state.version, increment)}.jar`;
+  $('#releaseHint').textContent = `将生成 yujiancraft-${nextVersion(state.version, increment)}.jar`;
 }
 
 function renderRelease() {

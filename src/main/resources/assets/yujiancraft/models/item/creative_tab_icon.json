@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "yujiancraft:item/creative_tab_icon"
+  }
+}

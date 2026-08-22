@@ -162,8 +162,8 @@ public final class GenerateFormalSwordAssets {
     }
 
     private void write(Path project) throws IOException {
-        Path modelDirectory = project.resolve("src/main/resources/assets/swordflight/models/item");
-        Path textureDirectory = project.resolve("src/main/resources/assets/swordflight/textures/item");
+        Path modelDirectory = project.resolve("src/main/resources/assets/yujiancraft/models/item");
+        Path textureDirectory = project.resolve("src/main/resources/assets/yujiancraft/textures/item");
         Files.createDirectories(modelDirectory);
         Files.createDirectories(textureDirectory);
 

@@ -10,7 +10,7 @@ public final class GenerateSpiritAuraTextures {
     public static void main(String[] args) throws Exception {
         Path project = args.length == 0 ? Path.of(".").toAbsolutePath().normalize()
                 : Path.of(args[0]).toAbsolutePath().normalize();
-        Path directory = project.resolve("src/main/resources/assets/swordflight/textures/effect");
+        Path directory = project.resolve("src/main/resources/assets/yujiancraft/textures/effect");
         Files.createDirectories(directory);
         writeShell(directory.resolve("spirit_shell.png"));
         writePulse(directory.resolve("spirit_pulse.png"));

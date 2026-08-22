@@ -1,0 +1,18 @@
+{
+  "parent": "yujiancraft:item/flying_sword_3d_base",
+  "loader": "forge:obj",
+  "model": "yujiancraft:models/item/formal_flying_sword.obj",
+  "automatic_culling": false,
+  "shade_quads": true,
+  "flip_v": true,
+  "emissive_ambient": false,
+  "display": {
+    "thirdperson_righthand": { "rotation": [0, -90, 55], "translation": [0, 4, 0.5], "scale": [1.05, 1.05, 1.05] },
+    "thirdperson_lefthand": { "rotation": [0, 90, -55], "translation": [0, 4, 0.5], "scale": [1.05, 1.05, 1.05] },
+    "firstperson_righthand": { "rotation": [0, -90, 25], "translation": [1.13, 3.2, 1.13], "scale": [0.86, 0.86, 0.86] },
+    "firstperson_lefthand": { "rotation": [0, 90, -25], "translation": [1.13, 3.2, 1.13], "scale": [0.86, 0.86, 0.86] },
+    "gui": { "rotation": [25, 225, 0], "translation": [0, -1, 0], "scale": [1.05, 1.05, 1.05] },
+    "ground": { "rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.75, 0.75, 0.75] },
+    "fixed": { "rotation": [0, 180, 0], "translation": [0, 0, 0], "scale": [0.78, 0.78, 0.78] }
+  }
+}
