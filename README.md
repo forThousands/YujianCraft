@@ -29,6 +29,8 @@
 
 开发预览版可能调整物品数据、配置格式与平衡数值。更新前建议备份世界。
 
+版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 快速开始
 
 1. 合成任意基础飞剑并放在主手，右键召唤六柄飞剑；再次右键收回。
@@ -82,8 +84,6 @@
 
 飞剑工作台配方：工作台置于中央，四个边位放铁锭，四角放紫水晶碎片。基础飞剑的材料也用于铁砧修复；木质飞剑可用任意木板修复。
 
-所有配方集中维护在 `devtools/control_panel/recipes.json`，开发台和 Forge 数据生成器读取同一份清单，避免手工复制配方文件。
-
 ## 飞剑工作台与模块
 
 工作台中的模块可安装、替换和拆除，拆除时返还材料。三级模块通常按 `1 / 16 / 64` 份材料安装为 I / II / III；单级模块只消耗一份材料。
@@ -115,32 +115,6 @@
 - 光影开启时自动切换为柔和亮度；仍可手动关闭光效或选择其他亮度档。
 
 高亮、闪烁或光影叠加可能造成眼睛不适；光敏性癫痫风险者应关闭相关效果，如有不适立即停止使用。
-
-## 开发
-
-使用 Java 17：
-
-```powershell
-./gradlew.bat build
-python -m unittest discover -s devtools/control_panel -p "test_*.py" -v
-```
-
-构建完成后，版本化成品保存在 `releases/swordflight-<版本>.jar`；`build/libs` 是临时输出。
-
-双击根目录的 `启动御剑开发台.bat` 可打开本地可视化控制台，统一编辑材质、战斗、效果、御剑、视听默认值与合成配方，并执行版本递增、构建、归档、测试游戏安装和 SHA-256 校验。详细说明见 [devtools/control_panel/README.md](devtools/control_panel/README.md)。
-
-仓库主要目录：
-
-| 路径 | 内容 |
-| --- | --- |
-| `src/main` | Java 源码与手工资源 |
-| `src/generated` | 数据生成器产物 |
-| `devtools/control_panel` | 本地可视化开发台与配方唯一清单 |
-| `art/source` | 模组贴图源文件 |
-| `concepts` | 设计概念图，不打包进模组 |
-| `tools` | 可重复生成视觉资源的辅助工具 |
-
-版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 问题反馈
 
