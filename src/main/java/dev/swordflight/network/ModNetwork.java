@@ -306,9 +306,17 @@ public final class ModNetwork {
     }
 
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
-        Vec3 position = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
+        Vec3 safeDirection = direction.lengthSqr() < 1.0E-6D
+                ? new Vec3(0.0D, 1.0D, 0.0D) : direction.normalize();
+        // Put the flash on the entry surface instead of at the target's hidden centre. This keeps
+        // the module-independent base effect visible through ordinary entity depth testing.
+        Vec3 centre = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
+        Vec3 traceStart = sword.position().subtract(safeDirection.scale(2.5D));
+        Vec3 traceEnd = sword.position().add(safeDirection.scale(2.5D));
+        Vec3 position = target.getBoundingBox().inflate(0.035D).clip(traceStart, traceEnd)
+                .orElse(centre.subtract(safeDirection.scale(Math.max(0.22D, target.getBbWidth() * 0.5D))));
         CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> sword),
-                new SwordImpactPacket(position, direction, sword.getVisualModuleMask(),
+                new SwordImpactPacket(position, safeDirection, sword.getVisualModuleMask(),
                         sword.getMaterialType().ordinal()));
     }
 

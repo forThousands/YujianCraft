@@ -108,15 +108,19 @@ public final class ClientImpactEffects {
             poseStack.pushPose();
             Vec3 local = impact.position.subtract(camera);
             poseStack.translate(local.x, local.y, local.z);
-            renderImpact(vertices, poseStack.last().pose(), impact, progress, fade);
+            Vec3 viewNormal = camera.subtract(impact.position);
+            if (viewNormal.lengthSqr() < 1.0E-6D) viewNormal = impact.direction.scale(-1.0D);
+            renderImpact(vertices, poseStack.last().pose(), impact, viewNormal.normalize(), progress, fade);
             poseStack.popPose();
         }
         buffers.endBatch(RenderType.lightning());
     }
 
     private static void renderImpact(VertexConsumer vertices, Matrix4f pose, Impact impact,
-                                     float progress, float fade) {
-        Vec3 normal = impact.direction;
+                                     Vec3 viewNormal, float progress, float fade) {
+        // Face the principal rings toward the camera. The old directional ring could become
+        // completely edge-on, making a plain sword appear to have no hit feedback at all.
+        Vec3 normal = viewNormal;
         Vec3 basisA = normal.cross(new Vec3(0.0D, 1.0D, 0.0D));
         if (basisA.lengthSqr() < 1.0E-6D) basisA = normal.cross(new Vec3(1.0D, 0.0D, 0.0D));
         basisA = basisA.normalize();
@@ -140,6 +144,10 @@ public final class ClientImpactEffects {
         int rayAlpha = Mth.clamp(Math.round(225.0F * Math.max(0.0F, 1.0F - progress * 2.2F)), 0, 255);
         renderRay(vertices, pose, basisA.scale(-rayLength), basisA.scale(rayLength), basisB.scale(0.022F), rayAlpha);
         renderRay(vertices, pose, basisB.scale(-rayLength), basisB.scale(rayLength), basisA.scale(0.022F), rayAlpha);
+
+        float pierceLength = 0.10F + progress * 0.24F;
+        renderRay(vertices, pose, impact.direction.scale(-pierceLength),
+                impact.direction.scale(pierceLength), basisA.scale(0.018F), rayAlpha);
     }
 
     private static void renderRing(VertexConsumer vertices, Matrix4f pose, Vec3 basisA, Vec3 basisB,

@@ -352,9 +352,12 @@ public final class FlyingSwordEntity extends Entity {
             double damage = SwordBalanceConfig.get(material).damage()
                     + SwordEffectEngine.damageBonus(installedModules);
             boolean successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
+            // Contact feedback describes the sword crossing the target, not only vanilla's
+            // accepted-damage result. Hurt immunity can reject closely spaced swords, but the
+            // visible blade still struck and must produce the same base flash and impact ring.
+            ModNetwork.sendSwordImpact(this, target, safeDirection(getDeltaMovement(),
+                    new Vec3(0.0D, 1.0D, 0.0D)));
             if (successfulHit) {
-                ModNetwork.sendSwordImpact(this, target, safeDirection(getDeltaMovement(),
-                        new Vec3(0.0D, 1.0D, 0.0D)));
                 SwordEffectEngine.applyOnHit(owner, target, installedModules);
                 damageSourceSword(owner);
             }

@@ -245,17 +245,26 @@ public final class ClientModEvents {
 
             if (ClientOptions.swordBodyGlow()) {
                 poseStack.pushPose();
-                if (!customThreeDimensionalModel) {
-                    // Vanilla swords are diagonal sprites. FIXED mirrors X, so a local +45 degree
-                    // correction puts this independently-rendered aura on the same blade axis.
-                    poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(45.0F));
-                }
+                alignBladeVisualEffects(poseStack, customThreeDimensionalModel);
                 renderBladeAura(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
                 poseStack.popPose();
             }
+            // Module accents are authored around the same local +Y blade axis as the aura.
+            // Vanilla item sprites still carry their diagonal FIXED transform, so they need the
+            // identical correction or every spark, arc and pulse appears rotated off the blade.
+            poseStack.pushPose();
+            alignBladeVisualEffects(poseStack, customThreeDimensionalModel);
             renderModuleAccents(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
             poseStack.popPose();
+            poseStack.popPose();
             super.render(sword, yaw, partialTick, poseStack, buffers, packedLight);
+        }
+
+        private static void alignBladeVisualEffects(PoseStack poseStack, boolean customThreeDimensionalModel) {
+            if (!customThreeDimensionalModel) {
+                // FIXED mirrors the vanilla item sprite. +45 puts its visible blade on local +Y.
+                poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(45.0F));
+            }
         }
 
         private void renderLegacyEnergySword(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
