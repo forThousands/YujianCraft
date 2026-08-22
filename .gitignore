@@ -38,10 +38,24 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# credentials and signing material must never enter version control
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.*
+secrets.*
+
 # local logs and generated Maven test repository
 *.log
 logs/
 crash-reports/
+hs_err_pid*.log
 mcmodsrepo/
 src/generated/resources/.cache/
 

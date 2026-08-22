@@ -21,6 +21,8 @@
 
 ## 安装
 
+从 [GitHub Releases](https://github.com/forThousands/SwordFlight/releases) 下载与游戏版本匹配的成品。玩家应下载 `Assets` 区域中的 `swordflight-<版本>.jar`，不要下载 GitHub 自动生成的 `Source code` 压缩包。
+
 1. 安装 Minecraft 1.20.1 与 Forge 47.4.22。
 2. 将发布页中的 `swordflight-<版本>.jar` 放入该游戏实例的 `mods` 文件夹。
 3. 客户端与服务器使用相同版本；本模组不是纯客户端模组。
@@ -139,6 +141,10 @@ python -m unittest discover -s devtools/control_panel -p "test_*.py" -v
 | `tools` | 可重复生成视觉资源的辅助工具 |
 
 版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 问题反馈
+
+Bug 与功能建议请提交到 [GitHub Issues](https://github.com/forThousands/SwordFlight/issues)。报告 Bug 时请注明 SwordFlight、Minecraft、Forge、Java、其他模组及光影版本，并附上可复现步骤。上传日志前请删除访问令牌、服务器地址、个人目录和其他隐私信息。
 
 ## 原创边界与协议
 
