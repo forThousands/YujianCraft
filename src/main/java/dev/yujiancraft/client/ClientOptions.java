@@ -29,6 +29,7 @@ public final class ClientOptions {
     public static final boolean DEFAULT_ARROW_RAIN_MODULE_VISUAL = true;
     public static final boolean DEFAULT_HIT_IMPACT_VISUAL = true;
     public static final boolean DEFAULT_WORKBENCH_PREVIEW = true;
+    public static final boolean DEFAULT_OPTIMIZED_THIRD_PERSON = true;
     public static final SwordGlowBrightness DEFAULT_GLOW_BRIGHTNESS = SwordGlowBrightness.DEFAULT;
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -69,7 +70,7 @@ public final class ClientOptions {
             }
             if (migrateDocument()) saveDocument(path);
             showDeveloperOptions = booleanValue("showDeveloperOptions", false);
-            optimizedThirdPerson = booleanValue("optimizedThirdPerson", false);
+            optimizedThirdPerson = booleanValue("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
             swordRidingEnabled = booleanValue("swordRidingEnabled", true);
             flightSound = booleanValue("flightSound", DEFAULT_FLIGHT_SOUND);
             swordTrail = booleanValue("swordTrail", DEFAULT_SWORD_TRAIL);
@@ -88,7 +89,7 @@ public final class ClientOptions {
                     DEFAULT_GLOW_BRIGHTNESS.serializedName()));
         } catch (Exception exception) {
             showDeveloperOptions = false;
-            optimizedThirdPerson = false;
+            optimizedThirdPerson = DEFAULT_OPTIMIZED_THIRD_PERSON;
             swordRidingEnabled = true;
             flightSound = DEFAULT_FLIGHT_SOUND;
             swordTrail = DEFAULT_SWORD_TRAIL;
@@ -248,9 +249,9 @@ public final class ClientOptions {
 
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 12);
+        root.addProperty("schemaVersion", 13);
         root.addProperty("showDeveloperOptions", false);
-        root.addProperty("optimizedThirdPerson", false);
+        root.addProperty("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         root.addProperty("swordRidingEnabled", true);
         root.addProperty("flightSound", DEFAULT_FLIGHT_SOUND);
         root.addProperty("swordTrail", DEFAULT_SWORD_TRAIL);
@@ -308,8 +309,12 @@ public final class ClientOptions {
             document.addProperty("schemaVersion", 12);
             changed = true;
         }
+        if (schemaVersion < 13) {
+            document.addProperty("schemaVersion", 13);
+            changed = true;
+        }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
-        changed |= addBooleanIfMissing("optimizedThirdPerson", false);
+        changed |= addBooleanIfMissing("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
         changed |= addBooleanIfMissing("flightSound", DEFAULT_FLIGHT_SOUND);
         changed |= addBooleanIfMissing("swordTrail", DEFAULT_SWORD_TRAIL);

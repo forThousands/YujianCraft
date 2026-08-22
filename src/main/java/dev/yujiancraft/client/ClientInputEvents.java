@@ -49,7 +49,8 @@ public final class ClientInputEvents {
             long now = net.minecraft.Util.getMillis();
             if (lastJumpPressMillis >= 0L && now >= lastJumpPressMillis
                     && now - lastJumpPressMillis <= SWORD_RIDING_DOUBLE_TAP_MS) {
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordRidingPacket());
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordRidingPacket(
+                        !ClientSwordRidingState.isActive()));
                 lastJumpPressMillis = -1L;
             } else {
                 lastJumpPressMillis = now;

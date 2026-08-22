@@ -36,7 +36,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "9";
+    private static final String PROTOCOL = "10";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -79,7 +79,7 @@ public final class ModNetwork {
                 UpdateEffectBalancePacket::encode, UpdateEffectBalancePacket::decode,
                 ModNetwork::handleUpdateEffectBalance, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(11, ToggleSwordRidingPacket.class,
-                (message, buffer) -> { }, buffer -> new ToggleSwordRidingPacket(),
+                ToggleSwordRidingPacket::encode, ToggleSwordRidingPacket::decode,
                 ModNetwork::handleToggleSwordRiding, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(12, SwordRidingStatePacket.class,
                 SwordRidingStatePacket::encode, SwordRidingStatePacket::decode,
@@ -223,7 +223,7 @@ public final class ModNetwork {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
-            if (sender != null) SwordRidingManager.toggle(sender);
+            if (sender != null) SwordRidingManager.setRiding(sender, message.active);
         });
         context.setPacketHandled(true);
     }
@@ -232,7 +232,8 @@ public final class ModNetwork {
                                                Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientSwordRidingState.setActive(message.active)));
+                () -> () -> ClientSwordRidingState.applyServerState(message.active,
+                        message.mayfly, message.flying, message.flyingSpeed)));
         context.setPacketHandled(true);
     }
 
@@ -298,7 +299,9 @@ public final class ModNetwork {
     }
 
     public static void sendSwordRidingState(ServerPlayer player, boolean active) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordRidingStatePacket(active));
+        net.minecraft.world.entity.player.Abilities abilities = player.getAbilities();
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordRidingStatePacket(active,
+                abilities.mayfly, abilities.flying, abilities.getFlyingSpeed()));
     }
 
     public static void sendManualGuidanceState(ServerPlayer player, boolean guiding) {
@@ -336,16 +339,28 @@ public final class ModNetwork {
         }
     }
 
-    public record ToggleSwordRidingPacket() {
-    }
-
-    public record SwordRidingStatePacket(boolean active) {
-        private static void encode(SwordRidingStatePacket message, FriendlyByteBuf buffer) {
+    public record ToggleSwordRidingPacket(boolean active) {
+        private static void encode(ToggleSwordRidingPacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.active);
         }
 
+        private static ToggleSwordRidingPacket decode(FriendlyByteBuf buffer) {
+            return new ToggleSwordRidingPacket(buffer.readBoolean());
+        }
+    }
+
+    public record SwordRidingStatePacket(boolean active, boolean mayfly, boolean flying,
+                                         float flyingSpeed) {
+        private static void encode(SwordRidingStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeBoolean(message.active);
+            buffer.writeBoolean(message.mayfly);
+            buffer.writeBoolean(message.flying);
+            buffer.writeFloat(message.flyingSpeed);
+        }
+
         private static SwordRidingStatePacket decode(FriendlyByteBuf buffer) {
-            return new SwordRidingStatePacket(buffer.readBoolean());
+            return new SwordRidingStatePacket(buffer.readBoolean(), buffer.readBoolean(),
+                    buffer.readBoolean(), buffer.readFloat());
         }
     }
 

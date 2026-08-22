@@ -30,14 +30,22 @@ public final class SwordRidingManager {
     private static final String OLD_MAYFLY_TAG = "YujianCraftRidingOldMayfly";
     private static final String OLD_FLYING_TAG = "YujianCraftRidingOldFlying";
     private static final String OLD_SPEED_TAG = "YujianCraftRidingOldSpeed";
+    private static final int RESTORE_GUARD_TICKS = 10;
     private static final Map<UUID, RidingState> STATES = new HashMap<>();
+    private static final Map<UUID, AbilityRestoreGuard> RESTORE_GUARDS = new HashMap<>();
 
     private SwordRidingManager() {
     }
 
-    public static void toggle(ServerPlayer player) {
-        if (STATES.containsKey(player.getUUID())) stop(player, true);
-        else start(player);
+    public static void setRiding(ServerPlayer player, boolean active) {
+        if (active) {
+            if (!STATES.containsKey(player.getUUID())) start(player);
+        } else if (STATES.containsKey(player.getUUID())
+                || player.getPersistentData().getBoolean(ACTIVE_TAG)) {
+            stop(player, true);
+        } else {
+            ModNetwork.sendSwordRidingState(player, false);
+        }
     }
 
     public static boolean isRidingOn(ServerPlayer player, UUID supportSwordId) {
@@ -46,6 +54,7 @@ public final class SwordRidingManager {
     }
 
     private static void start(ServerPlayer player) {
+        RESTORE_GUARDS.remove(player.getUUID());
         ItemStack stack = FlyingSwordItem.findFlyingSword(player);
         if (!(stack.getItem() instanceof FlyingSwordItem swordItem)) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.riding_need_sword"), true);
@@ -83,6 +92,9 @@ public final class SwordRidingManager {
         Entity support = player.serverLevel().getEntity(state.supportSwordId);
         if (support != null) support.discard();
         restoreAbilities(player, state.oldMayfly, state.oldFlying, state.oldFlyingSpeed);
+        RESTORE_GUARDS.put(player.getUUID(), new AbilityRestoreGuard(
+                state.oldMayfly, state.oldFlying && state.oldMayfly, state.oldFlyingSpeed,
+                RESTORE_GUARD_TICKS));
         clearRecoveryData(player);
         ModNetwork.sendSwordRidingState(player, false);
         if (notify) player.displayClientMessage(Component.translatable("message.yujiancraft.riding_stopped"), true);
@@ -93,7 +105,10 @@ public final class SwordRidingManager {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide()
                 || !(event.player instanceof ServerPlayer player)) return;
         RidingState state = STATES.get(player.getUUID());
-        if (state == null) return;
+        if (state == null) {
+            enforceRestoredAbilities(player);
+            return;
+        }
         if (!player.isAlive() || player.isSpectator()
                 || FlyingSwordItem.findFlyingSword(player).isEmpty()
                 || !(player.serverLevel().getEntity(state.supportSwordId) instanceof FlyingSwordEntity)) {
@@ -112,12 +127,18 @@ public final class SwordRidingManager {
 
     @SubscribeEvent
     public static void onDeath(LivingDeathEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) stop(player, false);
+        if (event.getEntity() instanceof ServerPlayer player) {
+            stop(player, false);
+            RESTORE_GUARDS.remove(player.getUUID());
+        }
     }
 
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) stop(player, false);
+        if (event.getEntity() instanceof ServerPlayer player) {
+            stop(player, false);
+            RESTORE_GUARDS.remove(player.getUUID());
+        }
     }
 
     @SubscribeEvent
@@ -154,6 +175,22 @@ public final class SwordRidingManager {
         player.onUpdateAbilities();
     }
 
+    private static void enforceRestoredAbilities(ServerPlayer player) {
+        AbilityRestoreGuard guard = RESTORE_GUARDS.get(player.getUUID());
+        if (guard == null) return;
+        Abilities abilities = player.getAbilities();
+        boolean changed = abilities.mayfly != guard.mayfly
+                || abilities.flying != guard.flying
+                || Math.abs(abilities.getFlyingSpeed() - guard.flyingSpeed) > 1.0E-5F;
+        abilities.mayfly = guard.mayfly;
+        abilities.flying = guard.flying && guard.mayfly;
+        abilities.setFlyingSpeed(guard.flyingSpeed);
+        player.fallDistance = 0.0F;
+        if (changed) player.onUpdateAbilities();
+        if (guard.remainingTicks <= 1) RESTORE_GUARDS.remove(player.getUUID());
+        else RESTORE_GUARDS.put(player.getUUID(), guard.tick());
+    }
+
     private static void clearRecoveryData(ServerPlayer player) {
         CompoundTag data = player.getPersistentData();
         data.remove(ACTIVE_TAG);
@@ -164,5 +201,12 @@ public final class SwordRidingManager {
 
     private record RidingState(UUID supportSwordId, boolean oldMayfly, boolean oldFlying,
                                float oldFlyingSpeed) {
+    }
+
+    private record AbilityRestoreGuard(boolean mayfly, boolean flying, float flyingSpeed,
+                                       int remainingTicks) {
+        private AbilityRestoreGuard tick() {
+            return new AbilityRestoreGuard(mayfly, flying, flyingSpeed, remainingTicks - 1);
+        }
     }
 }

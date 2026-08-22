@@ -116,7 +116,7 @@ public final class YujianCraftConfigScreen extends Screen {
     private void setSwordRidingOption(boolean enabled) {
         if (!enabled && ClientSwordRidingState.isActive()) {
             dev.yujiancraft.network.ModNetwork.CHANNEL.sendToServer(
-                    new dev.yujiancraft.network.ModNetwork.ToggleSwordRidingPacket());
+                    new dev.yujiancraft.network.ModNetwork.ToggleSwordRidingPacket(false));
         }
         ClientOptions.setSwordRidingEnabled(enabled);
     }
