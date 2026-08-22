@@ -141,6 +141,13 @@ function renderPresentationDefaults() {
     inventoryGlint: '物品栏中的飞剑默认显示附魔流光',
     swordEnergyHighlight: '叠加更明亮的能量高光与外层辉光',
     swordOutline: '为飞剑实体启用硬边缘发光轮廓',
+    flameModuleVisual: '安装火纹后在剑刃边缘生成克制火星',
+    lightningModuleVisual: '安装引雷后偶发短促电弧',
+    poisonModuleVisual: '安装蚀毒后在飞行尾迹中混入绿色雾丝',
+    explosionModuleVisual: '安装爆裂后沿剑身产生橙红脉冲',
+    arrowRainModuleVisual: '安装箭雨后显示细小风纹',
+    hitImpactVisual: '命中时显示闪光、冲击环并播放短促声音',
+    workbenchPreview: '在飞剑工作台中显示可旋转的真实渲染预览',
   };
   const grid = $('#presentationGrid'); grid.innerHTML = '';
   state.presentationDefaults.forEach(option => {

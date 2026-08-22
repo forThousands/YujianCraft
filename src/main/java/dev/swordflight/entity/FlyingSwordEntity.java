@@ -14,6 +14,7 @@ import dev.swordflight.config.SwordBalanceConfig;
 import dev.swordflight.combat.SwordEffectEngine;
 import dev.swordflight.combat.SwordTargetingRules;
 import dev.swordflight.item.FlyingSwordItem;
+import dev.swordflight.network.ModNetwork;
 import dev.swordflight.upgrade.SwordModuleData;
 import dev.swordflight.upgrade.FlyingSwordModule;
 import dev.swordflight.visual.FlyingSwordSeries;
@@ -56,6 +57,8 @@ public final class FlyingSwordEntity extends Entity {
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_WHITE_HOT =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_VISUAL_MODULES =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_RIDE_SUPPORT =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
 
@@ -77,6 +80,7 @@ public final class FlyingSwordEntity extends Entity {
     private boolean rideSupport;
     private Vec3 manualLaunchDirection;
     private int manualLaunchTicks;
+    private boolean visualPreview;
 
     public FlyingSwordEntity(EntityType<? extends FlyingSwordEntity> type, Level level) {
         super(type, level);
@@ -97,6 +101,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_SERIES, series.ordinal());
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
+        entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(this.installedModules));
         entityData.set(DATA_FORMATION_SLOT, slot);
         entityData.set(DATA_FORMATION_MODE, mode.ordinal());
         attackCooldown = 20 + slot * 7;
@@ -119,6 +124,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_RIDE_SUPPORT, true);
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
+        entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(this.installedModules));
     }
 
     public void setFormationMode(FormationMode mode) {
@@ -193,6 +199,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.define(DATA_MATERIAL, FlyingSwordMaterial.IRON.ordinal());
         entityData.define(DATA_SERIES, FlyingSwordSeries.STANDARD.ordinal());
         entityData.define(DATA_WHITE_HOT, false);
+        entityData.define(DATA_VISUAL_MODULES, 0);
         entityData.define(DATA_RIDE_SUPPORT, false);
     }
 
@@ -346,6 +353,8 @@ public final class FlyingSwordEntity extends Entity {
                     + SwordEffectEngine.damageBonus(installedModules);
             boolean successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
             if (successfulHit) {
+                ModNetwork.sendSwordImpact(this, target, safeDirection(getDeltaMovement(),
+                        new Vec3(0.0D, 1.0D, 0.0D)));
                 SwordEffectEngine.applyOnHit(owner, target, installedModules);
                 damageSourceSword(owner);
             }
@@ -535,6 +544,36 @@ public final class FlyingSwordEntity extends Entity {
         return entityData.get(DATA_WHITE_HOT);
     }
 
+    public int getVisualModuleLevel(FlyingSwordModule module) {
+        return SwordModuleData.visualEffectLevel(entityData.get(DATA_VISUAL_MODULES), module);
+    }
+
+    public int getVisualModuleMask() {
+        return entityData.get(DATA_VISUAL_MODULES);
+    }
+
+    public boolean isVisualPreview() {
+        return visualPreview;
+    }
+
+    /** Configures an unspawned client entity so the workbench renders the real sword pipeline. */
+    public void configureVisualPreview(ItemStack stack) {
+        if (!(stack.getItem() instanceof FlyingSwordItem swordItem)) return;
+        material = swordItem.getMaterialType();
+        series = swordItem.getSeries();
+        installedModules = SwordModuleData.copyModules(stack);
+        visualPreview = true;
+        phase = FlightPhase.DOCKED;
+        entityData.set(DATA_MATERIAL, material.ordinal());
+        entityData.set(DATA_SERIES, series.ordinal());
+        entityData.set(DATA_DOCKED, true);
+        entityData.set(DATA_OWNER_ID, Optional.empty());
+        entityData.set(DATA_WHITE_HOT,
+                SwordModuleData.getLevel(installedModules, FlyingSwordModule.WHITE_HOT) > 0);
+        entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(installedModules));
+        entityData.set(DATA_RIDE_SUPPORT, false);
+    }
+
     public boolean isVisualRideSupport() {
         return entityData.get(DATA_RIDE_SUPPORT);
     }
@@ -571,6 +610,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_SERIES, series.ordinal());
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(installedModules, FlyingSwordModule.WHITE_HOT) > 0);
+        entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(installedModules));
         entityData.set(DATA_RIDE_SUPPORT, rideSupport);
         if (tag.contains("ManualLaunchX")) {
             manualLaunchDirection = new Vec3(tag.getDouble("ManualLaunchX"), tag.getDouble("ManualLaunchY"),

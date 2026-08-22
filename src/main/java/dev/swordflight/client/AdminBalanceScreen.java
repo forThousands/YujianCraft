@@ -146,7 +146,7 @@ public final class AdminBalanceScreen extends Screen {
     }
 
     private void buildPresentationControls(int left, int top, int panelWidth) {
-        int pageCount = 2;
+        int pageCount = 4;
         Button category = addRenderableWidget(Button.builder(
                         Component.translatable("screen.swordflight.balance.presentation_group_page",
                                 presentationPage + 1, pageCount), button -> { })
@@ -172,12 +172,35 @@ public final class AdminBalanceScreen extends Screen {
                     ClientOptions::swordBodyGlow, ClientOptions::setSwordBodyGlow, ClientOptions.DEFAULT_SWORD_BODY_GLOW);
             addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.swordflight.balance.inventory_glint",
                     ClientOptions::inventoryGlint, ClientOptions::setInventoryGlint, ClientOptions.DEFAULT_INVENTORY_GLINT);
-        } else {
+        } else if (presentationPage == 1) {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.sword_energy_highlight",
                     ClientOptions::swordEnergyHighlight, ClientOptions::setSwordEnergyHighlight,
                     ClientOptions.DEFAULT_SWORD_ENERGY_HIGHLIGHT);
             addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.sword_outline",
                     ClientOptions::swordOutline, ClientOptions::setSwordOutline, ClientOptions.DEFAULT_SWORD_OUTLINE);
+        } else if (presentationPage == 2) {
+            addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.flame_module_visual",
+                    ClientOptions::flameModuleVisual, ClientOptions::setFlameModuleVisual,
+                    ClientOptions.DEFAULT_FLAME_MODULE_VISUAL);
+            addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.lightning_module_visual",
+                    ClientOptions::lightningModuleVisual, ClientOptions::setLightningModuleVisual,
+                    ClientOptions.DEFAULT_LIGHTNING_MODULE_VISUAL);
+            addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.swordflight.balance.poison_module_visual",
+                    ClientOptions::poisonModuleVisual, ClientOptions::setPoisonModuleVisual,
+                    ClientOptions.DEFAULT_POISON_MODULE_VISUAL);
+            addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.swordflight.balance.explosion_module_visual",
+                    ClientOptions::explosionModuleVisual, ClientOptions::setExplosionModuleVisual,
+                    ClientOptions.DEFAULT_EXPLOSION_MODULE_VISUAL);
+        } else {
+            addToggleRow(controlsLeft, top, controlsWidth, "screen.swordflight.balance.arrow_rain_module_visual",
+                    ClientOptions::arrowRainModuleVisual, ClientOptions::setArrowRainModuleVisual,
+                    ClientOptions.DEFAULT_ARROW_RAIN_MODULE_VISUAL);
+            addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.swordflight.balance.hit_impact_visual",
+                    ClientOptions::hitImpactVisual, ClientOptions::setHitImpactVisual,
+                    ClientOptions.DEFAULT_HIT_IMPACT_VISUAL);
+            addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.swordflight.balance.workbench_preview",
+                    ClientOptions::workbenchPreview, ClientOptions::setWorkbenchPreview,
+                    ClientOptions.DEFAULT_WORKBENCH_PREVIEW);
         }
     }
 

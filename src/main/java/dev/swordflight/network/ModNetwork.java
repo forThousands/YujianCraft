@@ -15,9 +15,11 @@ import dev.swordflight.combat.TargetLockManager;
 import dev.swordflight.combat.ManualGuidanceManager;
 import dev.swordflight.flight.SwordRidingManager;
 import dev.swordflight.material.FlyingSwordMaterial;
+import dev.swordflight.entity.FlyingSwordEntity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -34,7 +36,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "8";
+    private static final String PROTOCOL = "9";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Swordflight.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -94,6 +96,9 @@ public final class ModNetwork {
         CHANNEL.registerMessage(16, ManualGuidanceStatePacket.class,
                 ManualGuidanceStatePacket::encode, ManualGuidanceStatePacket::decode,
                 ModNetwork::handleManualGuidanceState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(17, SwordImpactPacket.class,
+                SwordImpactPacket::encode, SwordImpactPacket::decode,
+                ModNetwork::handleSwordImpact, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
@@ -269,6 +274,15 @@ public final class ModNetwork {
         context.setPacketHandled(true);
     }
 
+    private static void handleSwordImpact(SwordImpactPacket message,
+                                          Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.swordflight.client.ClientImpactEffects.accept(message.position(),
+                        message.direction(), message.visualModules, message.material)));
+        context.setPacketHandled(true);
+    }
+
     public static void sendSettings(ServerPlayer player, SwordSettings settings) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
@@ -289,6 +303,13 @@ public final class ModNetwork {
 
     public static void sendManualGuidanceState(ServerPlayer player, boolean guiding) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ManualGuidanceStatePacket(guiding));
+    }
+
+    public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
+        Vec3 position = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
+        CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> sword),
+                new SwordImpactPacket(position, direction, sword.getVisualModuleMask(),
+                        sword.getMaterialType().ordinal()));
     }
 
     public record ToggleFormationPacket() {
@@ -373,6 +394,35 @@ public final class ModNetwork {
 
         private static ManualGuidanceStatePacket decode(FriendlyByteBuf buffer) {
             return new ManualGuidanceStatePacket(buffer.readBoolean());
+        }
+    }
+
+    public record SwordImpactPacket(double x, double y, double z,
+                                    float directionX, float directionY, float directionZ,
+                                    int visualModules, int material) {
+        public SwordImpactPacket(Vec3 position, Vec3 direction, int visualModules, int material) {
+            this(position.x, position.y, position.z, (float) direction.x, (float) direction.y,
+                    (float) direction.z, visualModules, material);
+        }
+
+        public Vec3 position() { return new Vec3(x, y, z); }
+        public Vec3 direction() { return new Vec3(directionX, directionY, directionZ); }
+
+        private static void encode(SwordImpactPacket message, FriendlyByteBuf buffer) {
+            buffer.writeDouble(message.x);
+            buffer.writeDouble(message.y);
+            buffer.writeDouble(message.z);
+            buffer.writeFloat(message.directionX);
+            buffer.writeFloat(message.directionY);
+            buffer.writeFloat(message.directionZ);
+            buffer.writeVarInt(message.visualModules);
+            buffer.writeVarInt(message.material);
+        }
+
+        private static SwordImpactPacket decode(FriendlyByteBuf buffer) {
+            return new SwordImpactPacket(buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
+                    buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readVarInt(),
+                    buffer.readVarInt());
         }
     }
 

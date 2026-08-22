@@ -11,6 +11,7 @@ import dev.swordflight.formation.FormationGeometry;
 import dev.swordflight.registry.ModEntities;
 import dev.swordflight.material.FlyingSwordMaterial;
 import dev.swordflight.visual.FlyingSwordSeries;
+import dev.swordflight.upgrade.FlyingSwordModule;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderType;
@@ -252,6 +253,7 @@ public final class ClientModEvents {
                 renderBladeAura(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
                 poseStack.popPose();
             }
+            renderModuleAccents(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
             poseStack.popPose();
             super.render(sword, yaw, partialTick, poseStack, buffers, packedLight);
         }
@@ -382,6 +384,9 @@ public final class ClientModEvents {
 
         private void renderTrail(FlyingSwordEntity sword, Vec3 renderedPosition, PoseStack poseStack,
                                  MultiBufferSource buffers) {
+            int poisonLevel = sword.getVisualModuleLevel(FlyingSwordModule.POISON);
+            if (!ClientOptions.swordTrail()
+                    && (poisonLevel == 0 || !ClientOptions.poisonModuleVisual())) return;
             List<Vec3> samples = ClientFlightEffects.trailPoints(sword);
             if (samples.isEmpty()) return;
             List<Vec3> path = new ArrayList<>(samples.size() + 1);
@@ -410,14 +415,192 @@ public final class ClientModEvents {
                     : scaleEffectAlpha(235, brightness.trailStrength());
             int coreAlpha = brightness.usesLegacyRenderer() ? 255
                     : scaleEffectAlpha(255, brightness.trailStrength());
-            renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
-                    red, green, blue, 0.24D, outerAlpha);
-            renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
-                    mixWithWhite(red, 0.48F), mixWithWhite(green, 0.48F), mixWithWhite(blue, 0.48F),
-                    0.092D, middleAlpha);
-            renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
-                    mixWithWhite(red, 0.88F), mixWithWhite(green, 0.88F), mixWithWhite(blue, 0.88F),
-                    0.026D, coreAlpha);
+            if (ClientOptions.swordTrail()) {
+                renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
+                        red, green, blue, 0.24D, outerAlpha);
+                renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
+                        mixWithWhite(red, 0.48F), mixWithWhite(green, 0.48F), mixWithWhite(blue, 0.48F),
+                        0.092D, middleAlpha);
+                renderRibbonLayer(vertices, pose, path, renderedPosition, cameraPosition,
+                        mixWithWhite(red, 0.88F), mixWithWhite(green, 0.88F), mixWithWhite(blue, 0.88F),
+                        0.026D, coreAlpha);
+            }
+            if (poisonLevel > 0 && ClientOptions.poisonModuleVisual()) {
+                renderPoisonTrail(vertices, pose, path, renderedPosition, cameraPosition,
+                        sword.tickCount, poisonLevel, brightness);
+            }
+        }
+
+        private static void renderPoisonTrail(VertexConsumer vertices, Matrix4f pose, List<Vec3> path,
+                                              Vec3 renderedPosition, Vec3 cameraPosition, int tick,
+                                              int level, SwordGlowBrightness brightness) {
+            int strandCount = level >= 3 ? 2 : 1;
+            for (int strand = 0; strand < strandCount; strand++) {
+                List<Vec3> mist = new ArrayList<>(path.size());
+                for (int index = 0; index < path.size(); index++) {
+                    float wave = tick * 0.11F + index * 0.72F + strand * 2.3F;
+                    double amplitude = 0.035D + index * 0.006D;
+                    mist.add(path.get(index).add(Mth.sin(wave) * amplitude,
+                            Mth.cos(wave * 0.73F) * amplitude * 0.65D,
+                            Mth.cos(wave) * amplitude));
+                }
+                int alpha = 70 + level * 13;
+                if (!brightness.usesLegacyRenderer()) {
+                    alpha = scaleEffectAlpha(alpha, brightness.trailStrength());
+                }
+                renderRibbonLayer(vertices, pose, mist, renderedPosition, cameraPosition,
+                        102, 238, 116, 0.072D + level * 0.008D, alpha);
+            }
+        }
+
+        private void renderModuleAccents(FlyingSwordEntity sword, float partialTick,
+                                         PoseStack poseStack, MultiBufferSource buffers,
+                                         boolean formalModel) {
+            int flame = sword.getVisualModuleLevel(FlyingSwordModule.FLAME);
+            int lightning = sword.getVisualModuleLevel(FlyingSwordModule.LIGHTNING);
+            int poison = sword.getVisualModuleLevel(FlyingSwordModule.POISON);
+            int explosion = sword.getVisualModuleLevel(FlyingSwordModule.EXPLOSION);
+            int arrowRain = sword.getVisualModuleLevel(FlyingSwordModule.ARROW_RAIN);
+            if (flame + lightning + poison + explosion + arrowRain == 0) return;
+
+            Vec3 camera = entityRenderDispatcher.camera.getPosition();
+            double distanceSquared = sword.isVisualPreview() ? 0.0D : sword.position().distanceToSqr(camera);
+            if (distanceSquared > 48.0D * 48.0D) return;
+            boolean reduced = distanceSquared > 24.0D * 24.0D;
+            float time = sword.tickCount + partialTick;
+            float base = formalModel ? -0.25F : -0.18F;
+            float tip = formalModel ? 1.33F : 1.20F;
+            Matrix4f pose = poseStack.last().pose();
+            VertexConsumer vertices = buffers.getBuffer(RenderType.lightning());
+            SwordGlowBrightness brightness = ClientOptions.glowBrightness();
+            float strength = brightness.usesLegacyRenderer() ? 1.0F : brightness.auraStrength();
+
+            if (flame > 0 && ClientOptions.flameModuleVisual()) {
+                renderFlameSparks(vertices, pose, sword, time, base, tip, flame, reduced, strength);
+            }
+            if (lightning > 0 && ClientOptions.lightningModuleVisual()) {
+                renderLightningArc(vertices, pose, sword, time, base, tip, lightning, reduced, strength);
+            }
+            if (poison > 0 && ClientOptions.poisonModuleVisual()) {
+                renderPoisonWisps(vertices, pose, sword, time, base, tip, poison, reduced, strength);
+            }
+            if (explosion > 0 && ClientOptions.explosionModuleVisual()) {
+                renderExplosionPulse(vertices, pose, sword, time, base, tip, explosion, strength);
+            }
+            if (arrowRain > 0 && ClientOptions.arrowRainModuleVisual()) {
+                renderArrowWind(vertices, pose, sword, time, base, tip, arrowRain, reduced, strength);
+            }
+        }
+
+        private static void renderFlameSparks(VertexConsumer vertices, Matrix4f pose,
+                                              FlyingSwordEntity sword, float time, float base, float tip,
+                                              int level, boolean reduced, float strength) {
+            int count = reduced ? 1 : 1 + level;
+            for (int index = 0; index < count; index++) {
+                float phase = fractional(time / (16.0F - level) + index * 0.31F
+                        + sword.getId() * 0.071F);
+                float visibility = Mth.sin((float) Math.PI * phase);
+                if (visibility < 0.12F) continue;
+                float anchorY = Mth.lerp(fractional(index * 0.37F + time * 0.009F), base + 0.22F, tip - 0.08F);
+                float side = (index & 1) == 0 ? -1.0F : 1.0F;
+                Vec3 start = new Vec3(side * 0.13F, anchorY, Mth.sin(time * 0.07F + index) * 0.045F);
+                Vec3 middle = start.add(side * (0.035F + phase * 0.045F),
+                        -0.035F - phase * 0.07F, Mth.cos(index + time * 0.11F) * 0.035F);
+                Vec3 end = middle.add(side * 0.035F, -0.07F - phase * 0.10F,
+                        Mth.sin(index * 1.7F + time * 0.09F) * 0.04F);
+                int alpha = Mth.clamp(Math.round(220.0F * visibility * strength), 0, 255);
+                renderWispSegment(vertices, pose, start, middle, 0.012F,
+                        255, 176, 54, alpha, Math.round(alpha * 0.75F));
+                renderWispSegment(vertices, pose, middle, end, 0.007F,
+                        255, 92, 24, Math.round(alpha * 0.75F), 0);
+            }
+        }
+
+        private static void renderLightningArc(VertexConsumer vertices, Matrix4f pose,
+                                                FlyingSwordEntity sword, float time, float base, float tip,
+                                                int level, boolean reduced, float strength) {
+            int period = 54 - level * 7;
+            int cycle = Math.floorMod((int) time + sword.getId() * 11, period);
+            if (cycle > (reduced ? 3 : 5 + level)) return;
+            int segments = reduced ? 3 : 4 + level;
+            Vec3 previous = new Vec3(-0.12F, base + 0.25F, 0.02F);
+            int alpha = Mth.clamp(Math.round((205.0F - cycle * 20.0F) * strength), 0, 255);
+            for (int index = 1; index <= segments; index++) {
+                float progress = index / (float) segments;
+                float jitterX = Mth.sin(sword.getId() * 0.73F + index * 4.17F + cycle * 1.9F) * 0.055F;
+                float jitterZ = Mth.cos(sword.getId() * 0.51F + index * 3.31F + cycle * 1.3F) * 0.045F;
+                Vec3 next = new Vec3((index == segments ? 0.12F : jitterX),
+                        Mth.lerp(progress, base + 0.25F, tip - 0.04F), jitterZ);
+                renderWispSegment(vertices, pose, previous, next, 0.010F,
+                        132, 226, 255, alpha, alpha);
+                renderWispSegment(vertices, pose, previous, next, 0.003F,
+                        245, 253, 255, 255, 255);
+                previous = next;
+            }
+        }
+
+        private static void renderPoisonWisps(VertexConsumer vertices, Matrix4f pose,
+                                              FlyingSwordEntity sword, float time, float base, float tip,
+                                              int level, boolean reduced, float strength) {
+            int count = reduced ? 1 : Math.min(3, 1 + level);
+            for (int index = 0; index < count; index++) {
+                float phase = fractional(time / 27.0F + index * 0.39F + sword.getId() * 0.037F);
+                float anchorY = Mth.lerp(fractional(index * 0.47F + time * 0.004F), base + 0.15F, tip - 0.12F);
+                float angle = index * 2.4F + time * 0.025F;
+                Vec3 start = new Vec3(Mth.cos(angle) * 0.11F, anchorY, Mth.sin(angle) * 0.055F);
+                Vec3 middle = new Vec3(Mth.cos(angle + 0.55F) * (0.14F + phase * 0.05F),
+                        anchorY - 0.08F * phase, Mth.sin(angle + 0.55F) * (0.08F + phase * 0.04F));
+                Vec3 end = new Vec3(Mth.cos(angle + 1.0F) * (0.18F + phase * 0.08F),
+                        anchorY - 0.18F * phase, Mth.sin(angle + 1.0F) * (0.11F + phase * 0.05F));
+                int alpha = Mth.clamp(Math.round(105.0F * Mth.sin((float) Math.PI * phase) * strength), 0, 255);
+                renderWispSegment(vertices, pose, start, middle, 0.020F,
+                        106, 229, 119, alpha, Math.round(alpha * 0.65F));
+                renderWispSegment(vertices, pose, middle, end, 0.014F,
+                        76, 174, 92, Math.round(alpha * 0.65F), 0);
+            }
+        }
+
+        private static void renderExplosionPulse(VertexConsumer vertices, Matrix4f pose,
+                                                 FlyingSwordEntity sword, float time, float base, float tip,
+                                                 int level, float strength) {
+            float phase = fractional(time / (38.0F - level * 4.0F) + sword.getId() * 0.023F);
+            float visibility = Mth.sin((float) Math.PI * phase);
+            float y = Mth.lerp(phase, base + 0.10F, tip - 0.04F);
+            float faceRadius = 0.14F + visibility * (0.035F + level * 0.008F);
+            float depthRadius = faceRadius * 0.58F;
+            int alpha = Mth.clamp(Math.round(190.0F * visibility * strength), 0, 255);
+            int sides = 8;
+            for (int side = 0; side < sides; side++) {
+                float a = (float) (Math.PI * 2.0D * side / sides);
+                float b = (float) (Math.PI * 2.0D * (side + 1) / sides);
+                Vec3 start = new Vec3(Mth.cos(a) * faceRadius, y, Mth.sin(a) * depthRadius);
+                Vec3 end = new Vec3(Mth.cos(b) * faceRadius, y, Mth.sin(b) * depthRadius);
+                renderWispSegment(vertices, pose, start, end, 0.009F,
+                        255, 103, 35, alpha, alpha);
+            }
+        }
+
+        private static void renderArrowWind(VertexConsumer vertices, Matrix4f pose,
+                                            FlyingSwordEntity sword, float time, float base, float tip,
+                                            int level, boolean reduced, float strength) {
+            int count = reduced ? 1 : 1 + level;
+            for (int index = 0; index < count; index++) {
+                float phase = fractional(time / 18.0F + index * 0.29F + sword.getId() * 0.019F);
+                float angle = index * 2.399F + time * 0.012F;
+                float radius = 0.17F + index * 0.018F;
+                float centerY = Mth.lerp(phase, base - 0.20F, tip - 0.15F);
+                Vec3 start = new Vec3(Mth.cos(angle) * radius, centerY - 0.18F,
+                        Mth.sin(angle) * radius * 0.52F);
+                Vec3 middle = new Vec3(Mth.cos(angle + 0.14F) * (radius + 0.025F), centerY,
+                        Mth.sin(angle + 0.14F) * (radius + 0.025F) * 0.52F);
+                Vec3 end = new Vec3(Mth.cos(angle + 0.25F) * radius, centerY + 0.20F,
+                        Mth.sin(angle + 0.25F) * radius * 0.52F);
+                int alpha = Mth.clamp(Math.round(135.0F * Mth.sin((float) Math.PI * phase) * strength), 0, 255);
+                renderWispSegment(vertices, pose, start, middle, 0.008F,
+                        205, 242, 255, 0, alpha);
+                renderWispSegment(vertices, pose, middle, end, 0.006F,
+                        229, 249, 255, alpha, 0);
+            }
         }
 
         private static void renderBladeAura(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,

@@ -5,6 +5,13 @@ import net.minecraft.world.item.ItemStack;
 
 public final class SwordModuleData {
     public static final String ROOT_TAG = "SwordModules";
+    private static final FlyingSwordModule[] VISUAL_EFFECTS = {
+            FlyingSwordModule.FLAME,
+            FlyingSwordModule.LIGHTNING,
+            FlyingSwordModule.POISON,
+            FlyingSwordModule.EXPLOSION,
+            FlyingSwordModule.ARROW_RAIN
+    };
 
     private SwordModuleData() {
     }
@@ -52,5 +59,21 @@ public final class SwordModuleData {
             if (module.category() == ModuleCategory.EFFECT && getLevel(modules, module) > 0) return true;
         }
         return false;
+    }
+
+    /** Packs the five effect-module levels into one synced integer (three bits per module). */
+    public static int packVisualEffects(CompoundTag modules) {
+        int packed = 0;
+        for (int index = 0; index < VISUAL_EFFECTS.length; index++) {
+            packed |= (getLevel(modules, VISUAL_EFFECTS[index]) & 0x7) << (index * 3);
+        }
+        return packed;
+    }
+
+    public static int visualEffectLevel(int packed, FlyingSwordModule module) {
+        for (int index = 0; index < VISUAL_EFFECTS.length; index++) {
+            if (VISUAL_EFFECTS[index] == module) return packed >> (index * 3) & 0x7;
+        }
+        return 0;
     }
 }

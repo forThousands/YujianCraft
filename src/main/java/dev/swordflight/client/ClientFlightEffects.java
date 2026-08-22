@@ -112,7 +112,7 @@ public final class ClientFlightEffects {
     }
 
     public static List<Vec3> trailPoints(FlyingSwordEntity sword) {
-        if (!ClientOptions.swordTrail() || sword.isVisuallyDocked()) return List.of();
+        if (sword.isVisuallyDocked()) return List.of();
         ArrayDeque<Vec3> points = TRAILS.get(sword.getId());
         return points == null ? List.of() : List.copyOf(points);
     }

@@ -14,7 +14,7 @@ class ControlPanelTests(unittest.TestCase):
         self.assertGreaterEqual(len(state["effects"]), 27)
         self.assertEqual(3, len(state["combat"]))
         self.assertEqual(4, len(state["riding"]))
-        self.assertEqual(6, len(state["presentationDefaults"]))
+        self.assertEqual(13, len(state["presentationDefaults"]))
         self.assertEqual(13, len(state["recipes"]))
         self.assertGreaterEqual(len(state["recipeCatalog"]), 13)
 

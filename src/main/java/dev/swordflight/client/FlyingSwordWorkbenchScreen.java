@@ -1,10 +1,18 @@
 package dev.swordflight.client;
 
+import com.mojang.blaze3d.platform.Lighting;
+import com.mojang.math.Axis;
+import dev.swordflight.entity.FlyingSwordEntity;
+import dev.swordflight.item.FlyingSwordItem;
 import dev.swordflight.menu.FlyingSwordWorkbenchMenu;
+import dev.swordflight.registry.ModEntities;
 import dev.swordflight.upgrade.FlyingSwordModule;
+import dev.swordflight.upgrade.SwordModuleData;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -18,10 +26,17 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
     private Button previousPageButton;
     private Button nextPageButton;
     private int modulePage;
+    private FlyingSwordEntity previewSword;
+    private int previewTicks;
+    private float previewYaw = -28.0F;
+    private float previewPitch = 13.0F;
+    private float previewZoom = 1.0F;
+    private boolean draggingPreview;
+    private int previewIdleTicks;
 
     public FlyingSwordWorkbenchScreen(FlyingSwordWorkbenchMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 230;
+        imageWidth = 314;
         imageHeight = 230;
         inventoryLabelY = 140;
     }
@@ -61,6 +76,8 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
     @Override
     protected void containerTick() {
         super.containerTick();
+        previewTicks++;
+        if (!draggingPreview && ++previewIdleTicks > 60) previewYaw += 0.45F;
         refreshModuleButtons();
     }
 
@@ -99,6 +116,9 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
         graphics.fill(x + 4, y + 15, x + 98, y + 140, 0xFF222A35);
         graphics.fill(x + 101, y + 15, x + 132, y + 105, 0xFF202731);
         graphics.fill(x + 135, y + 15, x + 225, y + 105, 0xFF222A35);
+        graphics.fill(x + 229, y + 15, x + 310, y + 140, 0xFF222A35);
+        graphics.fill(x + 233, y + 32, x + 306, y + 136, 0xFF0D1219);
+        graphics.fill(x + 234, y + 33, x + 305, y + 135, 0xFF151D27);
         graphics.fill(x + 28, y + 145, x + 202, y + 229, 0xFF202731);
         drawSlot(graphics, x + 112, y + 31);
         drawSlot(graphics, x + 112, y + 67);
@@ -129,6 +149,15 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
                 158, 118, 63, 0x8FA5B5);
         graphics.drawCenteredString(font, Component.translatable("screen.swordflight.workbench.page",
                 modulePage + 1, pageCount()), 51, 116, 0x778594);
+        graphics.drawCenteredString(font, Component.translatable("screen.swordflight.workbench.preview"),
+                269, 20, 0x62DDF0);
+        if (!ClientOptions.workbenchPreview()) {
+            graphics.drawWordWrap(font, Component.translatable("screen.swordflight.workbench.preview_disabled"),
+                    239, 70, 62, 0x778594);
+        } else if (menu.getSlot(0).getItem().isEmpty()) {
+            graphics.drawWordWrap(font, Component.translatable("screen.swordflight.workbench.preview_empty"),
+                    239, 70, 62, 0x778594);
+        }
         graphics.drawString(font, playerInventoryTitle, 35, inventoryLabelY, 0xB8C4CE, false);
     }
 
@@ -144,8 +173,100 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
+        renderSwordPreview(graphics, partialTick);
         renderModuleMaterials(graphics, mouseX, mouseY);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    private void renderSwordPreview(GuiGraphics graphics, float partialTick) {
+        if (!ClientOptions.workbenchPreview() || minecraft == null || minecraft.level == null) return;
+        ItemStack stack = previewStack();
+        if (!(stack.getItem() instanceof FlyingSwordItem)) return;
+        if (previewSword == null || previewSword.level() != minecraft.level) {
+            previewSword = new FlyingSwordEntity(ModEntities.FLYING_SWORD.get(), minecraft.level);
+        }
+        previewSword.configureVisualPreview(stack);
+        previewSword.tickCount = previewTicks;
+        previewSword.setXRot(-90.0F);
+        previewSword.xRotO = -90.0F;
+        previewSword.setYRot(0.0F);
+        previewSword.yRotO = 0.0F;
+
+        graphics.flush();
+        graphics.enableScissor(leftPos + 233, topPos + 32, leftPos + 306, topPos + 136);
+        Lighting.setupForEntityInInventory();
+        graphics.pose().pushPose();
+        graphics.pose().translate(leftPos + 269.5F, topPos + 94.0F, 180.0F);
+        float scale = 43.0F * previewZoom;
+        graphics.pose().scale(scale, -scale, scale);
+        graphics.pose().mulPose(Axis.XP.rotationDegrees(previewPitch));
+        graphics.pose().mulPose(Axis.YP.rotationDegrees(previewYaw));
+        MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
+        minecraft.getEntityRenderDispatcher().render(previewSword, 0.0D, 0.0D, 0.0D,
+                0.0F, partialTick, graphics.pose(), buffers, LightTexture.FULL_BRIGHT);
+        buffers.endBatch();
+        graphics.pose().popPose();
+        Lighting.setupFor3DItems();
+        graphics.disableScissor();
+    }
+
+    private ItemStack previewStack() {
+        ItemStack source = menu.getSlot(0).getItem();
+        if (source.isEmpty()) return ItemStack.EMPTY;
+        ItemStack preview = source.copy();
+        ItemStack input = menu.getSlot(1).getItem();
+        FlyingSwordModule candidate = FlyingSwordModule.fromIngredient(input);
+        if (candidate != null) {
+            int level = candidate.levelForAvailableCount(input.getCount());
+            if (level > 0) SwordModuleData.setLevel(preview, candidate, level);
+        }
+        return preview;
+    }
+
+    private boolean isOverPreview(double mouseX, double mouseY) {
+        return mouseX >= leftPos + 233 && mouseX < leftPos + 306
+                && mouseY >= topPos + 32 && mouseY < topPos + 136;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && ClientOptions.workbenchPreview() && isOverPreview(mouseX, mouseY)) {
+            draggingPreview = true;
+            previewIdleTicks = 0;
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (draggingPreview && button == 0) {
+            previewYaw += (float) dragX * 1.6F;
+            previewPitch = Math.max(-35.0F, Math.min(35.0F, previewPitch - (float) dragY * 1.15F));
+            previewIdleTicks = 0;
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && draggingPreview) {
+            draggingPreview = false;
+            previewIdleTicks = 0;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (ClientOptions.workbenchPreview() && isOverPreview(mouseX, mouseY)) {
+            previewZoom = Math.max(0.68F, Math.min(1.48F, previewZoom + (float) delta * 0.08F));
+            previewIdleTicks = 0;
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private void renderModuleMaterials(GuiGraphics graphics, int mouseX, int mouseY) {
