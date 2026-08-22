@@ -33,5 +33,17 @@ devtools/control_panel/backups/
 __pycache__/
 *.py[cod]
 
+# editors and operating systems
+.vscode/
+.DS_Store
+Thumbs.db
+
+# local logs and generated Maven test repository
+*.log
+logs/
+crash-reports/
+mcmodsrepo/
+src/generated/resources/.cache/
+
 # Files from Forge MDK
 forge*changelog.txt

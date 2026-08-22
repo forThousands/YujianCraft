@@ -8,15 +8,15 @@
       "result": "swordflight:diamond_flying_sword",
       "count": 1,
       "grid": [
+        "",
         "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
         "minecraft:diamond",
         "minecraft:diamond_sword",
         "minecraft:diamond",
+        "",
         "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        ""
       ]
     },
     {
@@ -44,15 +44,15 @@
       "result": "swordflight:flying_sword_workbench",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "minecraft:amethyst_shard",
+        "minecraft:iron_ingot",
+        "minecraft:amethyst_shard",
+        "minecraft:iron_ingot",
         "minecraft:crafting_table",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:iron_ingot",
+        "minecraft:amethyst_shard",
+        "minecraft:iron_ingot",
+        "minecraft:amethyst_shard"
       ]
     },
     {
@@ -62,15 +62,15 @@
       "result": "swordflight:golden_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
+        "minecraft:gold_ingot",
+        "",
+        "minecraft:gold_ingot",
         "minecraft:golden_sword",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:gold_ingot",
+        "",
+        "minecraft:gold_ingot",
+        ""
       ]
     },
     {
@@ -98,15 +98,15 @@
       "result": "swordflight:iron_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
+        "minecraft:iron_ingot",
+        "",
+        "minecraft:iron_ingot",
         "minecraft:iron_sword",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:iron_ingot",
+        "",
+        "minecraft:iron_ingot",
+        ""
       ]
     },
     {
@@ -134,15 +134,15 @@
       "result": "swordflight:netherite_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
+        "minecraft:netherite_scrap",
+        "",
+        "minecraft:netherite_scrap",
         "minecraft:netherite_sword",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:netherite_scrap",
+        "",
+        "minecraft:netherite_scrap",
+        ""
       ]
     },
     {
@@ -170,15 +170,15 @@
       "result": "swordflight:stone_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
+        "minecraft:cobblestone",
+        "",
+        "minecraft:cobblestone",
         "minecraft:stone_sword",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:cobblestone",
+        "",
+        "minecraft:cobblestone",
+        ""
       ]
     },
     {
@@ -206,15 +206,15 @@
       "result": "swordflight:wooden_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
+        "",
+        "minecraft:oak_planks",
+        "",
+        "minecraft:oak_planks",
         "minecraft:wooden_sword",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond",
-        "minecraft:diamond"
+        "minecraft:oak_planks",
+        "",
+        "minecraft:oak_planks",
+        ""
       ]
     },
     {

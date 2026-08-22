@@ -41,7 +41,7 @@ public final class SwordflightConfigScreen extends Screen {
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
                         settings.targetingMode().next(), settings.attackMode())),
                 () -> update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                        settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, settings.attackMode())), true);
+                        settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, settings.attackMode())), true);
 
         attackButton = addModeRow(centerX, top + 25, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
@@ -66,7 +66,7 @@ public final class SwordflightConfigScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.translatable("screen.swordflight.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                            settings.crosshairLockRadius(), TargetingMode.AUTOMATIC, AttackMode.SORTIE));
+                            settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE));
                     ClientOptions.setOptimizedThirdPerson(false);
                     setSwordRidingOption(true);
                     ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW);

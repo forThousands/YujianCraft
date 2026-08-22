@@ -128,7 +128,7 @@ public final class FlyingSwordItem extends Item {
     }
 
     public static FormationMode getFormationMode(ItemStack stack) {
-        return stack.hasTag() ? FormationMode.fromName(stack.getTag().getString(MODE_TAG)) : FormationMode.FAN;
+        return stack.hasTag() ? FormationMode.fromName(stack.getTag().getString(MODE_TAG)) : FormationMode.FAN_ALIGNED;
     }
 
     public FlyingSwordMaterial getMaterialType() {

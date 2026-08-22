@@ -63,13 +63,13 @@ public final class FlyingSwordEntity extends Entity {
     private UUID targetId;
     private int formationSlot;
     private int attackCooldown;
-    private FormationMode formationMode = FormationMode.FAN;
+    private FormationMode formationMode = FormationMode.FAN_ALIGNED;
     private FlightPhase phase = FlightPhase.DOCKED;
     private Vec3 fixedWaypoint;
     private int minimumDockTicks = SwordSettings.DEFAULT_MINIMUM_DOCK_TICKS;
     private double automaticTargetRadius = SwordSettings.DEFAULT_AUTOMATIC_RADIUS;
     private double crosshairLockRadius = SwordSettings.DEFAULT_LOCK_RADIUS;
-    private TargetingMode targetingMode = TargetingMode.AUTOMATIC;
+    private TargetingMode targetingMode = TargetingMode.CROSSHAIR_LOCK;
     private AttackMode attackMode = AttackMode.SORTIE;
     private FlyingSwordMaterial material = FlyingSwordMaterial.IRON;
     private FlyingSwordSeries series = FlyingSwordSeries.STANDARD;
@@ -186,7 +186,7 @@ public final class FlyingSwordEntity extends Entity {
 
     @Override
     protected void defineSynchedData() {
-        entityData.define(DATA_FORMATION_MODE, FormationMode.FAN.ordinal());
+        entityData.define(DATA_FORMATION_MODE, FormationMode.FAN_ALIGNED.ordinal());
         entityData.define(DATA_FORMATION_SLOT, 0);
         entityData.define(DATA_DOCKED, true);
         entityData.define(DATA_OWNER_ID, Optional.empty());

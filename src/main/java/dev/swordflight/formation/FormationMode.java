@@ -21,9 +21,9 @@ public enum FormationMode {
 
     public FormationMode next() {
         return switch (this) {
-            case FAN -> RING;
-            case RING -> FAN_ALIGNED;
-            case FAN_ALIGNED -> FAN;
+            case FAN_ALIGNED -> RING;
+            case RING -> FAN;
+            case FAN -> FAN_ALIGNED;
         };
     }
 
@@ -41,6 +41,6 @@ public enum FormationMode {
                 return mode;
             }
         }
-        return FAN;
+        return FAN_ALIGNED;
     }
 }

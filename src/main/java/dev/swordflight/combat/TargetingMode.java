@@ -16,10 +16,14 @@ public enum TargetingMode {
     }
 
     public TargetingMode next() {
-        return values()[(ordinal() + 1) % values().length];
+        return switch (this) {
+            case CROSSHAIR_LOCK -> AUTOMATIC;
+            case AUTOMATIC -> MANUAL_GUIDANCE;
+            case MANUAL_GUIDANCE -> CROSSHAIR_LOCK;
+        };
     }
 
     public static TargetingMode fromOrdinal(int ordinal) {
-        return ordinal >= 0 && ordinal < values().length ? values()[ordinal] : AUTOMATIC;
+        return ordinal >= 0 && ordinal < values().length ? values()[ordinal] : CROSSHAIR_LOCK;
     }
 }

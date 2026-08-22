@@ -1,0 +1,37 @@
+name: Bug 报告
+description: 报告可复现的游戏、界面或兼容性问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Swordflight 版本
+      placeholder: 例如 0.9.13
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: Minecraft、Forge、Java、其他模组和光影版本
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: 请按顺序列出操作
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 请先删除令牌、服务器地址和个人信息

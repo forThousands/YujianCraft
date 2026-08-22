@@ -21,13 +21,13 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
         minimumDockTicks = Mth.clamp(minimumDockTicks, MINIMUM_DOCK_TICKS, MAXIMUM_DOCK_TICKS);
         automaticTargetRadius = Mth.clamp(automaticTargetRadius, MINIMUM_AUTOMATIC_RADIUS, MAXIMUM_AUTOMATIC_RADIUS);
         crosshairLockRadius = Mth.clamp(crosshairLockRadius, MINIMUM_LOCK_RADIUS, MAXIMUM_LOCK_RADIUS);
-        if (targetingMode == null) targetingMode = TargetingMode.AUTOMATIC;
+        if (targetingMode == null) targetingMode = TargetingMode.CROSSHAIR_LOCK;
         if (attackMode == null) attackMode = AttackMode.SORTIE;
     }
 
     public static SwordSettings defaults() {
         return new SwordSettings(DEFAULT_MINIMUM_DOCK_TICKS, DEFAULT_AUTOMATIC_RADIUS, DEFAULT_LOCK_RADIUS,
-                TargetingMode.AUTOMATIC, AttackMode.SORTIE);
+                TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE);
     }
 
     public static SwordSettings fromNetwork(int dockTicks, double automaticRadius, double lockRadius,

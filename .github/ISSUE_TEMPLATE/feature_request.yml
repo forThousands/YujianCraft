@@ -1,0 +1,25 @@
+name: 功能建议
+description: 提议原创玩法、表现或开发工具改进
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 请说明操作方式、边界情况和可能的性能影响
+    validations:
+      required: true
+  - type: checkboxes
+    id: originality
+    attributes:
+      label: 原创边界
+      options:
+        - label: 建议不要求复制其他作品的专有设定、名称或素材
+          required: true
