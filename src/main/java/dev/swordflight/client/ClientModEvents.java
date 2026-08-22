@@ -532,17 +532,19 @@ public final class ClientModEvents {
             int cycle = Math.floorMod((int) time + sword.getId() * 11, period);
             if (cycle > (reduced ? 3 : 5 + level)) return;
             int segments = reduced ? 3 : 4 + level;
-            Vec3 previous = new Vec3(-0.12F, base + 0.25F, 0.02F);
-            int alpha = Mth.clamp(Math.round((205.0F - cycle * 20.0F) * strength), 0, 255);
+            float startY = base + 0.20F;
+            float tipReach = 0.28F + level * 0.06F;
+            Vec3 previous = new Vec3(-0.18F, startY, 0.03F);
+            int alpha = Mth.clamp(Math.round((255.0F - cycle * 16.0F) * strength), 0, 255);
             for (int index = 1; index <= segments; index++) {
                 float progress = index / (float) segments;
-                float jitterX = Mth.sin(sword.getId() * 0.73F + index * 4.17F + cycle * 1.9F) * 0.055F;
-                float jitterZ = Mth.cos(sword.getId() * 0.51F + index * 3.31F + cycle * 1.3F) * 0.045F;
-                Vec3 next = new Vec3((index == segments ? 0.12F : jitterX),
-                        Mth.lerp(progress, base + 0.25F, tip - 0.04F), jitterZ);
-                renderWispSegment(vertices, pose, previous, next, 0.010F,
+                float jitterX = Mth.sin(sword.getId() * 0.73F + index * 4.17F + cycle * 1.9F) * 0.082F;
+                float jitterZ = Mth.cos(sword.getId() * 0.51F + index * 3.31F + cycle * 1.3F) * 0.062F;
+                Vec3 next = new Vec3((index == segments ? 0.18F : jitterX),
+                        Mth.lerp(progress, startY, tip + tipReach), jitterZ);
+                renderWispSegment(vertices, pose, previous, next, 0.018F,
                         132, 226, 255, alpha, alpha);
-                renderWispSegment(vertices, pose, previous, next, 0.003F,
+                renderWispSegment(vertices, pose, previous, next, 0.006F,
                         245, 253, 255, 255, 255);
                 previous = next;
             }
