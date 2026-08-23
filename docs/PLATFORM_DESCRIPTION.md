@@ -6,6 +6,10 @@ MC 百科：建议复制正文后，在编辑器中将同名图片重新上传�
 
 # 御剑工艺 / Yujian Craft
 
+> 🌐 **Language Support / 语言支持**<br>
+> **Yujian Craft fully supports English and Simplified Chinese.** All item names, interfaces, settings, key prompts, and gameplay messages are localized, so the mod can be played and configured entirely in English.<br>
+> **御剑工艺完整支持简体中文与英文。** 物品名称、界面、设置、按键提示和游戏消息均已本地化，可完整使用任一语言游玩。
+
 ![御剑工艺 / Yujian Craft](https://raw.githubusercontent.com/forThousands/YujianCraft/main/docs/images/hero-cover.png)
 
 **以神识驭剑，以原版材料铸造属于 Minecraft 的飞剑战斗。**<br>
