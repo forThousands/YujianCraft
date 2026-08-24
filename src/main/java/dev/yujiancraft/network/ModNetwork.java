@@ -39,7 +39,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "14";
+    private static final String PROTOCOL = "15";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -114,6 +114,33 @@ public final class ModNetwork {
         CHANNEL.registerMessage(21, ArtifactActionPacket.class,
                 ArtifactActionPacket::encode, ArtifactActionPacket::decode,
                 ModNetwork::handleArtifactAction, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(22, CycleTechniquePacket.class,
+                (message, buffer) -> { }, buffer -> new CycleTechniquePacket(),
+                ModNetwork::handleCycleTechnique, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(23, TrialCountdownPacket.class,
+                TrialCountdownPacket::encode, TrialCountdownPacket::decode,
+                ModNetwork::handleTrialCountdown, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    }
+
+    private static void handleCycleTechnique(CycleTechniquePacket message,
+                                             Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) {
+                SwordSettings settings = FlyingSwordItem.cycleTechnique(sender);
+                sendSettings(sender, settings);
+            }
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleTrialCountdown(TrialCountdownPacket message,
+                                             Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ClientTrialCountdownState.show(message.seconds)));
+        context.setPacketHandled(true);
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
@@ -381,6 +408,10 @@ public final class ModNetwork {
                 new ManualTrialResultPacket(damage, dps, mode));
     }
 
+    public static void sendTrialCountdown(ServerPlayer player, int seconds) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new TrialCountdownPacket(seconds));
+    }
+
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
         Vec3 safeDirection = direction.lengthSqr() < 1.0E-6D
                 ? new Vec3(0.0D, 1.0D, 0.0D) : direction.normalize();
@@ -419,6 +450,19 @@ public final class ModNetwork {
 
 
     public record RequestSettingsPacket() {
+    }
+
+    public record CycleTechniquePacket() {
+    }
+
+    public record TrialCountdownPacket(int seconds) {
+        private static void encode(TrialCountdownPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.seconds);
+        }
+
+        private static TrialCountdownPacket decode(FriendlyByteBuf buffer) {
+            return new TrialCountdownPacket(buffer.readVarInt());
+        }
     }
 
     public record ArtifactActionPacket(boolean hasBlock, net.minecraft.core.BlockPos blockPos,

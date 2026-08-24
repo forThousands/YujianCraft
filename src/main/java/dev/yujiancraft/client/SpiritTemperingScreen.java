@@ -232,14 +232,12 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.tempering.attempts",
                 attempts, WanxiangSwordData.MAX_TEMPERINGS), 187, 87,
                 attempts >= WanxiangSwordData.MAX_TEMPERINGS ? 0xF08F7D : 0xE2C768);
-        graphics.drawCenteredString(font, Component.translatable(menu.shapeConfirmed()
-                        ? "screen.yujiancraft.tempering.shaping_ready"
-                        : "screen.yujiancraft.tempering.shaping_needed"),
-                 187, 123, menu.shapeConfirmed() ? 0x7CE6B2 : 0xB9A7C6);
-        graphics.drawCenteredString(font, Component.translatable(menu.roleConfirmed()
-                        ? "screen.yujiancraft.tempering.role_ready"
-                        : "screen.yujiancraft.tempering.role_needed"),
-                187, 134, menu.roleConfirmed() ? 0x7CE6B2 : 0xB9A7C6);
+        // Compact status sigils live beside the buttons instead of drawing translated text
+        // through the Shaping controls.
+        graphics.drawString(font, menu.roleConfirmed() ? "✓" : "·",
+                126, 100, menu.roleConfirmed() ? 0x7CE6B2 : 0x7D7187, false);
+        graphics.drawString(font, menu.shapeConfirmed() ? "✓" : "·",
+                126, 122, menu.shapeConfirmed() ? 0x7CE6B2 : 0x7D7187, false);
         graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.tempering.cost_entry",
                 menu.experienceCost()), 135, 166, 104, 0xE2C768);
     }

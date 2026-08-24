@@ -91,6 +91,35 @@ public final class SwordModuleData {
                 ? Math.max(0, Math.min(maximum, sword.getTag().getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
     }
 
+    public static int virtualDurabilityMaximum(ItemStack sword) {
+        return WanxiangSwordData.isTempered(sword)
+                ? SwordEffectEngine.durabilityBonus(getLevel(sword, FlyingSwordModule.DURABILITY)) : 0;
+    }
+
+    /** Restores real and module-provided durability while preserving every module and enchantment. */
+    public static int repairWithSpirit(ItemStack sword, int requestedAmount) {
+        int amount = Math.max(0, requestedAmount);
+        if (amount == 0) return 0;
+        int repaired = 0;
+        int realDamage = sword.getDamageValue();
+        int realRepair = Math.min(realDamage, amount);
+        if (realRepair > 0) {
+            sword.setDamageValue(realDamage - realRepair);
+            repaired += realRepair;
+            amount -= realRepair;
+        }
+        int virtualMaximum = virtualDurabilityMaximum(sword);
+        if (amount > 0 && virtualMaximum > 0) {
+            int remaining = virtualDurabilityRemaining(sword);
+            int virtualRepair = Math.min(virtualMaximum - remaining, amount);
+            if (virtualRepair > 0) {
+                sword.getOrCreateTag().putInt(VIRTUAL_DURABILITY_TAG, remaining + virtualRepair);
+                repaired += virtualRepair;
+            }
+        }
+        return repaired;
+    }
+
     public static CompoundTag copyModules(ItemStack sword) {
         return sword.hasTag() ? sword.getTag().getCompound(ROOT_TAG).copy() : new CompoundTag();
     }

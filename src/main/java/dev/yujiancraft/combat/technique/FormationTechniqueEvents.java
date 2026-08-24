@@ -51,7 +51,9 @@ public final class FormationTechniqueEvents {
         float original = event.getAmount();
         event.setAmount((float) Math.max(0.0D, original * (1.0D - TechniqueConfig.guardReduction())));
         guard.triggerGuardImpact();
-        guard.consumeSourceDurability(player, TechniqueConfig.guardDurability());
+        int durabilityCost = TechniqueConfig.guardDurability()
+                + (int) Math.ceil(original * TechniqueConfig.guardDurabilityPerDamage());
+        guard.consumeSourceDurability(player, durabilityCost);
         Vec3 impact = FormationGeometry.guardPosition(player, guard.getFormationSlot(), 0.2D);
         player.serverLevel().sendParticles(ParticleTypes.FLASH, impact.x, impact.y, impact.z,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);

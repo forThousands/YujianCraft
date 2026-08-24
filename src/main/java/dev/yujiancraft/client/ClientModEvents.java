@@ -96,6 +96,14 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_G,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping SWITCH_TECHNIQUE = new KeyMapping(
+            "key.yujiancraft.switch_technique",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_J,
+            "key.categories.yujiancraft"
+    );
 
     private ClientModEvents() {
     }
@@ -157,12 +165,14 @@ public final class ClientModEvents {
         event.register(OPEN_CONFIG);
         event.register(TOGGLE_SWORDS);
         event.register(ARTIFACT_ACTION);
+        event.register(SWITCH_TECHNIQUE);
     }
 
     @SubscribeEvent
     public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("optimized_third_person_crosshair",
                 OptimizedThirdPersonController::renderCrosshair);
+        event.registerAboveAll("spirit_trial_countdown", ClientTrialCountdownState::render);
     }
 
     @SubscribeEvent
@@ -173,6 +183,8 @@ public final class ClientModEvents {
                     FlyingSwordWorkbenchScreen::new);
             MenuScreens.register(dev.yujiancraft.registry.ModMenus.SPIRIT_TEMPERING_TABLE.get(),
                     SpiritTemperingScreen::new);
+            MenuScreens.register(dev.yujiancraft.registry.ModMenus.SPIRIT_REPLENISHING_TABLE.get(),
+                    SpiritReplenishingScreen::new);
         });
     }
 

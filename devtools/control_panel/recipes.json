@@ -254,6 +254,24 @@
       ]
     },
     {
+      "id": "spirit_replenishing_table",
+      "type": "shaped",
+      "category": "decorations",
+      "result": "yujiancraft:spirit_replenishing_table",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "minecraft:iron_ingot",
+        "minecraft:smithing_table",
+        "minecraft:iron_ingot",
+        "minecraft:deepslate_tiles",
+        "minecraft:deepslate_tiles",
+        "minecraft:deepslate_tiles"
+      ]
+    },
+    {
       "id": "yujian_guide",
       "type": "shapeless",
       "category": "misc",

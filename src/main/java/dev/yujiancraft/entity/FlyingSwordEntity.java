@@ -29,6 +29,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -55,6 +56,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.joml.Vector3f;
 
 public final class FlyingSwordEntity extends Entity {
     private static final EntityDataAccessor<Integer> DATA_FORMATION_MODE =
@@ -175,8 +177,13 @@ public final class FlyingSwordEntity extends Entity {
         crosshairLockRadius = settings.crosshairLockRadius();
         targetingMode = settings.targetingMode();
         attackMode = settings.attackMode();
+        TechniqueMode previousTechnique = techniqueMode;
         techniqueMode = settings.techniqueMode();
         entityData.set(DATA_TECHNIQUE, techniqueMode.ordinal());
+        if (previousTechnique != techniqueMode && phase != FlightPhase.DOCKED && !rideSupport) {
+            actionBlockPos = null;
+            beginReturn();
+        }
     }
 
     public boolean isOwnedBy(net.minecraft.world.entity.player.Player player) {
@@ -517,19 +524,20 @@ public final class FlyingSwordEntity extends Entity {
 
     private void tickSweep(ServerPlayer owner, ServerLevel serverLevel) {
         int duration = TechniqueConfig.sweepDuration();
-        int approachTicks = 6;
+        int approachTicks = 4;
         double progress = Mth.clamp((techniqueTicks - approachTicks) / (double) Math.max(1, duration), 0.0D, 1.0D);
         Vec3 forward = Vec3.directionFromRotation(0.0F, owner.getYRot()).normalize();
         Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
         double baseAngle = Math.PI * 2.0D * formationSlot / 6.0D;
-        double angle = baseAngle - Math.PI / 3.0D + progress * Math.PI * 2.0D / 3.0D;
+        double angle = baseAngle - Math.PI / 3.0D
+                + progress * Math.PI * 2.0D * TechniqueConfig.sweepRotations();
         Vec3 radial = forward.scale(Math.cos(angle)).add(right.scale(Math.sin(angle))).normalize();
         Vec3 desired = owner.position().add(0.0D, 0.95D + (formationSlot % 2) * 0.16D, 0.0D)
                 .add(radial.scale(TechniqueConfig.sweepRadius()));
         Vec3 previous = position();
         Vec3 tangent = forward.scale(-Math.sin(angle)).add(right.scale(Math.cos(angle)));
         if (techniqueTicks < approachTicks) {
-            flyToward(desired, 0.34D, 0.9D);
+            flyToward(desired, 0.48D, 1.22D);
             faceDirection(tangent, 0.55D);
             techniqueTicks++;
             return;
@@ -557,24 +565,56 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void tickSwordQiCharge(ServerPlayer owner, ServerLevel serverLevel) {
-        Vec3 forward = Vec3.directionFromRotation(0.0F, owner.getYRot()).normalize();
-        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
-        Vec3 desired = owner.position().add(0.0D, 1.0D + (formationSlot % 2) * 0.2D, 0.0D)
-                .add(forward.scale(0.55D)).add(right.scale((formationSlot - 2.5D) * 0.58D));
-        flyToward(desired, 0.38D, 0.72D);
-        faceDirection(forward, 0.8D);
-        techniqueTicks++;
-        if (techniqueTicks < 14) return;
-        if (formationSlot == 0) {
-            Entity raw = targetId == null ? null : serverLevel.getEntity(targetId);
-            Vec3 direction = raw instanceof LivingEntity living && living.isAlive()
-                    ? living.position().add(0.0D, living.getBbHeight() * 0.55D, 0.0D).subtract(position())
-                    : owner.getViewVector(1.0F);
-            SwordQiEntity.spawn(serverLevel, owner, displayStack, position(),
-                    safeDirection(direction, forward), sourceBindingId);
+        Entity raw = targetId == null ? null : serverLevel.getEntity(targetId);
+        if (!(raw instanceof LivingEntity target) || !target.isAlive()
+                || !SwordTargetingRules.canActivelyTarget(owner, target)) {
+            beginReturn();
+            return;
         }
+        Vec3 targetPoint = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
+        Vec3 circleCentre = target.position().add(0.0D,
+                target.getBbHeight() + TechniqueConfig.qiHeight(), 0.0D);
+        double radius = Math.max(target.getBbWidth() * 0.5D + TechniqueConfig.qiRadiusPadding(), 2.0D);
+        double angle = Math.PI * 2.0D * formationSlot / FlyingSwordItem.FORMATION_SIZE;
+        Vec3 desired = circleCentre.add(Math.cos(angle) * radius, 0.0D, Math.sin(angle) * radius);
+        flyToward(desired, 0.44D, 1.08D);
+        faceDirection(targetPoint.subtract(position()), 0.82D);
+        techniqueTicks++;
+        int gatherTicks = TechniqueConfig.qiGatherTicks();
+        int releaseTick = gatherTicks + TechniqueConfig.qiHoldTicks();
+        if (techniqueTicks >= gatherTicks && isQiCoordinator(owner)) {
+            renderQiRing(serverLevel, circleCentre, radius);
+            if (techniqueTicks == releaseTick) {
+                Vec3 origin = circleCentre.add(0.0D, -0.15D, 0.0D);
+                SwordQiEntity.spawn(serverLevel, owner, displayStack, origin,
+                        safeDirection(targetPoint.subtract(origin), new Vec3(0.0D, -1.0D, 0.0D)),
+                        sourceBindingId);
+            }
+        }
+        if (techniqueTicks <= releaseTick) return;
         postDockCooldown = TechniqueConfig.qiCooldown();
-        beginReturn();
+        // Every gathered implement dives after the shared ring releases its sword-qi wave.
+        phase = FlightPhase.HOMING;
+    }
+
+    private boolean isQiCoordinator(ServerPlayer owner) {
+        return FlyingSwordItem.getOwnedFormationSwords(owner).stream()
+                .filter(sword -> sword.phase == FlightPhase.QI_CHARGE
+                        && java.util.Objects.equals(sword.targetId, targetId))
+                .mapToInt(FlyingSwordEntity::getFormationSlot).min().orElse(formationSlot) == formationSlot;
+    }
+
+    private void renderQiRing(ServerLevel level, Vec3 centre, double radius) {
+        if ((techniqueTicks & 1) != 0) return;
+        int color = material.glowColor();
+        Vector3f rgb = new Vector3f(((color >> 16) & 0xFF) / 255.0F,
+                ((color >> 8) & 0xFF) / 255.0F, (color & 0xFF) / 255.0F);
+        DustParticleOptions dust = new DustParticleOptions(rgb, 1.0F);
+        for (int index = 0; index < 32; index++) {
+            double angle = Math.PI * 2.0D * index / 32.0D;
+            level.sendParticles(dust, centre.x + Math.cos(angle) * radius, centre.y,
+                    centre.z + Math.sin(angle) * radius, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
     }
 
     private void tickToolApproach(ServerPlayer owner) {

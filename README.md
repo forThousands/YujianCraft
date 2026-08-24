@@ -16,7 +16,7 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.1`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.2`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
@@ -131,11 +131,15 @@ An implement's nature determines the ritual's recommended art and safe presentat
 | 术式 / Art | 行为 / Behaviour |
 | --- | --- |
 | **穿刺 / Piercing** | 保留经典单次出击、持续穿刺与神识御剑 / Classic sorties, relentless piercing, and Spirit Sword Guidance |
-| **环斩 / Circling Sweep** | 六器沿玩家周身划出短促弧线，按可见轨迹进行近身范围攻击 / Six implements trace short visible arcs around the player for close-range area attacks |
-| **剑气 / Sword-Qi Wave** | 整阵蓄势后由主御器释放一道受方块阻挡且不破坏地形的剑气 / The formation charges and the leading implement launches a terrain-safe, block-colliding wave |
-| **万象护阵 / Myriad Guard** | 六面朝外的护阵按伤害来向格挡并承担真实源物品耐久 / Six outward guards intercept directional damage and consume durability on the real source item |
-| **役器 / Spirit Toolcraft** | 准心指向合适方块并按 `G`，主御器飞出完成一次可被领地事件取消的开采 / Aim at a suitable block and press `G`; the leading implement performs one claim-aware mining action |
-| **灵钓 / Spirit Fishing** | 准心指向水域并按 `G`，等待后从原版钓鱼战利品表取回收获 / Aim at water and press `G`; after a wait, loot returns from the vanilla fishing table |
+| **环斩 / Circling Sweep** | 六器高速环绕多周，按可见轨迹进行近身范围攻击 / Six implements complete several fast visible circuits for close-range area attacks |
+| **剑气 / Sword-Qi Wave** | 所有就绪御器在目标上空结成光环，放出剑气后同时俯冲 / Every ready implement forms a luminous ring above the target, releases a wave, then dives |
+| **万象护阵 / Myriad Guard** | 按来向格挡，耐久消耗包含基础值并随承受伤害增加 / Directional interception pays base durability plus a cost scaled by blocked damage |
+| **役器 / Spirit Toolcraft** | 每次 `G` 派出下一件就绪御器，最多六件并发采掘，速度与掉落遵循原版工具规则 / Every `G` dispatches the next ready implement; up to six jobs follow vanilla tool rules |
+| **灵钓 / Spirit Fishing** | 可直接瞄准水面连续派出六件钓具，收获直接返回背包 / Aim at water and dispatch up to six concurrent fishing implements; loot returns to inventory |
+
+`Ctrl+J` 可不打开设置界面直接切换服务端允许的御器术式。补灵台每消耗一枚灵晶，会恢复飞剑实体耐久与耐久核心灵性耐久总和的 25%。
+
+`Ctrl+J` cycles server-permitted arts without opening the settings screen. The Spirit Replenishing Table consumes one Spirit Crystal to restore 25% of combined physical and module durability.
 
 环斩、剑气、护阵、役器和灵钓的范围、伤害倍率、冷却、目标数量与等待时间保存在世界级 `serverconfig/yujiancraft-techniques-server.toml`，由服务端单独裁决。灵钓继承玩家幸运、海之眷顾和饵钓；优化第三人称会提交屏幕中央的方块，但服务端仍复核距离、区块和遮挡。
 

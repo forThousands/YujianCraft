@@ -24,7 +24,7 @@ import net.minecraftforge.event.level.BlockEvent;
 import java.util.Comparator;
 import java.util.List;
 
-/** Validates the single contextual action key and delegates only to a ready formation sword. */
+/** Validates the contextual action key and delegates each press to the next ready implement. */
 public final class ArtifactActionManager {
     private ArtifactActionManager() {
     }
@@ -41,15 +41,14 @@ public final class ArtifactActionManager {
             player.displayClientMessage(Component.translatable("message.yujiancraft.technique.no_context_action"), true);
             return;
         }
-        double range = technique == TechniqueMode.TOOL_USE
-                ? TechniqueConfig.toolRange() : TechniqueConfig.fishingRange();
-        if (!validClientBlockHit(player, requestedPos, range)) {
+        double range = FlyingSwordItem.getSettings(player).crosshairLockRadius();
+        if (technique == TechniqueMode.TOOL_USE && !validClientBlockHit(player, requestedPos, range, false)) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.technique.no_block"), true);
             return;
         }
         List<FlyingSwordEntity> swords = FlyingSwordItem.ensureFormation(player, source);
         FlyingSwordEntity actor = swords.stream()
-                .filter(sword -> sword.getFormationSlot() == 0 && sword.isReadyForArtifactAction())
+                .filter(FlyingSwordEntity::isReadyForArtifactAction)
                 .min(Comparator.comparingInt(FlyingSwordEntity::getFormationSlot)).orElse(null);
         if (actor == null) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.technique.not_ready"), true);
@@ -57,17 +56,12 @@ public final class ArtifactActionManager {
         }
         BlockPos pos = requestedPos;
         if (technique == TechniqueMode.TOOL_USE) {
-            if (!canMine(player, source, pos) || !actor.beginToolAction(pos, requestedFace)) {
+            if (!canMine(player, source, pos, range) || !actor.beginToolAction(pos, requestedFace)) {
                 player.displayClientMessage(Component.translatable("message.yujiancraft.technique.cannot_mine"), true);
             }
         } else {
-            if (!player.serverLevel().getFluidState(pos).is(net.minecraft.tags.FluidTags.WATER)
-                    && requestedFace != null) {
-                BlockPos adjacent = pos.relative(requestedFace);
-                if (player.serverLevel().getFluidState(adjacent).is(net.minecraft.tags.FluidTags.WATER)) pos = adjacent;
-            }
-            if (!player.serverLevel().getFluidState(pos).is(net.minecraft.tags.FluidTags.WATER)
-                    || !actor.beginFishingAction(pos)) {
+            pos = resolveFishingWater(player, requestedPos, requestedFace, range);
+            if (pos == null || !actor.beginFishingAction(pos)) {
                 player.displayClientMessage(Component.translatable("message.yujiancraft.technique.need_water"), true);
             }
         }
@@ -78,7 +72,7 @@ public final class ArtifactActionManager {
      * The server still owns reach and obstruction validation, so the packet cannot mine through
      * walls or address unloaded terrain.
      */
-    private static boolean validClientBlockHit(ServerPlayer player, BlockPos pos, double range) {
+    private static boolean validClientBlockHit(ServerPlayer player, BlockPos pos, double range, boolean fluids) {
         if (pos == null || !player.serverLevel().hasChunkAt(pos)) return false;
         Vec3 eye = player.getEyePosition();
         Vec3 centre = Vec3.atCenterOf(pos);
@@ -86,7 +80,8 @@ public final class ArtifactActionManager {
         net.minecraft.world.phys.BlockHitResult obstruction = player.serverLevel().clip(
                 new net.minecraft.world.level.ClipContext(eye, centre,
                         net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                        net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                        fluids ? net.minecraft.world.level.ClipContext.Fluid.ANY
+                                : net.minecraft.world.level.ClipContext.Fluid.NONE, player));
         return obstruction.getType() == net.minecraft.world.phys.HitResult.Type.MISS
                 || obstruction.getBlockPos().equals(pos);
     }
@@ -103,18 +98,29 @@ public final class ArtifactActionManager {
 
     public static boolean completeMining(ServerPlayer player, FlyingSwordEntity sword, BlockPos pos) {
         ItemStack source = FlyingSwordItem.findFlyingSword(player, sword.getSourceBindingId());
-        if (!canMine(player, source, pos)) return false;
+        double range = FlyingSwordItem.getSettings(player).crosshairLockRadius();
+        if (!canMine(player, source, pos, range)) return false;
         ServerLevel level = player.serverLevel();
         BlockState state = level.getBlockState(pos);
         BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(level, pos, state, player);
         if (MinecraftForge.EVENT_BUS.post(event)) return false;
         var blockEntity = level.getBlockEntity(pos);
         Block block = state.getBlock();
+        boolean harvestable = player.hasCorrectToolForDrops(state);
+        List<ItemStack> drops = harvestable
+                ? Block.getDrops(state, level, pos, blockEntity, player, source) : List.of();
         block.playerWillDestroy(level, pos, state, player);
         boolean removed = level.removeBlock(pos, false);
         if (!removed) return false;
         block.destroy(level, pos, state);
-        block.playerDestroy(level, player, pos, state, blockEntity, source);
+        for (ItemStack drop : drops) {
+            ItemStack delivered = drop.copy();
+            player.getInventory().add(delivered);
+            if (!delivered.isEmpty()) {
+                ItemEntity overflow = player.drop(delivered, false);
+                if (overflow != null) overflow.setNoPickUpDelay();
+            }
+        }
         level.levelEvent(2001, pos, Block.getId(state));
         if (event.getExpToDrop() > 0) state.getBlock().popExperience(level, pos, event.getExpToDrop());
         player.awardStat(Stats.BLOCK_MINED.get(state.getBlock()));
@@ -123,18 +129,55 @@ public final class ArtifactActionManager {
         return true;
     }
 
-    private static boolean canMine(ServerPlayer player, ItemStack source, BlockPos pos) {
+    private static boolean canMine(ServerPlayer player, ItemStack source, BlockPos pos, double range) {
         if (source.isEmpty() || !WanxiangSwordData.isUsable(source)
                 || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(pos))
-                > TechniqueConfig.toolRange() * TechniqueConfig.toolRange()) return false;
+                > range * range) return false;
         ServerLevel level = player.serverLevel();
         if (!level.hasChunkAt(pos)) return false;
         BlockState state = level.getBlockState(pos);
         if (state.isAir() || state.getDestroySpeed(level, pos) < 0.0F) return false;
-        if (!source.isCorrectToolForDrops(state) && source.getDestroySpeed(state) <= 1.0F) return false;
         // Completion repeats every mutable check because the block or tool may change while the
         // implement is travelling. Forge's cancellable break event remains the final authority.
         return true;
+    }
+
+    private static BlockPos resolveFishingWater(ServerPlayer player, BlockPos requested,
+                                                net.minecraft.core.Direction face, double range) {
+        ServerLevel level = player.serverLevel();
+        Vec3 eye = player.getEyePosition();
+        Vec3 end = eye.add(player.getViewVector(1.0F).scale(range));
+        net.minecraft.world.phys.BlockHitResult fluidHit = level.clip(new net.minecraft.world.level.ClipContext(
+                eye, end, net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.ANY, player));
+        if (fluidHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                && level.getFluidState(fluidHit.getBlockPos()).is(net.minecraft.tags.FluidTags.WATER)) {
+            return waterSurface(level, fluidHit.getBlockPos());
+        }
+        BlockPos centre = requested;
+        if (centre != null && face != null && level.getFluidState(centre.relative(face))
+                .is(net.minecraft.tags.FluidTags.WATER)) centre = centre.relative(face);
+        if (centre == null) centre = BlockPos.containing(end);
+        BlockPos best = null;
+        double bestDistance = Double.POSITIVE_INFINITY;
+        for (BlockPos cursor : BlockPos.betweenClosed(centre.offset(-4, -3, -4), centre.offset(4, 3, 4))) {
+            if (!level.hasChunkAt(cursor) || !level.getFluidState(cursor).is(net.minecraft.tags.FluidTags.WATER)) continue;
+            BlockPos surface = waterSurface(level, cursor);
+            if (!validClientBlockHit(player, surface, range, true)) continue;
+            double distance = Vec3.atCenterOf(surface).distanceToSqr(Vec3.atCenterOf(centre));
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = surface.immutable();
+            }
+        }
+        return best;
+    }
+
+    private static BlockPos waterSurface(ServerLevel level, BlockPos start) {
+        BlockPos.MutableBlockPos cursor = start.mutable();
+        for (int step = 0; step < 12 && level.getFluidState(cursor.above())
+                .is(net.minecraft.tags.FluidTags.WATER); step++) cursor.move(net.minecraft.core.Direction.UP);
+        return cursor.immutable();
     }
 
     public static void completeFishing(ServerPlayer player, FlyingSwordEntity sword, BlockPos waterPos) {
@@ -152,8 +195,10 @@ public final class ArtifactActionManager {
                 .create(LootContextParamSets.FISHING);
         for (ItemStack loot : level.getServer().getLootData().getLootTable(BuiltInLootTables.FISHING)
                 .getRandomItems(params)) {
-            if (!player.getInventory().add(loot.copy())) {
-                ItemEntity dropped = player.drop(loot.copy(), false);
+            ItemStack delivered = loot.copy();
+            player.getInventory().add(delivered);
+            if (!delivered.isEmpty()) {
+                ItemEntity dropped = player.drop(delivered, false);
                 if (dropped != null) dropped.setNoPickUpDelay();
             }
         }

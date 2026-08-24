@@ -3,6 +3,7 @@ package dev.yujiancraft.registry;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.block.FlyingSwordWorkbenchBlock;
 import dev.yujiancraft.block.SpiritTemperingTableBlock;
+import dev.yujiancraft.block.SpiritReplenishingTableBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DropExperienceBlock;
 import net.minecraft.world.level.block.SoundType;
@@ -24,6 +25,9 @@ public final class ModBlocks {
     public static final RegistryObject<Block> SPIRIT_TEMPERING_TABLE = BLOCKS.register("spirit_tempering_table",
             () -> new SpiritTemperingTableBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_PURPLE).strength(4.0F).sound(SoundType.AMETHYST)));
+    public static final RegistryObject<Block> SPIRIT_REPLENISHING_TABLE = BLOCKS.register("spirit_replenishing_table",
+            () -> new SpiritReplenishingTableBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_CYAN).strength(4.0F).sound(SoundType.AMETHYST)));
     public static final RegistryObject<Block> SPIRIT_ORE = BLOCKS.register("spirit_ore",
             () -> new DropExperienceBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.STONE).strength(3.2F, 3.0F).requiresCorrectToolForDrops()

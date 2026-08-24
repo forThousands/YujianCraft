@@ -3,6 +3,7 @@ package dev.yujiancraft.registry;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.menu.FlyingSwordWorkbenchMenu;
 import dev.yujiancraft.menu.SpiritTemperingMenu;
+import dev.yujiancraft.menu.SpiritReplenishingMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -18,6 +19,8 @@ public final class ModMenus {
             MENUS.register("flying_sword_workbench", () -> IForgeMenuType.create(FlyingSwordWorkbenchMenu::new));
     public static final RegistryObject<MenuType<SpiritTemperingMenu>> SPIRIT_TEMPERING_TABLE =
             MENUS.register("spirit_tempering_table", () -> IForgeMenuType.create(SpiritTemperingMenu::new));
+    public static final RegistryObject<MenuType<SpiritReplenishingMenu>> SPIRIT_REPLENISHING_TABLE =
+            MENUS.register("spirit_replenishing_table", () -> IForgeMenuType.create(SpiritReplenishingMenu::new));
 
     private ModMenus() {
     }

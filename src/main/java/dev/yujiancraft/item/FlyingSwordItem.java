@@ -162,6 +162,34 @@ public final class FlyingSwordItem extends SwordItem {
         getOwnedFormationSwords(player).forEach(sword -> sword.applySettings(settings));
     }
 
+    /** Cycles only through techniques permitted by the server catalogue for this implement. */
+    public static SwordSettings cycleTechnique(ServerPlayer player) {
+        ItemStack stack = findFlyingSword(player);
+        if (stack.isEmpty()) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.no_sword"), true);
+            return SwordSettings.defaults();
+        }
+        SwordSettings current = validatedSettings(player, stack);
+        dev.yujiancraft.combat.technique.TechniqueMode next = current.techniqueMode();
+        for (int offset = 1; offset <= dev.yujiancraft.combat.technique.TechniqueMode.values().length; offset++) {
+            dev.yujiancraft.combat.technique.TechniqueMode candidate =
+                    dev.yujiancraft.combat.technique.TechniqueMode.values()[
+                            (current.techniqueMode().ordinal() + offset)
+                                    % dev.yujiancraft.combat.technique.TechniqueMode.values().length];
+            if (!WanxiangSwordData.isTempered(stack)
+                    || WanxiangWeaponCatalog.techniqueAllowed(player.server, stack, candidate)) {
+                next = candidate;
+                break;
+            }
+        }
+        SwordSettings updated = new SwordSettings(current.minimumDockTicks(), current.automaticTargetRadius(),
+                current.crosshairLockRadius(), current.targetingMode(), current.attackMode(), next);
+        setSettings(player, updated);
+        player.displayClientMessage(Component.translatable("message.yujiancraft.technique.changed",
+                Component.translatable(next.translationKey())), true);
+        return updated;
+    }
+
     public static List<FlyingSwordEntity> getOwnedFormationSwords(ServerPlayer player) {
         List<FlyingSwordEntity> result = new ArrayList<>();
         for (Entity entity : player.serverLevel().getAllEntities()) {

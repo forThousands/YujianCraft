@@ -47,11 +47,10 @@ public final class ClientInputEvents {
         while (ClientModEvents.ARTIFACT_ACTION.consumeClick()) {
             Minecraft minecraft = Minecraft.getInstance();
             OptimizedThirdPersonController.refreshScreenCenterHit();
-            ModNetwork.ArtifactActionPacket packet = minecraft.hitResult instanceof BlockHitResult hit
-                    && hit.getType() == HitResult.Type.BLOCK
-                    ? new ModNetwork.ArtifactActionPacket(true, hit.getBlockPos(), hit.getDirection())
-                    : ModNetwork.ArtifactActionPacket.miss();
-            ModNetwork.CHANNEL.sendToServer(packet);
+            ModNetwork.CHANNEL.sendToServer(contextualActionHit(minecraft));
+        }
+        while (ClientModEvents.SWITCH_TECHNIQUE.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.CycleTechniquePacket());
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
@@ -68,6 +67,24 @@ public final class ClientInputEvents {
                 lastJumpPressMillis = now;
             }
         }
+    }
+
+    /** G uses the configurable lock distance rather than vanilla's short block-pick distance. */
+    private static ModNetwork.ArtifactActionPacket contextualActionHit(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null) return ModNetwork.ArtifactActionPacket.miss();
+        Vec3 eye = minecraft.player.getEyePosition(1.0F);
+        Vec3 origin = minecraft.gameRenderer.getMainCamera().getPosition();
+        Vec3 direction = minecraft.player.getViewVector(1.0F).normalize();
+        double range = Math.max(2.0D, ClientSettingsState.get().crosshairLockRadius());
+        Vec3 end = origin.add(direction.scale(range + origin.distanceTo(eye)));
+        ClipContext.Fluid fluid = ClientSettingsState.get().techniqueMode()
+                == dev.yujiancraft.combat.technique.TechniqueMode.SPIRIT_FISHING
+                ? ClipContext.Fluid.ANY : ClipContext.Fluid.NONE;
+        BlockHitResult hit = minecraft.level.clip(new ClipContext(origin, end,
+                ClipContext.Block.OUTLINE, fluid, minecraft.player));
+        return hit.getType() == HitResult.Type.BLOCK
+                ? new ModNetwork.ArtifactActionPacket(true, hit.getBlockPos(), hit.getDirection())
+                : ModNetwork.ArtifactActionPacket.miss();
     }
 
     @SubscribeEvent

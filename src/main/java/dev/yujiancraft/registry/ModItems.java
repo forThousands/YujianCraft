@@ -39,6 +39,8 @@ public final class ModItems {
             () -> new BlockItem(ModBlocks.FLYING_SWORD_WORKBENCH.get(), new Item.Properties()));
     public static final RegistryObject<Item> SPIRIT_TEMPERING_TABLE = ITEMS.register("spirit_tempering_table",
             () -> new BlockItem(ModBlocks.SPIRIT_TEMPERING_TABLE.get(), new Item.Properties()));
+    public static final RegistryObject<Item> SPIRIT_REPLENISHING_TABLE = ITEMS.register("spirit_replenishing_table",
+            () -> new BlockItem(ModBlocks.SPIRIT_REPLENISHING_TABLE.get(), new Item.Properties()));
     public static final RegistryObject<Item> SPIRIT_ORE = ITEMS.register("spirit_ore",
             () -> new BlockItem(ModBlocks.SPIRIT_ORE.get(), new Item.Properties()));
     public static final RegistryObject<Item> DEEPSLATE_SPIRIT_ORE = ITEMS.register("deepslate_spirit_ore",
@@ -79,6 +81,7 @@ public final class ModItems {
                         }
                         output.accept(FLYING_SWORD_WORKBENCH.get());
                         output.accept(SPIRIT_TEMPERING_TABLE.get());
+                        output.accept(SPIRIT_REPLENISHING_TABLE.get());
                         output.accept(SPIRIT_ORE.get());
                         output.accept(DEEPSLATE_SPIRIT_ORE.get());
                         output.accept(SPIRIT_CRYSTAL.get());

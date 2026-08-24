@@ -37,7 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-/** A short-lived, non-griefing spiritual slash. One wave is coordinated by formation slot zero. */
+/** A short-lived, non-griefing spiritual slash released by the gathered formation coordinator. */
 public final class SwordQiEntity extends Entity {
     private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_STACK =
             SynchedEntityData.defineId(SwordQiEntity.class, EntityDataSerializers.ITEM_STACK);

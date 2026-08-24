@@ -241,11 +241,7 @@ public final class ManualSpiritTrialManager {
     }
 
     private static void showCountdown(ServerPlayer player, int seconds) {
-        player.connection.send(new ClientboundSetTitlesAnimationPacket(0, 24, 0));
-        net.minecraft.network.chat.MutableComponent value = Component.translatable(
-                "title.yujiancraft.trial.countdown", seconds);
-        value.withStyle(style -> style.withBold(true).withColor(seconds <= 3 ? 0xFF5C45 : 0xF6DF8A));
-        player.connection.send(new ClientboundSetTitleTextPacket(value));
+        ModNetwork.sendTrialCountdown(player, seconds);
     }
 
     private static void complete(Session session) {

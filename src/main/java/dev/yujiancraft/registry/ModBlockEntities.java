@@ -3,6 +3,7 @@ package dev.yujiancraft.registry;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.blockentity.FlyingSwordWorkbenchBlockEntity;
 import dev.yujiancraft.blockentity.SpiritTemperingTableBlockEntity;
+import dev.yujiancraft.blockentity.SpiritReplenishingTableBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
@@ -21,6 +22,10 @@ public final class ModBlockEntities {
             BLOCK_ENTITIES.register("spirit_tempering_table",
                     () -> BlockEntityType.Builder.of(SpiritTemperingTableBlockEntity::new,
                             ModBlocks.SPIRIT_TEMPERING_TABLE.get()).build(null));
+    public static final RegistryObject<BlockEntityType<SpiritReplenishingTableBlockEntity>> SPIRIT_REPLENISHING_TABLE =
+            BLOCK_ENTITIES.register("spirit_replenishing_table",
+                    () -> BlockEntityType.Builder.of(SpiritReplenishingTableBlockEntity::new,
+                            ModBlocks.SPIRIT_REPLENISHING_TABLE.get()).build(null));
 
     private ModBlockEntities() {
     }
