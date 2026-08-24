@@ -2,6 +2,8 @@ package dev.yujiancraft.wanxiang;
 
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.blockentity.SpiritTemperingTableBlockEntity;
+import dev.yujiancraft.combat.technique.ArtifactRole;
+import dev.yujiancraft.combat.SwordSettings;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.entity.SpiritTrialDummyEntity;
 import dev.yujiancraft.item.FlyingSwordItem;
@@ -57,7 +59,8 @@ public final class ManualSpiritTrialManager {
     }
 
     public record Shape(WanxiangRenderPreset preset, WanxiangGlowMode glowMode, boolean flipped,
-                        int scalePercent, int auraRadiusPercent, int auraLengthPercent) {
+                        int scalePercent, int auraRadiusPercent, int auraLengthPercent,
+                        ArtifactRole artifactRole) {
     }
 
     public static boolean start(ServerPlayer player, SpiritTemperingTableBlockEntity table, Shape shape) {
@@ -99,6 +102,7 @@ public final class ManualSpiritTrialManager {
         // the trial. Only reversible Yujian module cores are dispersed above.
         WanxiangSwordData.applyShape(trialCopy, shape.preset(), shape.glowMode(), shape.flipped(),
                 shape.scalePercent(), shape.auraRadiusPercent(), shape.auraLengthPercent());
+        WanxiangSwordData.setRole(trialCopy, shape.artifactRole());
         trialCopy.getOrCreateTag().putUUID(COPY_TAG, copyId);
         if (WanxiangSwordData.isUsable(trialCopy)) WanxiangSwordData.ensureBinding(trialCopy);
 
@@ -177,7 +181,10 @@ public final class ManualSpiritTrialManager {
         if (channel == DamageChannel.NONE) return;
         if (session.channel == DamageChannel.NONE) session.channel = channel;
         if (session.channel != channel) return;
-        if (session.elapsed < 0) session.elapsed = 0;
+        if (session.elapsed < 0) {
+            session.elapsed = 0;
+            showCountdown(session.player, 10);
+        }
         session.totalDamage += event.getAmount();
     }
 
@@ -233,13 +240,32 @@ public final class ManualSpiritTrialManager {
                 Component.translatable("title.yujiancraft.trial.dps_hint")));
     }
 
+    private static void showCountdown(ServerPlayer player, int seconds) {
+        player.connection.send(new ClientboundSetTitlesAnimationPacket(0, 24, 0));
+        net.minecraft.network.chat.MutableComponent value = Component.translatable(
+                "title.yujiancraft.trial.countdown", seconds);
+        value.withStyle(style -> style.withBold(true).withColor(seconds <= 3 ? 0xFF5C45 : 0xF6DF8A));
+        player.connection.send(new ClientboundSetTitleTextPacket(value));
+    }
+
     private static void complete(Session session) {
         session.finished = true;
         double dps = session.totalDamage / (DPS_DURATION_TICKS / 20.0D);
         ItemStack result = session.sourceWeapon;
+        boolean firstConversion = !WanxiangSwordData.isUsable(result);
         WanxiangSwordData.temper(result, session.coreMaterial, session.shape.preset(), session.shape.glowMode(),
                 session.shape.flipped(), session.shape.scalePercent(), session.shape.auraRadiusPercent(),
-                session.shape.auraLengthPercent(), dps);
+                session.shape.auraLengthPercent(), dps, session.shape.artifactRole());
+        if (firstConversion) {
+            SwordSettings old = SwordSettings.read(result);
+            dev.yujiancraft.combat.technique.TechniqueMode initialTechnique =
+                    WanxiangSwordData.isTempered(result)
+                            ? WanxiangWeaponCatalog.defaultTechnique(session.player.server, result)
+                            : session.shape.artifactRole().recommendedTechnique();
+            new SwordSettings(old.minimumDockTicks(), old.automaticTargetRadius(), old.crosshairLockRadius(),
+                    old.targetingMode(), old.attackMode(), initialTechnique)
+                    .write(result);
+        }
         if (WanxiangSwordData.isTempered(result)) WanxiangWeaponCatalog.register(session.player.server, result);
         int attempt = WanxiangSwordData.temperCount(result);
         finish(session, true);
@@ -386,8 +412,8 @@ public final class ManualSpiritTrialManager {
             if (elapsed >= DPS_DURATION_TICKS) {
                 complete(this);
             } else if (elapsed % 20 == 0) {
-                player.displayClientMessage(Component.translatable("message.yujiancraft.trial.countdown",
-                        Math.max(0, (DPS_DURATION_TICKS - elapsed) / 20)), true);
+                int remaining = Math.max(0, (DPS_DURATION_TICKS - elapsed) / 20);
+                if (remaining > 0) showCountdown(player, remaining);
             }
         }
 

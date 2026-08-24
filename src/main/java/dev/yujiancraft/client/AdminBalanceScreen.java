@@ -142,7 +142,7 @@ public final class AdminBalanceScreen extends Screen {
     private static void updateFlight(int dockTicks, double automaticRadius, double lockRadius) {
         SwordSettings settings = ClientSettingsState.get();
         ClientSettingsState.update(new SwordSettings(dockTicks, automaticRadius, lockRadius,
-                settings.targetingMode(), settings.attackMode()));
+                settings.targetingMode(), settings.attackMode(), settings.techniqueMode()));
     }
 
     private void buildPresentationControls(int left, int top, int panelWidth) {

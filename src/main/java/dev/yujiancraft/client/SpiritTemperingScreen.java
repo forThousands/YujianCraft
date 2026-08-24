@@ -17,6 +17,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritTemperingMenu> {
+    private Button definingButton;
+    private Button roleCycleButton;
+    private Button roleContinueButton;
+    private Button roleBackButton;
     private Button shapingButton;
     private Button enterTrialButton;
     private Button presetButton;
@@ -31,6 +35,7 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
     private Button confirmShapeButton;
     private Button backButton;
     private boolean shapingPage;
+    private boolean definingPage;
     private FlyingSwordEntity previewSword;
     private int previewTicks;
     private float previewYaw = -28.0F;
@@ -50,15 +55,37 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
     @Override
     protected void init() {
         super.init();
+        definingButton = addRenderableWidget(Button.builder(
+                        Component.translatable("screen.yujiancraft.tempering.defining"), button -> {
+                            definingPage = true;
+                            shapingPage = false;
+                            refreshButtons();
+                        }).bounds(leftPos + 135, topPos + 95, 104, 18).build());
         shapingButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.yujiancraft.tempering.shaping"), button -> {
                             shapingPage = true;
+                            definingPage = false;
                             refreshButtons();
-                        }).bounds(leftPos + 135, topPos + 101, 104, 20).build());
+                        }).bounds(leftPos + 135, topPos + 117, 104, 18).build());
         enterTrialButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.yujiancraft.tempering.enter_trial"),
                         button -> click(SpiritTemperingMenu.ENTER_TRIAL_BUTTON))
-                .bounds(leftPos + 135, topPos + 132, 104, 22).build());
+                .bounds(leftPos + 135, topPos + 143, 104, 22).build());
+
+        roleCycleButton = addRenderableWidget(Button.builder(Component.empty(),
+                        button -> click(SpiritTemperingMenu.ROLE_BUTTON))
+                .bounds(leftPos + 135, topPos + 58, 104, 20).build());
+        roleContinueButton = addRenderableWidget(Button.builder(
+                        Component.translatable("screen.yujiancraft.tempering.role_continue"), button -> {
+                            click(SpiritTemperingMenu.CONFIRM_ROLE_BUTTON);
+                            definingPage = false;
+                            shapingPage = true;
+                            refreshButtons();
+                        }).bounds(leftPos + 135, topPos + 142, 74, 20).build());
+        roleBackButton = addRenderableWidget(Button.builder(Component.literal("↩"), button -> {
+                    definingPage = false;
+                    refreshButtons();
+                }).bounds(leftPos + 213, topPos + 142, 26, 20).build());
 
         presetButton = addRenderableWidget(Button.builder(Component.empty(),
                         button -> click(SpiritTemperingMenu.PRESET_BUTTON))
@@ -95,6 +122,7 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
                         }).bounds(leftPos + 135, topPos + 155, 74, 20).build());
         backButton = addRenderableWidget(Button.builder(Component.literal("↩"), button -> {
                     shapingPage = false;
+                    definingPage = false;
                     refreshButtons();
                 }).bounds(leftPos + 213, topPos + 155, 26, 20).build());
         refreshButtons();
@@ -117,10 +145,20 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
     private void refreshButtons() {
         if (shapingButton == null) return;
         boolean hasItems = menu.hasRequiredItems();
-        shapingButton.visible = !shapingPage;
-        enterTrialButton.visible = !shapingPage;
-        shapingButton.active = hasItems;
+        boolean ritualPage = !shapingPage && !definingPage;
+        definingButton.visible = ritualPage;
+        shapingButton.visible = ritualPage;
+        enterTrialButton.visible = ritualPage;
+        definingButton.active = hasItems;
+        shapingButton.active = hasItems && menu.roleConfirmed();
         enterTrialButton.active = hasItems && menu.shapeConfirmed();
+
+        roleCycleButton.visible = definingPage;
+        roleContinueButton.visible = definingPage;
+        roleBackButton.visible = definingPage;
+        roleCycleButton.active = hasItems;
+        roleContinueButton.active = hasItems;
+        roleCycleButton.setMessage(Component.translatable(menu.artifactRole().translationKey()));
 
         presetButton.visible = shapingPage;
         glowButton.visible = shapingPage;
@@ -133,7 +171,7 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
         lengthUpButton.visible = shapingPage;
         confirmShapeButton.visible = shapingPage;
         backButton.visible = shapingPage;
-        confirmShapeButton.active = hasItems;
+        confirmShapeButton.active = hasItems && menu.roleConfirmed();
 
         presetButton.setMessage(Component.translatable(menu.preset().translationKey()));
         glowButton.setMessage(Component.translatable(menu.glowMode().translationKey()));
@@ -178,7 +216,9 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
                 8, 67, 0xC8B9DD, false);
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.tempering.preview"),
                 302, 20, 0x83E8F5);
-        if (shapingPage) renderShapingLabels(graphics); else renderRitualLabels(graphics);
+        if (definingPage) renderDefiningLabels(graphics);
+        else if (shapingPage) renderShapingLabels(graphics);
+        else renderRitualLabels(graphics);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xB8C4CE, false);
     }
 
@@ -195,9 +235,13 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
         graphics.drawCenteredString(font, Component.translatable(menu.shapeConfirmed()
                         ? "screen.yujiancraft.tempering.shaping_ready"
                         : "screen.yujiancraft.tempering.shaping_needed"),
-                187, 123, menu.shapeConfirmed() ? 0x7CE6B2 : 0xB9A7C6);
+                 187, 123, menu.shapeConfirmed() ? 0x7CE6B2 : 0xB9A7C6);
+        graphics.drawCenteredString(font, Component.translatable(menu.roleConfirmed()
+                        ? "screen.yujiancraft.tempering.role_ready"
+                        : "screen.yujiancraft.tempering.role_needed"),
+                187, 134, menu.roleConfirmed() ? 0x7CE6B2 : 0xB9A7C6);
         graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.tempering.cost_entry",
-                menu.experienceCost()), 135, 158, 104, 0xE2C768);
+                menu.experienceCost()), 135, 166, 104, 0xE2C768);
     }
 
     private void renderShapingLabels(GuiGraphics graphics) {
@@ -209,6 +253,19 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
                 menu.auraRadiusPercent()), 187, 113, 0xD8D0E2);
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.tempering.length_compact",
                 menu.auraLengthPercent()), 187, 135, 0xD8D0E2);
+    }
+
+    private void renderDefiningLabels(GuiGraphics graphics) {
+        graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.tempering.defining"),
+                187, 14, 0x83E8F5);
+        graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.tempering.role_rule"),
+                135, 30, 104, 0xC8B9DD);
+        graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.tempering.role_detected",
+                        Component.translatable(dev.yujiancraft.combat.technique.ArtifactRole.detect(
+                                menu.getSlot(0).getItem()).translationKey())),
+                187, 84, 0xB9A7C6);
+        graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.tempering.role_open"),
+                135, 101, 104, 0xE2C768);
     }
 
     @Override
@@ -257,12 +314,14 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
         double damage = Math.max(1.0D, WanxiangSwordData.pierceDamage(source));
         if (core.getItem() instanceof FlyingSwordItem sword) {
             return WanxiangSwordData.preview(source, sword.getMaterialType(), menu.preset(), menu.glowMode(),
-                    menu.flipped(), menu.scalePercent(), menu.auraRadiusPercent(), menu.auraLengthPercent(), damage);
+                    menu.flipped(), menu.scalePercent(), menu.auraRadiusPercent(), menu.auraLengthPercent(), damage,
+                    menu.artifactRole());
         }
         if (WanxiangSwordData.isUsable(source)) {
             ItemStack preview = source.copy();
-            return WanxiangSwordData.applyShape(preview, menu.preset(), menu.glowMode(), menu.flipped(),
+            WanxiangSwordData.applyShape(preview, menu.preset(), menu.glowMode(), menu.flipped(),
                     menu.scalePercent(), menu.auraRadiusPercent(), menu.auraLengthPercent());
+            return WanxiangSwordData.setRole(preview, menu.artifactRole());
         }
         return ItemStack.EMPTY;
     }

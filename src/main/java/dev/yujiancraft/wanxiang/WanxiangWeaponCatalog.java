@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.mojang.logging.LogUtils;
+import dev.yujiancraft.combat.technique.ArtifactRole;
+import dev.yujiancraft.combat.technique.TechniqueMode;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
@@ -15,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /** Server-authoritative, lazily populated catalogue of items that completed spirit tempering. */
@@ -94,6 +98,46 @@ public final class WanxiangWeaponCatalog {
         return entry == null || entry.enabled;
     }
 
+    public static synchronized ArtifactRole role(MinecraftServer server, ItemStack stack) {
+        ensureLoaded(server);
+        Entry entry = catalogue.weapons.get(itemId(stack));
+        if (entry == null) entry = register(server, stack);
+        return "auto".equals(entry.roleOverride)
+                ? WanxiangSwordData.role(stack) : ArtifactRole.fromName(entry.roleOverride);
+    }
+
+    public static synchronized boolean techniqueAllowed(MinecraftServer server, ItemStack stack,
+                                                        TechniqueMode technique) {
+        ensureLoaded(server);
+        Entry entry = catalogue.weapons.get(itemId(stack));
+        if (entry == null) entry = register(server, stack);
+        return entry.enabled && (entry.allowedTechniques.isEmpty()
+                || entry.allowedTechniques.contains(technique.serializedName()));
+    }
+
+    public static synchronized TechniqueMode defaultTechnique(MinecraftServer server, ItemStack stack) {
+        ensureLoaded(server);
+        Entry entry = catalogue.weapons.get(itemId(stack));
+        if (entry == null) entry = register(server, stack);
+        return "auto".equals(entry.defaultTechnique)
+                ? role(server, stack).recommendedTechnique() : TechniqueMode.fromName(entry.defaultTechnique);
+    }
+
+    /** Returns the requested art when allowed, otherwise the configured default or first allow-listed art. */
+    public static synchronized TechniqueMode effectiveTechnique(MinecraftServer server, ItemStack stack,
+                                                                TechniqueMode requested) {
+        ensureLoaded(server);
+        Entry entry = catalogue.weapons.get(itemId(stack));
+        if (entry == null) entry = register(server, stack);
+        if (entry.allowedTechniques.isEmpty() || entry.allowedTechniques.contains(requested.serializedName())) {
+            return requested;
+        }
+        TechniqueMode preferred = "auto".equals(entry.defaultTechnique)
+                ? role(server, stack).recommendedTechnique() : TechniqueMode.fromName(entry.defaultTechnique);
+        if (entry.allowedTechniques.contains(preferred.serializedName())) return preferred;
+        return entry.allowedTechniques.stream().map(TechniqueMode::fromName).findFirst().orElse(TechniqueMode.PIERCE);
+    }
+
     public static synchronized void save(MinecraftServer server) {
         Path path = path(server);
         try {
@@ -127,13 +171,13 @@ public final class WanxiangWeaponCatalog {
     }
 
     public static final class Catalogue {
-        public int schemaVersion = 2;
+        public int schemaVersion = 3;
         public Map<String, Entry> weapons = new LinkedHashMap<>();
 
         private void sanitize() {
             if (weapons == null) weapons = new LinkedHashMap<>();
             weapons.values().forEach(Entry::sanitize);
-            schemaVersion = 2;
+            schemaVersion = 3;
         }
     }
 
@@ -143,12 +187,24 @@ public final class WanxiangWeaponCatalog {
         public double damageMultiplier = 1.0D;
         public double flightSpeedMultiplier = 1.0D;
         public int durabilityCost = 1;
+        public String roleOverride = "auto";
+        public String defaultTechnique = "auto";
+        public List<String> allowedTechniques = new ArrayList<>();
 
         private void sanitize() {
             if (damageOverride != null) damageOverride = finiteNonNegative(damageOverride);
             damageMultiplier = finite(damageMultiplier, 1.0D);
             flightSpeedMultiplier = Math.max(0.01D, finite(flightSpeedMultiplier, 1.0D));
             durabilityCost = Math.max(0, durabilityCost);
+            if (roleOverride == null || !("auto".equals(roleOverride)
+                    || java.util.Arrays.stream(ArtifactRole.values())
+                    .anyMatch(role -> role.serializedName().equals(roleOverride)))) roleOverride = "auto";
+            if (defaultTechnique == null || !("auto".equals(defaultTechnique)
+                    || java.util.Arrays.stream(TechniqueMode.values())
+                    .anyMatch(mode -> mode.serializedName().equals(defaultTechnique)))) defaultTechnique = "auto";
+            if (allowedTechniques == null) allowedTechniques = new ArrayList<>();
+            allowedTechniques.removeIf(name -> java.util.Arrays.stream(TechniqueMode.values())
+                    .noneMatch(mode -> mode.serializedName().equals(name)));
         }
     }
 }

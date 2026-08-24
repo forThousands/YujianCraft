@@ -44,6 +44,15 @@ public final class ClientInputEvents {
         while (ClientModEvents.TOGGLE_SWORDS.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSummonedSwordsPacket());
         }
+        while (ClientModEvents.ARTIFACT_ACTION.consumeClick()) {
+            Minecraft minecraft = Minecraft.getInstance();
+            OptimizedThirdPersonController.refreshScreenCenterHit();
+            ModNetwork.ArtifactActionPacket packet = minecraft.hitResult instanceof BlockHitResult hit
+                    && hit.getType() == HitResult.Type.BLOCK
+                    ? new ModNetwork.ArtifactActionPacket(true, hit.getBlockPos(), hit.getDirection())
+                    : ModNetwork.ArtifactActionPacket.miss();
+            ModNetwork.CHANNEL.sendToServer(packet);
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
                 && ClientOptions.swordRidingEnabled()
@@ -71,6 +80,8 @@ public final class ClientInputEvents {
                     && entityHit.getEntity() instanceof LivingEntity living && living.isAlive();
             if (ClientSettingsState.get().targetingMode()
                     == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE
+                    && ClientSettingsState.get().techniqueMode()
+                    == dev.yujiancraft.combat.technique.TechniqueMode.PIERCE
                     && !directLivingAttack) {
                 // Empty-space/block attack keeps the manual-guidance launch gesture. Clicking a
                 // living entity always remains an ordinary vanilla melee attack.
@@ -91,6 +102,8 @@ public final class ClientInputEvents {
                 && !minecraft.player.isShiftKeyDown()
                 && ClientSettingsState.get().targetingMode()
                 == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE
+                && ClientSettingsState.get().techniqueMode()
+                == dev.yujiancraft.combat.technique.TechniqueMode.PIERCE
                 && ClientManualGuidanceState.isGuiding()) {
             event.setCanceled(true);
             event.setSwingHand(false);
@@ -124,7 +137,9 @@ public final class ClientInputEvents {
             blockAttackHandledThisTick = true;
         }
         if (minecraft.player != null && minecraft.screen == null && ClientManualGuidanceState.isGuiding()
-                && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
+                && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())
+                && ClientSettingsState.get().techniqueMode()
+                == dev.yujiancraft.combat.technique.TechniqueMode.PIERCE) {
             if (manualAimSyncCountdown-- <= 0) {
                 manualAimSyncCountdown = 1;
                 ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualAimPacket(

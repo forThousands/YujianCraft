@@ -16,15 +16,15 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.12.2`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.0`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
 ## 模组简介 / About
 
-御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以灵矿资源和原版锻造语言为基础，加入六柄飞剑组成的动态剑阵、三种索敌方式、持续穿刺、御剑飞行、可逆飞剑模块，以及将其他模组武器炼成“万象飞剑”的淬灵系统。
+御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以灵矿资源和原版锻造语言为基础，加入六柄御器组成的动态阵列、三种索敌方式、六类御器术式、御剑飞行、可逆飞剑模块，以及将其他模组武器、盾牌、工具与钓具炼成“万象御器”的淬灵系统。
 
-Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around Spirit Ore and vanilla-style progression, it adds six-sword formations, three targeting styles, repeated piercing attacks, sword riding, reversible modules, and spirit tempering that turns third-party weapons into Myriad Flying Swords.
+Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around Spirit Ore and vanilla-style progression, it adds six-implement formations, three targeting styles, six Yujian arts, sword riding, reversible modules, and spirit tempering that turns third-party weapons, shields, tools, and fishing implements into Myriad artifacts.
 
 ## 剑阵与战斗 / Formations & Combat
 
@@ -105,9 +105,9 @@ Hit effects share a per-target server cooldown to keep repeated piercing efficie
 
 ## 万象飞剑与淬灵 / Myriad Flying Swords & Spirit Tempering
 
-淬灵台允许本模组飞剑、原版剑以及其他模组的非堆叠武器承载或重铸御剑系统。将待淬灵武器放入上方槽位，将一柄本模组飞剑作为灵性核心放入下方槽位，先进入“塑形”调整模型与剑罡并确认，再进入试锋境。点击入境时会立即消耗经验和核心飞剑；每件武器最多淬灵两次。
+淬灵台允许本模组飞剑、原版物品以及其他模组的非堆叠武器、盾牌、工具和钓具承载或重铸御剑系统。将待淬灵物品放入上方槽位，将一柄本模组飞剑作为灵性核心放入下方槽位，依次完成“器物定性”和“塑形”，确认后再进入试锋境。点击入境时会立即消耗经验和核心飞剑；每件物品最多淬灵两次。
 
-The Spirit Tempering Table accepts native Yujian swords, vanilla swords, and non-stackable weapons from other mods. Put the weapon above and one native flying sword below, open Shaping to calibrate both model and aura, confirm, then enter the Spirit Trial. Entry immediately consumes the required levels and the core sword. Each weapon can be tempered at most twice.
+The Spirit Tempering Table accepts native Yujian swords and non-stackable weapons, shields, tools, and fishing implements from Minecraft or other mods. Put the implement above and one native flying sword below, define its nature, calibrate the model and aura, confirm, then enter the Spirit Trial. Entry immediately consumes the required levels and the core sword. Each item can be tempered at most twice.
 
 - 自动假玩家试锋和主手属性兜底已移除。唯一数值来源是玩家亲自进入悬空试锋台，对试锋傀儡进行十秒 DPS 测试；首个有效命中开始计时，结束时结果立即写为本源穿刺伤害并自动返程。<br>
   Fake-player probing and main-hand fallback have been removed. The only source is a player-driven ten-second DPS trial on the suspended platform. The first valid hit starts the timer; completion immediately writes intrinsic piercing damage and returns the player.
@@ -122,6 +122,25 @@ The Spirit Tempering Table accepts native Yujian swords, vanilla swords, and non
 - 所有飞剑使用原版剑的 `1.6` 攻击速度并保留普通左键近战。基础穿刺值决定原版攻击属性；锋利、亡灵杀手等原版附魔又会反向作用于实际穿刺伤害，物品提示随附魔、药水、饰品与攻击属性实时更新。入境试锋保留并启用原版/第三方附魔；再次淬灵只令本模组装配核心散失，名称、附魔、耐久、阵型和其他 NBT 均保留。<br>
   Every flying sword uses vanilla sword attack speed (`1.6`) and ordinary melee. Its base pierce value drives the vanilla attack attribute, while Sharpness, Smite and other vanilla enchantments feed back into actual piercing damage. The tooltip responds live to enchantments, potions, accessories and attack attributes. Trials retain and activate vanilla/third-party enchantments; re-tempering disperses only installed Yujian cores while preserving names, enchantments, durability, formation and other NBT.
 
+### 万象御器术式 / Myriad Implement Arts
+
+器物“定性”决定仪式推荐的术式和盾牌等特殊模型的安全姿态，但不会硬性限制选择。玩家可在 `Ctrl+I` 中让任意御器尝试任意术式；服务端管理员仍可按物品 ID 设置白名单。术式与 A/B/C 阵型相互独立：前者决定“做什么”，后者决定“停在哪里、如何离阵”。
+
+An implement's nature determines the ritual's recommended art and safe presentation for special shapes such as shields, but it is not a hard class restriction. Players may try any art on any implement through `Ctrl+I`, unless the server applies an item-specific allow-list. Arts and A/B/C formations are independent: the art controls what the formation does, while the formation controls where it docks and how it clears the player.
+
+| 术式 / Art | 行为 / Behaviour |
+| --- | --- |
+| **穿刺 / Piercing** | 保留经典单次出击、持续穿刺与神识御剑 / Classic sorties, relentless piercing, and Spirit Sword Guidance |
+| **环斩 / Circling Sweep** | 六器沿玩家周身划出短促弧线，按可见轨迹进行近身范围攻击 / Six implements trace short visible arcs around the player for close-range area attacks |
+| **剑气 / Sword-Qi Wave** | 整阵蓄势后由主御器释放一道受方块阻挡且不破坏地形的剑气 / The formation charges and the leading implement launches a terrain-safe, block-colliding wave |
+| **万象护阵 / Myriad Guard** | 六面朝外的护阵按伤害来向格挡并承担真实源物品耐久 / Six outward guards intercept directional damage and consume durability on the real source item |
+| **役器 / Spirit Toolcraft** | 准心指向合适方块并按 `G`，主御器飞出完成一次可被领地事件取消的开采 / Aim at a suitable block and press `G`; the leading implement performs one claim-aware mining action |
+| **灵钓 / Spirit Fishing** | 准心指向水域并按 `G`，等待后从原版钓鱼战利品表取回收获 / Aim at water and press `G`; after a wait, loot returns from the vanilla fishing table |
+
+环斩、剑气、护阵、役器和灵钓的范围、伤害倍率、冷却、目标数量与等待时间保存在世界级 `serverconfig/yujiancraft-techniques-server.toml`，由服务端单独裁决。灵钓继承玩家幸运、海之眷顾和饵钓；优化第三人称会提交屏幕中央的方块，但服务端仍复核距离、区块和遮挡。
+
+Ranges, multipliers, cooldowns, target caps, and waiting times live in the world-level `serverconfig/yujiancraft-techniques-server.toml` and remain server-authoritative. Spirit Fishing respects player Luck, Luck of the Sea, and Lure. The shoulder camera submits its actual screen-centre block, while the server still validates reach, chunk state, and obstruction.
+
 每个世界会在首次启动或首次淬灵后创建 `<世界目录>/serverconfig/yujiancraft-wanxiang-weapons.json`。其中每个按需登记的物品 ID 包含：
 
 The per-world server catalogue is created on startup or first tempering at `<world>/serverconfig/yujiancraft-wanxiang-weapons.json`. Each lazily registered item ID contains:
@@ -133,6 +152,9 @@ The per-world server catalogue is created on startup or first tempering at `<wor
 | `damageMultiplier` | 基础伤害倍率 / Base damage multiplier |
 | `flightSpeedMultiplier` | 核心材质速度的倍率 / Multiplier applied to the core material's flight speed |
 | `durabilityCost` | 每次有效命中消耗的耐久 / Durability consumed per successful strike |
+| `roleOverride` | `auto` 使用物品自身定性，也可按物品 ID 强制器物类型 / `auto` uses per-stack nature; a role name forces the type for that item ID |
+| `defaultTechnique` | `auto` 根据器物定性推荐，也可指定登记物品默认术式 / `auto` recommends from nature; an art name sets the item-ID default |
+| `allowedTechniques` | 空列表允许全部术式；填写序列化名称可建立服务端白名单 / An empty list allows every art; serialized names form a server allow-list |
 
 修改后由管理员执行 `/yujiancraft reload` 即可热重载。此文件只由服务端读取；客户端本地副本不能改变多人游戏数值。
 
@@ -142,7 +164,7 @@ After editing, an administrator can run `/yujiancraft reload`. The file is read 
 
 模组会在主世界地下生成灵矿与深层灵矿，使用铁镐或更高等级工具开采可获得灵晶；精准采集会保留矿石方块，时运会提高灵晶产量。`0.12.0` 提高了矿脉大小与每区块尝试次数。每位玩家首次进入世界会获得一本可再次合成的《御剑要略》。模组包含木、石、铁、金、钻石和下界合金六种基础飞剑，以及对应的灵铸系列。基础飞剑配方中央为原版剑、边位为对应锻材、四角为灵晶；八枚灵晶环绕基础飞剑可合成灵铸飞剑。
 
-Spirit Ore and Deepslate Spirit Ore generate underground in the Overworld. Mine them with an iron-tier tool or better for Spirit Crystals; Silk Touch preserves the ore and Fortune improves crystal yield. Version `0.12.0` increases vein size and placement attempts. Every player receives a craftable Yujian Guide on first join. Base flying swords place a vanilla sword in the centre, matching materials on the cardinal slots, and Spirit Crystals in all four corners. Eight more crystals create the matching Spiritforged sword.
+Spirit Ore and Deepslate Spirit Ore generate underground in the Overworld. Mine them with an iron-tier tool or better for Spirit Crystals; Silk Touch preserves the ore and Fortune improves crystal yield. Version `0.12.0` increases vein size and placement attempts. Every player receives a craftable Yujian Guide on first join. Base flying swords place a vanilla sword in the centre, matching materials on the cardinal slots, and Spirit Crystals in all four corners. Eight more Spirit Crystals create the matching Spiritforged sword.
 
 | 飞剑 / Sword | 四周锻材 / Four surrounding materials |
 | --- | --- |
@@ -166,8 +188,8 @@ Spirit Tempering Table: place a smithing table in the centre, Spirit Crystals on
    Craft any base flying sword, hold it in the main hand, and right-click to summon six swords; right-click again to recall them.
 2. 默认准心锁定模式下，将准心指向生物并左键锁定。<br>
    In the default Crosshair Lock mode, aim at a creature and left-click to lock it.
-3. 按 `Ctrl+R` 切换阵型；按 `Ctrl+I` 打开设置。<br>
-   Press `Ctrl+R` to change formation and `Ctrl+I` to open settings.
+3. 按 `Ctrl+R` 切换阵型；按 `Ctrl+I` 打开设置并选择御器术式。役器或灵钓术式下，准心指向方块或水域后按 `G`。<br>
+   Press `Ctrl+R` to change formation and `Ctrl+I` to select a Yujian art. In Toolcraft or Spirit Fishing, aim at a block or water and press `G`.
 4. 在设置中启用御剑飞行后，背包中有飞剑时双击空格起飞或落下。<br>
    Enable Sword Riding in settings, carry a flying sword, and double-tap Space to take off or land.
 5. 可选：在淬灵台中融合一个外部模组武器与一柄本模组飞剑，按 `V` 使用万象飞剑剑阵。<br>
@@ -190,9 +212,9 @@ This is not a client-only mod. Preview releases may change item data, configurat
 
 ## 设置与多人游戏 / Configuration & Multiplayer
 
-`Ctrl+I` 提供索敌方式、攻击方式、优化第三人称、御剑飞行、飞剑光效与亮度档。光影开启时会自动切换为柔和亮度，玩家仍可手动关闭或调整光效。
+`Ctrl+I` 提供索敌方式、攻击方式、御器术式、优化第三人称、御剑飞行、飞剑光效与亮度档。光影开启时会自动切换为柔和亮度，玩家仍可手动关闭或调整光效。
 
-`Ctrl+I` exposes targeting, attack mode, over-the-shoulder camera, sword riding, visual effects, and brightness levels. Shader detection automatically selects a softer brightness profile, while players remain free to reduce or disable effects.
+`Ctrl+I` exposes targeting, attack mode, Yujian art, over-the-shoulder camera, sword riding, visual effects, and brightness levels. Shader detection automatically selects a softer brightness profile, while players remain free to reduce or disable effects.
 
 首次启动会生成 `config/yujiancraft/client-options.json`。将 `showDeveloperOptions` 改为 `true` 后，拥有 OP 2 级权限的玩家可查看开发者选项。伤害、目标、效果、平衡参数与各世界的万象飞剑登记表均只由服务端执行或读取；相机、准心、亮度和本地视听实验属于客户端表现。
 

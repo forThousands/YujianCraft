@@ -1,11 +1,12 @@
 package dev.yujiancraft.combat;
 
+import dev.yujiancraft.combat.technique.TechniqueMode;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, double crosshairLockRadius,
-                            TargetingMode targetingMode, AttackMode attackMode) {
+                            TargetingMode targetingMode, AttackMode attackMode, TechniqueMode techniqueMode) {
     public static final int DEFAULT_MINIMUM_DOCK_TICKS = 45;
     public static final int MINIMUM_DOCK_TICKS = 0;
     public static final int MAXIMUM_DOCK_TICKS = 200;
@@ -23,17 +24,25 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
         crosshairLockRadius = Mth.clamp(crosshairLockRadius, MINIMUM_LOCK_RADIUS, MAXIMUM_LOCK_RADIUS);
         if (targetingMode == null) targetingMode = TargetingMode.CROSSHAIR_LOCK;
         if (attackMode == null) attackMode = AttackMode.SORTIE;
+        if (techniqueMode == null) techniqueMode = TechniqueMode.PIERCE;
+    }
+
+    public SwordSettings(int minimumDockTicks, double automaticTargetRadius, double crosshairLockRadius,
+                         TargetingMode targetingMode, AttackMode attackMode) {
+        this(minimumDockTicks, automaticTargetRadius, crosshairLockRadius,
+                targetingMode, attackMode, TechniqueMode.PIERCE);
     }
 
     public static SwordSettings defaults() {
         return new SwordSettings(DEFAULT_MINIMUM_DOCK_TICKS, DEFAULT_AUTOMATIC_RADIUS, DEFAULT_LOCK_RADIUS,
-                TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE);
+                TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE, TechniqueMode.PIERCE);
     }
 
     public static SwordSettings fromNetwork(int dockTicks, double automaticRadius, double lockRadius,
-                                            int targetingOrdinal, int attackOrdinal) {
+                                            int targetingOrdinal, int attackOrdinal, int techniqueOrdinal) {
         return new SwordSettings(dockTicks, automaticRadius, lockRadius,
-                TargetingMode.fromOrdinal(targetingOrdinal), AttackMode.fromOrdinal(attackOrdinal));
+                TargetingMode.fromOrdinal(targetingOrdinal), AttackMode.fromOrdinal(attackOrdinal),
+                TechniqueMode.fromOrdinal(techniqueOrdinal));
     }
 
     public static SwordSettings read(ItemStack stack) {
@@ -46,7 +55,8 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
         double lockRadius = tag.contains("CrosshairLockRadius")
                 ? tag.getDouble("CrosshairLockRadius") : DEFAULT_LOCK_RADIUS;
         return fromNetwork(tag.getInt("MinimumDockTicks"), automaticRadius, lockRadius,
-                tag.getInt("TargetingMode"), tag.getInt("AttackMode"));
+                tag.getInt("TargetingMode"), tag.getInt("AttackMode"),
+                tag.contains("TechniqueMode") ? tag.getInt("TechniqueMode") : TechniqueMode.PIERCE.ordinal());
     }
 
     public void write(ItemStack stack) {
@@ -56,6 +66,7 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
         tag.putDouble("CrosshairLockRadius", crosshairLockRadius);
         tag.putInt("TargetingMode", targetingMode.ordinal());
         tag.putInt("AttackMode", attackMode.ordinal());
+        tag.putInt("TechniqueMode", techniqueMode.ordinal());
         stack.getOrCreateTag().put(ROOT_TAG, tag);
     }
 }

@@ -1,6 +1,7 @@
 package dev.yujiancraft.menu;
 
 import dev.yujiancraft.blockentity.SpiritTemperingTableBlockEntity;
+import dev.yujiancraft.combat.technique.ArtifactRole;
 import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.registry.ModBlocks;
@@ -24,6 +25,7 @@ import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.items.SlotItemHandler;
 
 public final class SpiritTemperingMenu extends AbstractContainerMenu {
+    public static final int ROLE_BUTTON = 100;
     public static final int PRESET_BUTTON = 101;
     public static final int GLOW_BUTTON = 102;
     public static final int FLIP_BUTTON = 103;
@@ -35,6 +37,7 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
     public static final int AURA_LENGTH_UP_BUTTON = 111;
     public static final int CONFIRM_SHAPE_BUTTON = 112;
     public static final int ENTER_TRIAL_BUTTON = 113;
+    public static final int CONFIRM_ROLE_BUTTON = 114;
 
     private final ContainerLevelAccess access;
     private final DataSlot preset = DataSlot.standalone();
@@ -44,6 +47,8 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
     private final DataSlot auraRadiusPercent = DataSlot.standalone();
     private final DataSlot auraLengthPercent = DataSlot.standalone();
     private final DataSlot shapeConfirmed = DataSlot.standalone();
+    private final DataSlot artifactRole = DataSlot.standalone();
+    private final DataSlot roleConfirmed = DataSlot.standalone();
     private ItemStack lastSource = ItemStack.EMPTY;
     private ItemStack lastCore = ItemStack.EMPTY;
     private ItemStack confirmedSource = ItemStack.EMPTY;
@@ -67,6 +72,7 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
         scalePercent.set(100);
         auraRadiusPercent.set(100);
         auraLengthPercent.set(100);
+        artifactRole.set(ArtifactRole.GENERIC.ordinal());
 
         addSlot(new SlotItemHandler(inventory, 0, 103, 42) {
             @Override public boolean mayPlace(ItemStack stack) { return WanxiangSwordData.canTemper(stack); }
@@ -92,6 +98,8 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
         addDataSlot(auraRadiusPercent);
         addDataSlot(auraLengthPercent);
         addDataSlot(shapeConfirmed);
+        addDataSlot(artifactRole);
+        addDataSlot(roleConfirmed);
         loadShapeFrom(inventory.getStackInSlot(0));
         lastSource = inventory.getStackInSlot(0).copy();
         lastCore = inventory.getStackInSlot(1).copy();
@@ -110,6 +118,8 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
     public int auraRadiusPercent() { return Math.max(50, Math.min(250, auraRadiusPercent.get())); }
     public int auraLengthPercent() { return Math.max(50, Math.min(250, auraLengthPercent.get())); }
     public boolean shapeConfirmed() { return shapeConfirmed.get() != 0; }
+    public ArtifactRole artifactRole() { return ArtifactRole.fromOrdinal(artifactRole.get()); }
+    public boolean roleConfirmed() { return roleConfirmed.get() != 0; }
     public int temperCount() { return WanxiangSwordData.temperCount(getSlot(0).getItem()); }
     public boolean hasRequiredItems() {
         return WanxiangSwordData.canTemperAgain(getSlot(0).getItem())
@@ -125,12 +135,17 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
 
     public ManualSpiritTrialManager.Shape shape() {
         return new ManualSpiritTrialManager.Shape(preset(), glowMode(), flipped(), scalePercent(),
-                auraRadiusPercent(), auraLengthPercent());
+                auraRadiusPercent(), auraLengthPercent(), artifactRole());
     }
 
     @Override
     public boolean clickMenuButton(Player player, int buttonId) {
         switch (buttonId) {
+            case ROLE_BUTTON -> {
+                artifactRole.set(artifactRole().next().ordinal());
+                roleConfirmed.set(0);
+                invalidateShape();
+            }
             case PRESET_BUTTON -> { preset.set((preset.get() + 1) % WanxiangRenderPreset.values().length); invalidateShape(); }
             case GLOW_BUTTON -> { glowMode.set((glowMode.get() + 1) % WanxiangGlowMode.values().length); invalidateShape(); }
             case FLIP_BUTTON -> { flip.set(flip.get() == 0 ? 1 : 0); invalidateShape(); }
@@ -142,6 +157,11 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
             case AURA_LENGTH_UP_BUTTON -> { auraLengthPercent.set(Math.min(250, auraLengthPercent.get() + 5)); invalidateShape(); }
             case CONFIRM_SHAPE_BUTTON -> { return confirmShape(player); }
             case ENTER_TRIAL_BUTTON -> { return enterTrial(player); }
+            case CONFIRM_ROLE_BUTTON -> {
+                if (!hasRequiredItems()) return false;
+                roleConfirmed.set(1);
+                invalidateShape();
+            }
             default -> { return false; }
         }
         broadcastChanges();
@@ -151,7 +171,10 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
     private boolean confirmShape(Player player) {
         ItemStack source = getSlot(0).getItem();
         ItemStack core = getSlot(1).getItem();
-        if (source.isEmpty() || core.isEmpty()) return false;
+        if (source.isEmpty() || core.isEmpty() || !roleConfirmed()) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.tempering.confirm_role"), true);
+            return false;
+        }
         confirmedSource = source.copy();
         confirmedCore = core.copy();
         shapeConfirmed.set(1);
@@ -167,7 +190,7 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
             player.displayClientMessage(Component.translatable("message.yujiancraft.tempering.limit"), true);
             return false;
         }
-        if (!shapeConfirmed() || !same(source, confirmedSource)
+        if (!roleConfirmed() || !shapeConfirmed() || !same(source, confirmedSource)
                 || !same(getSlot(1).getItem(), confirmedCore)) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.tempering.confirm_shape"), true);
             return false;
@@ -183,6 +206,11 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
         confirmedCore = ItemStack.EMPTY;
     }
 
+    private void invalidateRitual() {
+        roleConfirmed.set(0);
+        invalidateShape();
+    }
+
     private void loadShapeFrom(ItemStack source) {
         if (source.isEmpty()) return;
         preset.set(WanxiangSwordData.renderPreset(source).ordinal());
@@ -191,6 +219,7 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
         scalePercent.set(WanxiangSwordData.scalePercent(source));
         auraRadiusPercent.set(WanxiangSwordData.auraRadiusPercent(source));
         auraLengthPercent.set(WanxiangSwordData.auraLengthPercent(source));
+        artifactRole.set(WanxiangSwordData.role(source).ordinal());
     }
 
     @Override
@@ -198,11 +227,11 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
         if (!same(getSlot(0).getItem(), lastSource)) {
             lastSource = getSlot(0).getItem().copy();
             loadShapeFrom(lastSource);
-            invalidateShape();
+            invalidateRitual();
         }
         if (!same(getSlot(1).getItem(), lastCore)) {
             lastCore = getSlot(1).getItem().copy();
-            invalidateShape();
+            invalidateRitual();
         }
         super.broadcastChanges();
     }

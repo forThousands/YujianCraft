@@ -5,6 +5,7 @@ import dev.yujiancraft.upgrade.FlyingSwordModule;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import dev.yujiancraft.wanxiang.FlyingSwordDamage;
+import dev.yujiancraft.combat.SwordSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -33,6 +34,12 @@ public final class WanxiangClientEvents {
         event.getToolTip().add(Component.translatable("tooltip.yujiancraft.temper_count",
                         WanxiangSwordData.temperCount(stack), WanxiangSwordData.MAX_TEMPERINGS)
                 .withStyle(ChatFormatting.DARK_PURPLE));
+        event.getToolTip().add(Component.translatable("tooltip.yujiancraft.artifact_role",
+                        Component.translatable(WanxiangSwordData.role(stack).translationKey()))
+                .withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.translatable("tooltip.yujiancraft.technique",
+                        Component.translatable(SwordSettings.read(stack).techniqueMode().translationKey()))
+                .withStyle(ChatFormatting.GOLD));
         if (!WanxiangSwordData.isTempered(stack)) return;
         event.getToolTip().add(Component.translatable("tooltip.yujiancraft.wanxiang.title")
                 .withStyle(ChatFormatting.LIGHT_PURPLE));

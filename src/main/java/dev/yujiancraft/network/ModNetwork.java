@@ -13,9 +13,12 @@ import dev.yujiancraft.config.EffectParameter;
 import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.combat.TargetLockManager;
 import dev.yujiancraft.combat.ManualGuidanceManager;
+import dev.yujiancraft.combat.technique.ArtifactActionManager;
 import dev.yujiancraft.flight.SwordRidingManager;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.entity.FlyingSwordEntity;
+import dev.yujiancraft.wanxiang.WanxiangSwordData;
+import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,7 +39,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "13";
+    private static final String PROTOCOL = "14";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -108,6 +111,9 @@ public final class ModNetwork {
         CHANNEL.registerMessage(20, ManualTrialResultPacket.class,
                 ManualTrialResultPacket::encode, ManualTrialResultPacket::decode,
                 ModNetwork::handleManualTrialResult, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(21, ArtifactActionPacket.class,
+                ArtifactActionPacket::encode, ArtifactActionPacket::decode,
+                ModNetwork::handleArtifactAction, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
@@ -116,6 +122,17 @@ public final class ModNetwork {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender != null) FlyingSwordItem.toggleFormationMode(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleArtifactAction(ArtifactActionPacket message,
+                                             Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) ArtifactActionManager.handleAction(sender,
+                    message.hasBlock ? message.blockPos : null, message.face);
         });
         context.setPacketHandled(true);
     }
@@ -220,7 +237,17 @@ public final class ModNetwork {
                 if (!sender.hasPermissions(2)) {
                     SwordSettings current = FlyingSwordItem.getSettings(sender);
                     applied = new SwordSettings(current.minimumDockTicks(), current.automaticTargetRadius(),
-                            current.crosshairLockRadius(), requested.targetingMode(), requested.attackMode());
+                            current.crosshairLockRadius(), requested.targetingMode(), requested.attackMode(),
+                            requested.techniqueMode());
+                }
+                net.minecraft.world.item.ItemStack controlled = FlyingSwordItem.findFlyingSword(sender);
+                if (WanxiangSwordData.isTempered(controlled)) {
+                    dev.yujiancraft.combat.technique.TechniqueMode effective =
+                            WanxiangWeaponCatalog.effectiveTechnique(sender.server, controlled,
+                                    applied.techniqueMode());
+                    applied = new SwordSettings(applied.minimumDockTicks(), applied.automaticTargetRadius(),
+                            applied.crosshairLockRadius(), applied.targetingMode(), applied.attackMode(),
+                            effective);
                 }
                 FlyingSwordItem.setSettings(sender, applied);
                 sendSettings(sender, applied);
@@ -394,6 +421,28 @@ public final class ModNetwork {
     public record RequestSettingsPacket() {
     }
 
+    public record ArtifactActionPacket(boolean hasBlock, net.minecraft.core.BlockPos blockPos,
+                                       net.minecraft.core.Direction face) {
+        public static ArtifactActionPacket miss() {
+            return new ArtifactActionPacket(false, net.minecraft.core.BlockPos.ZERO,
+                    net.minecraft.core.Direction.UP);
+        }
+
+        private static void encode(ArtifactActionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeBoolean(message.hasBlock);
+            if (message.hasBlock) {
+                buffer.writeBlockPos(message.blockPos);
+                buffer.writeEnum(message.face);
+            }
+        }
+
+        private static ArtifactActionPacket decode(FriendlyByteBuf buffer) {
+            if (!buffer.readBoolean()) return miss();
+            return new ArtifactActionPacket(true, buffer.readBlockPos(),
+                    buffer.readEnum(net.minecraft.core.Direction.class));
+        }
+    }
+
     public record LockCrosshairNowPacket(int entityId) {
         private static void encode(LockCrosshairNowPacket message, FriendlyByteBuf buffer) {
             buffer.writeInt(message.entityId);
@@ -518,14 +567,16 @@ public final class ModNetwork {
     }
 
     public record UpdateSettingsPacket(int minimumDockTicks, double automaticRadius, double lockRadius,
-                                       int targetingMode, int attackMode) {
+                                       int targetingMode, int attackMode, int techniqueMode) {
         public static UpdateSettingsPacket from(SwordSettings settings) {
             return new UpdateSettingsPacket(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                    settings.crosshairLockRadius(), settings.targetingMode().ordinal(), settings.attackMode().ordinal());
+                    settings.crosshairLockRadius(), settings.targetingMode().ordinal(), settings.attackMode().ordinal(),
+                    settings.techniqueMode().ordinal());
         }
 
         public SwordSettings toSettings() {
-            return SwordSettings.fromNetwork(minimumDockTicks, automaticRadius, lockRadius, targetingMode, attackMode);
+            return SwordSettings.fromNetwork(minimumDockTicks, automaticRadius, lockRadius,
+                    targetingMode, attackMode, techniqueMode);
         }
 
         private static void encode(UpdateSettingsPacket message, FriendlyByteBuf buffer) {
@@ -534,24 +585,27 @@ public final class ModNetwork {
             buffer.writeDouble(message.lockRadius);
             buffer.writeVarInt(message.targetingMode);
             buffer.writeVarInt(message.attackMode);
+            buffer.writeVarInt(message.techniqueMode);
         }
 
         private static UpdateSettingsPacket decode(FriendlyByteBuf buffer) {
             return new UpdateSettingsPacket(buffer.readVarInt(), buffer.readDouble(), buffer.readDouble(),
-                    buffer.readVarInt(), buffer.readVarInt());
+                    buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
         }
     }
 
     public record SyncSettingsPacket(int minimumDockTicks, double automaticRadius, double lockRadius,
-                                     int targetingMode, int attackMode, boolean canEditBalance) {
+                                     int targetingMode, int attackMode, int techniqueMode,
+                                     boolean canEditBalance) {
         public static SyncSettingsPacket from(SwordSettings settings, boolean canEditBalance) {
             return new SyncSettingsPacket(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                     settings.crosshairLockRadius(), settings.targetingMode().ordinal(), settings.attackMode().ordinal(),
-                    canEditBalance);
+                    settings.techniqueMode().ordinal(), canEditBalance);
         }
 
         public SwordSettings toSettings() {
-            return SwordSettings.fromNetwork(minimumDockTicks, automaticRadius, lockRadius, targetingMode, attackMode);
+            return SwordSettings.fromNetwork(minimumDockTicks, automaticRadius, lockRadius,
+                    targetingMode, attackMode, techniqueMode);
         }
 
         private static void encode(SyncSettingsPacket message, FriendlyByteBuf buffer) {
@@ -560,12 +614,13 @@ public final class ModNetwork {
             buffer.writeDouble(message.lockRadius);
             buffer.writeVarInt(message.targetingMode);
             buffer.writeVarInt(message.attackMode);
+            buffer.writeVarInt(message.techniqueMode);
             buffer.writeBoolean(message.canEditBalance);
         }
 
         private static SyncSettingsPacket decode(FriendlyByteBuf buffer) {
             return new SyncSettingsPacket(buffer.readVarInt(), buffer.readDouble(), buffer.readDouble(),
-                    buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean());
+                    buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readBoolean());
         }
     }
 

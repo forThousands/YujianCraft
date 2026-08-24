@@ -3,6 +3,7 @@ package dev.yujiancraft.registry;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.entity.SpiritTrialDummyEntity;
+import dev.yujiancraft.entity.SwordQiEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -29,6 +30,14 @@ public final class ModEntities {
                     .clientTrackingRange(32)
                     .updateInterval(2)
                     .build(YujianCraft.MOD_ID + ":spirit_trial_dummy")
+    );
+    public static final RegistryObject<EntityType<SwordQiEntity>> SWORD_QI = ENTITIES.register(
+            "sword_qi",
+            () -> EntityType.Builder.<SwordQiEntity>of(SwordQiEntity::new, MobCategory.MISC)
+                    .sized(2.8F, 2.8F)
+                    .clientTrackingRange(96)
+                    .updateInterval(1)
+                    .build(YujianCraft.MOD_ID + ":sword_qi")
     );
 
     private ModEntities() {

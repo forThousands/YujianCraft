@@ -5,6 +5,7 @@ import dev.yujiancraft.registry.ModItems;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.config.SwordBalanceConfig;
 import dev.yujiancraft.config.EffectBalanceConfig;
+import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.registry.ModBlockEntities;
 import dev.yujiancraft.registry.ModBlocks;
 import dev.yujiancraft.registry.ModEffects;
@@ -29,5 +30,6 @@ public final class YujianCraft {
         ModNetwork.register();
         context.registerConfig(ModConfig.Type.SERVER, SwordBalanceConfig.SPEC);
         context.registerConfig(ModConfig.Type.SERVER, EffectBalanceConfig.SPEC, "yujiancraft-effects-server.toml");
+        context.registerConfig(ModConfig.Type.SERVER, TechniqueConfig.SPEC, "yujiancraft-techniques-server.toml");
     }
 }

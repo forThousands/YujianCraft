@@ -3,6 +3,7 @@ package dev.yujiancraft.client;
 import dev.yujiancraft.combat.AttackMode;
 import dev.yujiancraft.combat.SwordSettings;
 import dev.yujiancraft.combat.TargetingMode;
+import dev.yujiancraft.combat.technique.TechniqueMode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -17,6 +18,7 @@ public final class YujianCraftConfigScreen extends Screen {
     private SwordSettings settings = SwordSettings.defaults();
     private Button targetingButton;
     private Button attackButton;
+    private Button techniqueButton;
     private Button thirdPersonButton;
     private Button swordRidingButton;
     private Button swordGlowButton;
@@ -35,50 +37,60 @@ public final class YujianCraftConfigScreen extends Screen {
         settings = ClientSettingsState.get();
         serverEditingButtons.clear();
         int centerX = width / 2;
-        int top = height / 2 - 61;
+        int top = height / 2 - 75;
 
         targetingButton = addModeRow(centerX, top, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
-                        settings.targetingMode().next(), settings.attackMode())),
+                        settings.targetingMode().next(), settings.attackMode(), settings.techniqueMode())),
                 () -> update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                        settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, settings.attackMode())), true);
+                        settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, settings.attackMode(),
+                        settings.techniqueMode())), true);
 
-        attackButton = addModeRow(centerX, top + 25, () -> update(new SwordSettings(
+        attackButton = addModeRow(centerX, top + 22, () -> update(new SwordSettings(
                         settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
-                        settings.targetingMode(), settings.attackMode().next())),
+                        settings.targetingMode(), settings.attackMode().next(), settings.techniqueMode())),
                 () -> update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                        settings.crosshairLockRadius(), settings.targetingMode(), AttackMode.SORTIE)), true);
+                        settings.crosshairLockRadius(), settings.targetingMode(), AttackMode.SORTIE,
+                        settings.techniqueMode())), true);
 
-        thirdPersonButton = addModeRow(centerX, top + 50,
+        techniqueButton = addModeRow(centerX, top + 44, () -> update(new SwordSettings(
+                        settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
+                        settings.targetingMode(), settings.attackMode(), settings.techniqueMode().next())),
+                () -> update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
+                        settings.crosshairLockRadius(), settings.targetingMode(), settings.attackMode(),
+                        TechniqueMode.PIERCE)), true);
+
+        thirdPersonButton = addModeRow(centerX, top + 66,
                 () -> ClientOptions.setOptimizedThirdPerson(!ClientOptions.optimizedThirdPerson()),
                 () -> ClientOptions.setOptimizedThirdPerson(false), false);
 
-        swordRidingButton = addModeRow(centerX, top + 75, this::toggleSwordRidingOption,
+        swordRidingButton = addModeRow(centerX, top + 88, this::toggleSwordRidingOption,
                 () -> setSwordRidingOption(false), false);
 
-        swordGlowButton = addModeRow(centerX, top + 100,
+        swordGlowButton = addModeRow(centerX, top + 110,
                 () -> ClientOptions.setSwordBodyGlow(!ClientOptions.swordBodyGlow()),
                 () -> ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW), false);
 
-        glowBrightnessButton = addModeRow(centerX, top + 125,
+        glowBrightnessButton = addModeRow(centerX, top + 132,
                 () -> ClientOptions.setGlowBrightness(ClientOptions.glowBrightness().next()),
                 () -> ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
 
         addRenderableWidget(Button.builder(Component.translatable("screen.yujiancraft.config.reset_all"), button -> {
                     update(new SwordSettings(settings.minimumDockTicks(), settings.automaticTargetRadius(),
-                            settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE));
+                            settings.crosshairLockRadius(), TargetingMode.CROSSHAIR_LOCK, AttackMode.SORTIE,
+                            TechniqueMode.PIERCE));
                     ClientOptions.setOptimizedThirdPerson(false);
                     setSwordRidingOption(true);
                     ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW);
                     ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
                     refreshLabels();
-                }).bounds(centerX - 145, top + 159, 92, 20).build());
+                }).bounds(centerX - 145, top + 158, 92, 20).build());
         developerButton = addRenderableWidget(Button.builder(
                         Component.translatable("screen.yujiancraft.config.developer"),
                         button -> minecraft.setScreen(new AdminBalanceScreen(this)))
-                .bounds(centerX - 47, top + 159, 92, 20).build());
+                .bounds(centerX - 47, top + 158, 92, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(centerX + 51, top + 159, 94, 20).build());
+                .bounds(centerX + 51, top + 158, 94, 20).build());
 
         refreshLabels();
         setEditingEnabled(false);
@@ -153,6 +165,10 @@ public final class YujianCraftConfigScreen extends Screen {
             swordRidingButton.setMessage(Component.translatable("screen.yujiancraft.config.sword_riding",
                     Component.translatable(ClientOptions.swordRidingEnabled() ? "options.on" : "options.off")));
         }
+        if (techniqueButton != null) {
+            techniqueButton.setMessage(Component.translatable("screen.yujiancraft.config.technique",
+                    Component.translatable(settings.techniqueMode().translationKey())));
+        }
         if (swordGlowButton != null) {
             swordGlowButton.setMessage(Component.translatable("screen.yujiancraft.config.sword_glow",
                     Component.translatable(ClientOptions.swordBodyGlow() ? "options.on" : "options.off")));
@@ -166,7 +182,7 @@ public final class YujianCraftConfigScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
-        int top = height / 2 - 61;
+        int top = height / 2 - 75;
         graphics.drawCenteredString(font, title, width / 2, top - 48, 0xFFFFFF);
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.config.description"),
                 width / 2, top - 36, 0xA0A0A0);

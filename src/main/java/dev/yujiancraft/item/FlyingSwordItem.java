@@ -151,7 +151,7 @@ public final class FlyingSwordItem extends SwordItem {
 
     public static SwordSettings getSettings(ServerPlayer player) {
         ItemStack stack = findFlyingSword(player);
-        return stack.isEmpty() ? SwordSettings.defaults() : SwordSettings.read(stack);
+        return stack.isEmpty() ? SwordSettings.defaults() : validatedSettings(player, stack);
     }
 
     public static void setSettings(ServerPlayer player, SwordSettings settings) {
@@ -209,7 +209,7 @@ public final class FlyingSwordItem extends SwordItem {
         ServerLevel level = player.serverLevel();
         WanxiangSwordData.ensureBinding(stack);
         FormationMode formationMode = getFormationMode(stack);
-        SwordSettings settings = SwordSettings.read(stack);
+        SwordSettings settings = validatedSettings(player, stack);
         int formationSize = ManualSpiritTrialManager.formationSize(player, FORMATION_SIZE);
         for (int slot = 0; slot < formationSize; slot++) {
             FlyingSwordEntity sword = ModEntities.FLYING_SWORD.get().create(level);
@@ -218,6 +218,16 @@ public final class FlyingSwordItem extends SwordItem {
             sword.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), 0.0F);
             level.addFreshEntity(sword);
         }
+    }
+
+    private static SwordSettings validatedSettings(ServerPlayer player, ItemStack stack) {
+        SwordSettings settings = SwordSettings.read(stack);
+        if (!WanxiangSwordData.isTempered(stack)) return settings;
+        dev.yujiancraft.combat.technique.TechniqueMode effective =
+                WanxiangWeaponCatalog.effectiveTechnique(player.server, stack, settings.techniqueMode());
+        return effective == settings.techniqueMode() ? settings : new SwordSettings(
+                settings.minimumDockTicks(), settings.automaticTargetRadius(), settings.crosshairLockRadius(),
+                settings.targetingMode(), settings.attackMode(), effective);
     }
 
     public static boolean isUsableFlyingSword(ItemStack stack) {

@@ -2,6 +2,8 @@ package dev.yujiancraft.entity;
 
 import dev.yujiancraft.formation.FormationGeometry;
 import dev.yujiancraft.formation.FormationMode;
+import dev.yujiancraft.combat.technique.ArtifactActionManager;
+import dev.yujiancraft.combat.technique.TechniqueMode;
 import dev.yujiancraft.combat.AttackMode;
 import dev.yujiancraft.combat.SwordSettings;
 import dev.yujiancraft.combat.TargetingMode;
@@ -11,6 +13,7 @@ import dev.yujiancraft.flight.SwordRidingManager;
 import dev.yujiancraft.registry.ModItems;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.config.SwordBalanceConfig;
+import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.combat.SwordEffectEngine;
 import dev.yujiancraft.combat.SwordTargetingRules;
 import dev.yujiancraft.item.FlyingSwordItem;
@@ -23,6 +26,9 @@ import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
 import dev.yujiancraft.wanxiang.FlyingSwordDamage;
 import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -37,13 +43,17 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public final class FlyingSwordEntity extends Entity {
@@ -67,6 +77,8 @@ public final class FlyingSwordEntity extends Entity {
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_STACK =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DATA_TECHNIQUE =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
 
     private UUID ownerId;
     private UUID targetId;
@@ -80,6 +92,7 @@ public final class FlyingSwordEntity extends Entity {
     private double crosshairLockRadius = SwordSettings.DEFAULT_LOCK_RADIUS;
     private TargetingMode targetingMode = TargetingMode.CROSSHAIR_LOCK;
     private AttackMode attackMode = AttackMode.SORTIE;
+    private TechniqueMode techniqueMode = TechniqueMode.PIERCE;
     private FlyingSwordMaterial material = FlyingSwordMaterial.IRON;
     private FlyingSwordSeries series = FlyingSwordSeries.STANDARD;
     private CompoundTag installedModules = new CompoundTag();
@@ -89,6 +102,14 @@ public final class FlyingSwordEntity extends Entity {
     private boolean visualPreview;
     private UUID sourceBindingId;
     private ItemStack displayStack = ItemStack.EMPTY;
+    private int techniqueTicks;
+    private int postDockCooldown;
+    private int guardImpactTicks;
+    private BlockPos actionBlockPos;
+    private Direction actionFace = Direction.UP;
+    private int actionWorkTicks;
+    private final Set<UUID> techniqueHits = new HashSet<>();
+    private boolean techniqueDidDamage;
 
     public FlyingSwordEntity(EntityType<? extends FlyingSwordEntity> type, Level level) {
         super(type, level);
@@ -110,12 +131,15 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_MATERIAL, material.ordinal());
         entityData.set(DATA_SERIES, series.ordinal());
         entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
+        entityData.set(DATA_TECHNIQUE, techniqueMode.ordinal());
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(this.installedModules));
         entityData.set(DATA_FORMATION_SLOT, slot);
         entityData.set(DATA_FORMATION_MODE, mode.ordinal());
         attackCooldown = 20 + slot * 7;
+        if (techniqueMode.isPassive()) attackCooldown = 0;
+        else if (techniqueMode != TechniqueMode.PIERCE) attackCooldown = 20;
     }
 
     public void bindAsRideSupport(ServerPlayer owner, ItemStack sourceStack) {
@@ -151,6 +175,8 @@ public final class FlyingSwordEntity extends Entity {
         crosshairLockRadius = settings.crosshairLockRadius();
         targetingMode = settings.targetingMode();
         attackMode = settings.attackMode();
+        techniqueMode = settings.techniqueMode();
+        entityData.set(DATA_TECHNIQUE, techniqueMode.ordinal());
     }
 
     public boolean isOwnedBy(net.minecraft.world.entity.player.Player player) {
@@ -178,7 +204,46 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     public boolean isReadyForManualLaunch() {
+        return !rideSupport && techniqueMode == TechniqueMode.PIERCE
+                && phase == FlightPhase.DOCKED && attackCooldown <= 0;
+    }
+
+    public TechniqueMode getTechniqueMode() {
+        return techniqueMode;
+    }
+
+    public boolean isReadyForArtifactAction() {
         return !rideSupport && phase == FlightPhase.DOCKED && attackCooldown <= 0;
+    }
+
+    public boolean beginToolAction(BlockPos pos, Direction face) {
+        if (!isReadyForArtifactAction() || techniqueMode != TechniqueMode.TOOL_USE || pos == null) return false;
+        actionBlockPos = pos.immutable();
+        actionFace = face == null ? Direction.UP : face;
+        techniqueTicks = 0;
+        phase = FlightPhase.TOOL_APPROACH;
+        return true;
+    }
+
+    public boolean beginFishingAction(BlockPos pos) {
+        if (!isReadyForArtifactAction() || techniqueMode != TechniqueMode.SPIRIT_FISHING || pos == null) return false;
+        actionBlockPos = pos.immutable();
+        techniqueTicks = 0;
+        int lure = net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+                net.minecraft.world.item.enchantment.Enchantments.FISHING_SPEED, displayStack);
+        int minimum = Math.max(20, TechniqueConfig.fishingMinWait() - lure * 80);
+        int maximum = Math.max(minimum, TechniqueConfig.fishingMaxWait() - lure * 80);
+        actionWorkTicks = random.nextIntBetweenInclusive(minimum, maximum);
+        phase = FlightPhase.FISHING_APPROACH;
+        return true;
+    }
+
+    public boolean isGuarding() {
+        return !rideSupport && techniqueMode == TechniqueMode.GUARD && phase == FlightPhase.DOCKED;
+    }
+
+    public void triggerGuardImpact() {
+        guardImpactTicks = Math.max(guardImpactTicks, TechniqueConfig.guardImpactCooldown());
     }
 
     public void beginManualGuidance(Vec3 aimDirection, Vec3 launchDirection) {
@@ -215,6 +280,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.define(DATA_VISUAL_MODULES, 0);
         entityData.define(DATA_RIDE_SUPPORT, false);
         entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
+        entityData.define(DATA_TECHNIQUE, TechniqueMode.PIERCE.ordinal());
     }
 
     @Override
@@ -268,17 +334,33 @@ public final class FlyingSwordEntity extends Entity {
             case RELENTLESS_ARC -> tickRelentlessArc(serverLevel);
             case MANUAL_GUIDANCE -> tickManualGuidance(owner);
             case RIDE_SUPPORT -> discard();
+            case SWEEP -> tickSweep(owner, serverLevel);
+            case QI_CHARGE -> tickSwordQiCharge(owner, serverLevel);
+            case TOOL_APPROACH -> tickToolApproach(owner);
+            case TOOL_WORK -> tickToolWork(owner, serverLevel);
+            case FISHING_APPROACH -> tickFishingApproach(owner);
+            case FISHING_WAIT -> tickFishingWait(owner, serverLevel);
         }
         entityData.set(DATA_DOCKED, phase == FlightPhase.DOCKED);
     }
 
     private void tickDocked(ServerPlayer owner) {
+        if (techniqueMode == TechniqueMode.GUARD) {
+            if (guardImpactTicks > 0) guardImpactTicks--;
+            double impact = guardImpactTicks <= 0 ? 0.0D
+                    : 0.28D * guardImpactTicks / Math.max(1.0D, TechniqueConfig.guardImpactCooldown());
+            Vec3 guard = FormationGeometry.guardPosition(owner, formationSlot, impact);
+            setPos(guard);
+            setDeltaMovement(Vec3.ZERO);
+            faceDirection(FormationGeometry.guardDirection(owner, formationSlot), 0.5D);
+            return;
+        }
         Vec3 dock = FormationGeometry.dockPosition(owner, formationSlot, formationMode, tickCount);
         setPos(dock);
         setDeltaMovement(Vec3.ZERO);
         faceDirection(FormationGeometry.dockDirection(owner, dock, formationMode), 0.34D);
 
-        if (attackCooldown <= 0) {
+        if (attackCooldown <= 0 && !techniqueMode.isPassive()) {
             findTarget(owner).ifPresent(target -> beginAttack(owner, target));
         }
     }
@@ -309,6 +391,18 @@ public final class FlyingSwordEntity extends Entity {
 
     private void beginAttack(ServerPlayer owner, LivingEntity target) {
         targetId = target.getUUID();
+        if (techniqueMode == TechniqueMode.SWEEP) {
+            techniqueTicks = 0;
+            techniqueHits.clear();
+            techniqueDidDamage = false;
+            phase = FlightPhase.SWEEP;
+            return;
+        }
+        if (techniqueMode == TechniqueMode.SWORD_QI) {
+            techniqueTicks = 0;
+            phase = FlightPhase.QI_CHARGE;
+            return;
+        }
         if (!formationMode.usesRingGeometry()) {
             Vec3 dock = FormationGeometry.dockPosition(owner, formationSlot, formationMode, tickCount);
             fixedWaypoint = FormationGeometry.launchClearPoint(owner, formationSlot, tickCount);
@@ -372,28 +466,7 @@ public final class FlyingSwordEntity extends Entity {
         boolean crossedHitbox = target.getBoundingBox().inflate(0.3D).contains(position())
                 || target.getBoundingBox().inflate(0.3D).clip(previousPosition, position()).isPresent();
         if (crossedHitbox || closeTo(aimPoint, 0.92D)) {
-            double baseDamage = WanxiangSwordData.isTempered(displayStack)
-                    ? WanxiangWeaponCatalog.damage(serverLevel.getServer(), displayStack)
-                    : WanxiangSwordData.pierceDamage(displayStack);
-            if (baseDamage <= 0.0D) baseDamage = SwordBalanceConfig.get(material).damage();
-            double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
-                    baseDamage + SwordEffectEngine.damageBonus(installedModules), target.getMobType());
-            boolean markedTrialHit = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
-            boolean successfulHit;
-            try {
-                successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
-            } finally {
-                if (markedTrialHit) ManualSpiritTrialManager.endFlyingSwordDamage(owner);
-            }
-            // Contact feedback describes the sword crossing the target, not only vanilla's
-            // accepted-damage result. Hurt immunity can reject closely spaced swords, but the
-            // visible blade still struck and must produce the same base flash and impact ring.
-            ModNetwork.sendSwordImpact(this, target, safeDirection(getDeltaMovement(),
-                    new Vec3(0.0D, 1.0D, 0.0D)));
-            if (successfulHit) {
-                SwordEffectEngine.applyOnHit(owner, target, installedModules);
-                damageSourceSword(owner);
-            }
+            damageLivingTarget(owner, target, 1.0D, true);
             Vec3 travel = safeDirection(getDeltaMovement(), new Vec3(0.0D, 1.0D, 0.0D));
             double followDistance = attackMode == AttackMode.RELENTLESS ? 3.2D : 1.15D;
             fixedWaypoint = position().add(travel.scale(followDistance)).add(0.0D, 0.25D, 0.0D);
@@ -442,6 +515,152 @@ public final class FlyingSwordEntity extends Entity {
         }
     }
 
+    private void tickSweep(ServerPlayer owner, ServerLevel serverLevel) {
+        int duration = TechniqueConfig.sweepDuration();
+        int approachTicks = 6;
+        double progress = Mth.clamp((techniqueTicks - approachTicks) / (double) Math.max(1, duration), 0.0D, 1.0D);
+        Vec3 forward = Vec3.directionFromRotation(0.0F, owner.getYRot()).normalize();
+        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        double baseAngle = Math.PI * 2.0D * formationSlot / 6.0D;
+        double angle = baseAngle - Math.PI / 3.0D + progress * Math.PI * 2.0D / 3.0D;
+        Vec3 radial = forward.scale(Math.cos(angle)).add(right.scale(Math.sin(angle))).normalize();
+        Vec3 desired = owner.position().add(0.0D, 0.95D + (formationSlot % 2) * 0.16D, 0.0D)
+                .add(radial.scale(TechniqueConfig.sweepRadius()));
+        Vec3 previous = position();
+        Vec3 tangent = forward.scale(-Math.sin(angle)).add(right.scale(Math.cos(angle)));
+        if (techniqueTicks < approachTicks) {
+            flyToward(desired, 0.34D, 0.9D);
+            faceDirection(tangent, 0.55D);
+            techniqueTicks++;
+            return;
+        }
+        Vec3 motion = desired.subtract(previous);
+        setPos(desired);
+        setDeltaMovement(motion);
+        faceDirection(tangent, 0.75D);
+
+        AABB swept = new AABB(previous, desired).inflate(0.72D);
+        int limit = TechniqueConfig.sweepTargetLimit();
+        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, swept,
+                candidate -> SwordTargetingRules.canActivelyTarget(owner, candidate))) {
+            if (techniqueHits.size() >= limit || !techniqueHits.add(target.getUUID())) continue;
+            if (damageLivingTarget(owner, target, TechniqueConfig.sweepDamageScale(), false)) {
+                techniqueDidDamage = true;
+            }
+        }
+        techniqueTicks++;
+        if (techniqueTicks > duration + approachTicks) {
+            if (techniqueDidDamage) consumeSourceDurability(owner, 1);
+            postDockCooldown = TechniqueConfig.sweepCooldown();
+            beginReturn();
+        }
+    }
+
+    private void tickSwordQiCharge(ServerPlayer owner, ServerLevel serverLevel) {
+        Vec3 forward = Vec3.directionFromRotation(0.0F, owner.getYRot()).normalize();
+        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        Vec3 desired = owner.position().add(0.0D, 1.0D + (formationSlot % 2) * 0.2D, 0.0D)
+                .add(forward.scale(0.55D)).add(right.scale((formationSlot - 2.5D) * 0.58D));
+        flyToward(desired, 0.38D, 0.72D);
+        faceDirection(forward, 0.8D);
+        techniqueTicks++;
+        if (techniqueTicks < 14) return;
+        if (formationSlot == 0) {
+            Entity raw = targetId == null ? null : serverLevel.getEntity(targetId);
+            Vec3 direction = raw instanceof LivingEntity living && living.isAlive()
+                    ? living.position().add(0.0D, living.getBbHeight() * 0.55D, 0.0D).subtract(position())
+                    : owner.getViewVector(1.0F);
+            SwordQiEntity.spawn(serverLevel, owner, displayStack, position(),
+                    safeDirection(direction, forward), sourceBindingId);
+        }
+        postDockCooldown = TechniqueConfig.qiCooldown();
+        beginReturn();
+    }
+
+    private void tickToolApproach(ServerPlayer owner) {
+        if (actionBlockPos == null) {
+            beginReturn();
+            return;
+        }
+        Vec3 normal = Vec3.atLowerCornerOf(actionFace.getNormal());
+        Vec3 approach = Vec3.atCenterOf(actionBlockPos).add(normal.scale(0.92D));
+        flyToward(approach, 0.24D, 0.82D);
+        if (closeTo(approach, 0.25D)) {
+            ItemStack source = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
+            actionWorkTicks = ArtifactActionManager.miningTicks(owner, source, actionBlockPos);
+            techniqueTicks = 0;
+            phase = FlightPhase.TOOL_WORK;
+        }
+    }
+
+    private void tickToolWork(ServerPlayer owner, ServerLevel serverLevel) {
+        if (actionBlockPos == null || serverLevel.getBlockState(actionBlockPos).isAir()) {
+            beginReturn();
+            return;
+        }
+        Vec3 normal = Vec3.atLowerCornerOf(actionFace.getNormal());
+        Vec3 base = Vec3.atCenterOf(actionBlockPos).add(normal.scale(0.82D));
+        Vec3 pulse = base.add(normal.scale(Math.sin(techniqueTicks * 1.5D) * 0.18D));
+        Vec3 motion = pulse.subtract(position());
+        setPos(pulse);
+        setDeltaMovement(motion);
+        faceDirection(normal.scale(-1.0D), 0.8D);
+        if (techniqueTicks % 5 == 0) {
+            serverLevel.sendParticles(ParticleTypes.CRIT, base.x, base.y, base.z, 3, 0.12D, 0.12D, 0.12D, 0.03D);
+            serverLevel.playSound(null, actionBlockPos, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.18F, 1.8F);
+        }
+        techniqueTicks++;
+        if (techniqueTicks >= actionWorkTicks) {
+            ArtifactActionManager.completeMining(owner, this, actionBlockPos);
+            actionBlockPos = null;
+            postDockCooldown = 12;
+            beginReturn();
+        }
+    }
+
+    private void tickFishingApproach(ServerPlayer owner) {
+        if (actionBlockPos == null) {
+            beginReturn();
+            return;
+        }
+        Vec3 hover = Vec3.atCenterOf(actionBlockPos).add(0.0D, 1.15D, 0.0D);
+        flyToward(hover, 0.18D, 0.7D);
+        if (closeTo(hover, 0.3D)) {
+            techniqueTicks = 0;
+            phase = FlightPhase.FISHING_WAIT;
+        }
+    }
+
+    private void tickFishingWait(ServerPlayer owner, ServerLevel serverLevel) {
+        if (actionBlockPos == null || !serverLevel.getFluidState(actionBlockPos)
+                .is(net.minecraft.tags.FluidTags.WATER)) {
+            beginReturn();
+            return;
+        }
+        Vec3 hover = Vec3.atCenterOf(actionBlockPos)
+                .add(0.0D, 1.12D + Math.sin(tickCount * 0.15D) * 0.07D, 0.0D);
+        setPos(hover);
+        setDeltaMovement(Vec3.ZERO);
+        faceDirection(new Vec3(0.0D, -1.0D, 0.05D), 0.4D);
+        if (techniqueTicks % 20 == 0) {
+            serverLevel.sendParticles(ParticleTypes.BUBBLE, actionBlockPos.getX() + 0.5D,
+                    actionBlockPos.getY() + 0.85D, actionBlockPos.getZ() + 0.5D,
+                    4, 0.25D, 0.05D, 0.25D, 0.02D);
+        }
+        techniqueTicks++;
+        if (techniqueTicks >= actionWorkTicks) {
+            serverLevel.sendParticles(ParticleTypes.SPLASH, actionBlockPos.getX() + 0.5D,
+                    actionBlockPos.getY() + 1.0D, actionBlockPos.getZ() + 0.5D,
+                    14, 0.35D, 0.15D, 0.35D, 0.12D);
+            serverLevel.playSound(null, actionBlockPos, SoundEvents.FISHING_BOBBER_SPLASH,
+                    SoundSource.PLAYERS, 0.8F, 1.15F);
+            ArtifactActionManager.completeFishing(owner, this, actionBlockPos);
+            actionBlockPos = null;
+            postDockCooldown = 20;
+            beginReturn();
+        }
+    }
+
     private void beginReturn() {
         if (targetingMode == TargetingMode.MANUAL_GUIDANCE && level() instanceof ServerLevel serverLevel
                 && ownerId != null) {
@@ -455,7 +674,33 @@ public final class FlyingSwordEntity extends Entity {
         phase = FlightPhase.RETURN_RALLY;
     }
 
-    private void damageSourceSword(ServerPlayer owner) {
+    private boolean damageLivingTarget(ServerPlayer owner, LivingEntity target,
+                                       double damageScale, boolean consumeDurability) {
+        if (!(level() instanceof ServerLevel serverLevel)) return false;
+        double baseDamage = WanxiangSwordData.isTempered(displayStack)
+                ? WanxiangWeaponCatalog.damage(serverLevel.getServer(), displayStack)
+                : WanxiangSwordData.pierceDamage(displayStack);
+        if (baseDamage <= 0.0D) baseDamage = SwordBalanceConfig.get(material).damage();
+        double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
+                baseDamage + SwordEffectEngine.damageBonus(installedModules), target.getMobType())
+                * Math.max(0.0D, damageScale);
+        boolean markedTrialHit = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
+        boolean successfulHit;
+        try {
+            successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
+        } finally {
+            if (markedTrialHit) ManualSpiritTrialManager.endFlyingSwordDamage(owner);
+        }
+        ModNetwork.sendSwordImpact(this, target, safeDirection(getDeltaMovement(),
+                new Vec3(0.0D, 1.0D, 0.0D)));
+        if (successfulHit) {
+            SwordEffectEngine.applyOnHit(owner, target, installedModules);
+            if (consumeDurability) consumeSourceDurability(owner, 1);
+        }
+        return successfulHit;
+    }
+
+    public void consumeSourceDurability(ServerPlayer owner, int requestedCost) {
         ItemStack stack = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
         if (stack.isEmpty()) stack = FlyingSwordItem.findFlyingSword(owner, material, series);
         if (stack.isEmpty()) {
@@ -463,8 +708,10 @@ public final class FlyingSwordEntity extends Entity {
             return;
         }
         if (stack.getTag() != null && stack.getTag().getBoolean("Unbreakable")) return;
-        int durabilityCost = WanxiangSwordData.isTempered(stack)
-                ? WanxiangWeaponCatalog.durabilityCost(owner.server, stack) : 1;
+        int durabilityCost = Math.max(0, requestedCost);
+        if (WanxiangSwordData.isTempered(stack)) {
+            durabilityCost *= WanxiangWeaponCatalog.durabilityCost(owner.server, stack);
+        }
         durabilityCost = SwordModuleData.consumeVirtualDurability(stack, durabilityCost);
         if (durabilityCost <= 0) return;
         if (stack.hurt(durabilityCost, owner.getRandom(), owner)) {
@@ -496,7 +743,8 @@ public final class FlyingSwordEntity extends Entity {
         flyToward(dock, 0.25D, 0.58D);
         if (closeTo(dock, 0.2D)) {
             setDeltaMovement(Vec3.ZERO);
-            attackCooldown = minimumDockTicks;
+            attackCooldown = Math.max(minimumDockTicks, postDockCooldown);
+            postDockCooldown = 0;
             phase = FlightPhase.DOCKED;
         }
     }
@@ -569,6 +817,10 @@ public final class FlyingSwordEntity extends Entity {
 
     public int getVisualFormationSlot() {
         return entityData.get(DATA_FORMATION_SLOT);
+    }
+
+    public TechniqueMode getVisualTechniqueMode() {
+        return TechniqueMode.fromOrdinal(entityData.get(DATA_TECHNIQUE));
     }
 
     public boolean isVisuallyDocked() {
@@ -647,6 +899,8 @@ public final class FlyingSwordEntity extends Entity {
                 ? tag.getDouble("CrosshairLockRadius") : SwordSettings.DEFAULT_LOCK_RADIUS;
         targetingMode = TargetingMode.fromOrdinal(tag.getInt("TargetingMode"));
         attackMode = AttackMode.fromOrdinal(tag.getInt("AttackMode"));
+        techniqueMode = tag.contains("TechniqueMode")
+                ? TechniqueMode.fromOrdinal(tag.getInt("TechniqueMode")) : TechniqueMode.PIERCE;
         material = tag.contains("Material")
                 ? FlyingSwordMaterial.fromOrdinal(tag.getInt("Material")) : FlyingSwordMaterial.IRON;
         series = tag.contains("Series")
@@ -669,6 +923,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(installedModules));
         entityData.set(DATA_RIDE_SUPPORT, rideSupport);
         entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
+        entityData.set(DATA_TECHNIQUE, techniqueMode.ordinal());
         if (tag.contains("ManualLaunchX")) {
             manualLaunchDirection = new Vec3(tag.getDouble("ManualLaunchX"), tag.getDouble("ManualLaunchY"),
                     tag.getDouble("ManualLaunchZ"));
@@ -691,6 +946,7 @@ public final class FlyingSwordEntity extends Entity {
         tag.putDouble("CrosshairLockRadius", crosshairLockRadius);
         tag.putInt("TargetingMode", targetingMode.ordinal());
         tag.putInt("AttackMode", attackMode.ordinal());
+        tag.putInt("TechniqueMode", techniqueMode.ordinal());
         tag.putInt("Material", material.ordinal());
         tag.putInt("Series", series.ordinal());
         if (!installedModules.isEmpty()) tag.put(SwordModuleData.ROOT_TAG, installedModules.copy());

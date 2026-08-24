@@ -7,7 +7,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public final class YujianGuideScreen extends Screen {
-    private static final int PAGE_COUNT = 10;
+    private static final int PAGE_COUNT = 13;
     private int page;
     private Button previous;
     private Button next;

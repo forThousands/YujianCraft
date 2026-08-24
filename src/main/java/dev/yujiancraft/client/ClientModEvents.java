@@ -88,6 +88,14 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_V,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping ARTIFACT_ACTION = new KeyMapping(
+            "key.yujiancraft.artifact_action",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            "key.categories.yujiancraft"
+    );
 
     private ClientModEvents() {
     }
@@ -134,6 +142,7 @@ public final class ClientModEvents {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.FLYING_SWORD.get(), FlyingSwordRenderer::new);
         event.registerEntityRenderer(ModEntities.SPIRIT_TRIAL_DUMMY.get(), SpiritTrialDummyRenderer::new);
+        event.registerEntityRenderer(ModEntities.SWORD_QI.get(), SwordQiRenderer::new);
     }
 
     @SubscribeEvent
@@ -147,6 +156,7 @@ public final class ClientModEvents {
         event.register(SWITCH_FORMATION);
         event.register(OPEN_CONFIG);
         event.register(TOGGLE_SWORDS);
+        event.register(ARTIFACT_ACTION);
     }
 
     @SubscribeEvent
@@ -208,6 +218,14 @@ public final class ClientModEvents {
                     if (sword.isVisualRideSupport()) {
                         Vec3 forward = Vec3.directionFromRotation(0.0F, ownerYaw).normalize();
                         desired = ownerPosition.add(forward.scale(0.10D)).add(0.0D, -0.28D, 0.0D);
+                    } else if (sword.getVisualTechniqueMode()
+                            == dev.yujiancraft.combat.technique.TechniqueMode.GUARD) {
+                        double angle = Math.PI * 2.0D * sword.getVisualFormationSlot() / 6.0D;
+                        Vec3 forward = Vec3.directionFromRotation(0.0F, ownerYaw).normalize();
+                        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+                        desired = ownerPosition.add(0.0D, 1.05D, 0.0D)
+                                .add(forward.scale(Math.cos(angle) * 1.55D))
+                                .add(right.scale(Math.sin(angle) * 1.55D));
                     } else {
                         desired = FormationGeometry.dockPosition(ownerPosition, ownerYaw,
                                 sword.getVisualFormationSlot(), sword.getVisualFormationMode());
@@ -236,6 +254,12 @@ public final class ClientModEvents {
             boolean legacyDockPose = sword.isVisuallyDocked()
                     && sword.getVisualFormationMode().usesLegacyVisualAxis();
             ItemStack visualStack = sword.getDisplayItem();
+            if (WanxiangSwordData.role(visualStack)
+                    == dev.yujiancraft.combat.technique.ArtifactRole.SHIELD) {
+                // Shields are authored around a face normal rather than a blade tip. Convert the
+                // semantic outward direction into a planar pose before applying user calibration.
+                poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(90.0F));
+            }
             WanxiangRenderPreset renderPreset = WanxiangSwordData.renderPreset(visualStack);
             WanxiangGlowMode glowMode = WanxiangSwordData.glowMode(visualStack);
             boolean flippedAxis = WanxiangSwordData.flipAxis(visualStack);

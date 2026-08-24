@@ -11,6 +11,8 @@ public final class FormationGeometry {
     private static final double RING_HORIZONTAL_RADIUS = 1.70D;
     private static final double RING_BACK_OFFSET = 0.82D;
     private static final double RING_ANGLE_OFFSET = -Math.PI / 2.0D;
+    private static final double GUARD_RADIUS = 1.55D;
+    private static final double GUARD_HEIGHT = 1.05D;
 
     private FormationGeometry() {
     }
@@ -80,6 +82,19 @@ public final class FormationGeometry {
             outward = dock.subtract(center).normalize();
         }
         return dock.add(outward.scale(0.82D)).add(0.0D, 0.28D, 0.0D);
+    }
+
+    public static Vec3 guardPosition(ServerPlayer owner, int slot, double impactOffset) {
+        Basis basis = basis(owner);
+        double angle = Math.PI * 2.0D * slot / FORMATION_SIZE;
+        Vec3 outward = basis.forward.scale(Math.cos(angle)).add(basis.right.scale(Math.sin(angle))).normalize();
+        return owner.position().add(0.0D, GUARD_HEIGHT, 0.0D)
+                .add(outward.scale(GUARD_RADIUS + Math.max(0.0D, impactOffset)));
+    }
+
+    public static Vec3 guardDirection(ServerPlayer owner, int slot) {
+        Vec3 centre = owner.position().add(0.0D, GUARD_HEIGHT, 0.0D);
+        return guardPosition(owner, slot, 0.0D).subtract(centre).normalize();
     }
 
     private static Basis basis(ServerPlayer owner) {

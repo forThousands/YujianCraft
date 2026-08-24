@@ -1,6 +1,7 @@
 package dev.yujiancraft.wanxiang;
 
 import dev.yujiancraft.item.FlyingSwordItem;
+import dev.yujiancraft.combat.technique.ArtifactRole;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.config.SwordBalanceConfig;
 import dev.yujiancraft.visual.FlyingSwordSeries;
@@ -27,6 +28,7 @@ public final class WanxiangSwordData {
     private static final String PIERCE_DAMAGE_TAG = "PierceDamage";
     private static final String ENCHANTMENT_DAMAGE_BASELINE_TAG = "EnchantmentDamageBaseline";
     private static final String TEMPER_COUNT_TAG = "TemperCount";
+    private static final String ARTIFACT_ROLE_TAG = "ArtifactRole";
     // Read-only migration keys used by the unreleased 0.11.0 development build.
     private static final String LEGACY_INHERITED_DAMAGE_TAG = "InheritedDamage";
     private static final String LEGACY_NATIVE_DAMAGE_TAG = "NativeReforgedDamage";
@@ -59,6 +61,14 @@ public final class WanxiangSwordData {
     public static ItemStack temper(ItemStack stack, FlyingSwordMaterial core, WanxiangRenderPreset preset,
                                    WanxiangGlowMode glowMode, boolean flip, int scalePercent,
                                    int auraRadiusPercent, int auraLengthPercent, double inheritedDamage) {
+        return temper(stack, core, preset, glowMode, flip, scalePercent, auraRadiusPercent,
+                auraLengthPercent, inheritedDamage, ArtifactRole.detect(stack));
+    }
+
+    public static ItemStack temper(ItemStack stack, FlyingSwordMaterial core, WanxiangRenderPreset preset,
+                                   WanxiangGlowMode glowMode, boolean flip, int scalePercent,
+                                   int auraRadiusPercent, int auraLengthPercent, double inheritedDamage,
+                                   ArtifactRole role) {
         CompoundTag data = stack.getOrCreateTag().getCompound(ROOT_TAG);
         if (!(stack.getItem() instanceof FlyingSwordItem)) data.putBoolean(TEMPERED_TAG, true);
         if (!data.hasUUID(BINDING_TAG)) data.putUUID(BINDING_TAG, UUID.randomUUID());
@@ -74,6 +84,7 @@ public final class WanxiangSwordData {
         data.putDouble(ENCHANTMENT_DAMAGE_BASELINE_TAG,
                 safeDamage(EnchantmentHelper.getDamageBonus(stack, MobType.UNDEFINED)));
         data.putInt(TEMPER_COUNT_TAG, Math.min(MAX_TEMPERINGS, temperCount(stack) + 1));
+        data.putString(ARTIFACT_ROLE_TAG, (role == null ? ArtifactRole.detect(stack) : role).serializedName());
         data.remove(LEGACY_INHERITED_DAMAGE_TAG);
         data.remove(LEGACY_NATIVE_DAMAGE_TAG);
         stack.getOrCreateTag().put(ROOT_TAG, data);
@@ -98,6 +109,14 @@ public final class WanxiangSwordData {
     public static ItemStack preview(ItemStack source, FlyingSwordMaterial core, WanxiangRenderPreset preset,
                                     WanxiangGlowMode glowMode, boolean flip, int scalePercent,
                                     int auraRadiusPercent, int auraLengthPercent, double inheritedDamage) {
+        return preview(source, core, preset, glowMode, flip, scalePercent, auraRadiusPercent,
+                auraLengthPercent, inheritedDamage, ArtifactRole.detect(source));
+    }
+
+    public static ItemStack preview(ItemStack source, FlyingSwordMaterial core, WanxiangRenderPreset preset,
+                                    WanxiangGlowMode glowMode, boolean flip, int scalePercent,
+                                    int auraRadiusPercent, int auraLengthPercent, double inheritedDamage,
+                                    ArtifactRole role) {
         ItemStack preview = source.copy();
         preview.setCount(1);
         applyShape(preview, preset, glowMode, flip, scalePercent, auraRadiusPercent, auraLengthPercent);
@@ -108,6 +127,8 @@ public final class WanxiangSwordData {
                 Double.isFinite(inheritedDamage) ? inheritedDamage : 0.0D));
         data.putDouble(ENCHANTMENT_DAMAGE_BASELINE_TAG,
                 safeDamage(EnchantmentHelper.getDamageBonus(preview, MobType.UNDEFINED)));
+        data.putString(ARTIFACT_ROLE_TAG,
+                (role == null ? ArtifactRole.detect(source) : role).serializedName());
         preview.getOrCreateTag().put(ROOT_TAG, data);
         return preview;
     }
@@ -204,6 +225,22 @@ public final class WanxiangSwordData {
         if (!data.contains(TEMPER_COUNT_TAG) && (data.contains(LEGACY_INHERITED_DAMAGE_TAG)
                 || data.contains(LEGACY_NATIVE_DAMAGE_TAG))) return 1;
         return Mth.clamp(data.getInt(TEMPER_COUNT_TAG), 0, MAX_TEMPERINGS);
+    }
+
+    public static ArtifactRole role(ItemStack stack) {
+        CompoundTag data = data(stack);
+        if (data.contains(ARTIFACT_ROLE_TAG)) {
+            return ArtifactRole.fromName(data.getString(ARTIFACT_ROLE_TAG));
+        }
+        return stack.getItem() instanceof FlyingSwordItem ? ArtifactRole.BLADE : ArtifactRole.detect(stack);
+    }
+
+    public static ItemStack setRole(ItemStack stack, ArtifactRole role) {
+        CompoundTag data = stack.getOrCreateTag().getCompound(ROOT_TAG);
+        data.putString(ARTIFACT_ROLE_TAG,
+                (role == null ? ArtifactRole.detect(stack) : role).serializedName());
+        stack.getOrCreateTag().put(ROOT_TAG, data);
+        return stack;
     }
 
     private static int percentOrDefault(ItemStack stack, String tag, int minimum, int maximum) {
