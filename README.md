@@ -16,7 +16,7 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.2`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.3`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
@@ -124,16 +124,16 @@ The Spirit Tempering Table accepts native Yujian swords and non-stackable weapon
 
 ### 万象御器术式 / Myriad Implement Arts
 
-器物“定性”决定仪式推荐的术式和盾牌等特殊模型的安全姿态，但不会硬性限制选择。玩家可在 `Ctrl+I` 中让任意御器尝试任意术式；服务端管理员仍可按物品 ID 设置白名单。术式与 A/B/C 阵型相互独立：前者决定“做什么”，后者决定“停在哪里、如何离阵”。
+器物“定性”决定每次展开剑阵时自动采用的术式和盾牌等特殊模型的安全姿态：兵刃默认穿刺、重器默认环斩、远兵默认剑阵、盾器默认护阵、工具默认役器、钓具默认灵钓，未定性器物使用穿刺。之后仍可在 `Ctrl+I` 或用 `Ctrl+J` 切换，服务端管理员也可按物品 ID 设置白名单。术式与 A/B/C 阵型相互独立：前者决定“做什么”，后者决定“停在哪里、如何离阵”。
 
-An implement's nature determines the ritual's recommended art and safe presentation for special shapes such as shields, but it is not a hard class restriction. Players may try any art on any implement through `Ctrl+I`, unless the server applies an item-specific allow-list. Arts and A/B/C formations are independent: the art controls what the formation does, while the formation controls where it docks and how it clears the player.
+An implement's nature selects its art whenever the array deploys: blades default to Piercing, heavy weapons to Sweep, ranged weapons to Sword Array, shields to Guard, tools to Toolcraft, rods to Spirit Fishing, and unclassified implements to Piercing. Players can still switch afterwards through `Ctrl+I` or `Ctrl+J`, unless the server applies an item-specific allow-list. Arts and A/B/C formations remain independent.
 
 | 术式 / Art | 行为 / Behaviour |
 | --- | --- |
 | **穿刺 / Piercing** | 保留经典单次出击、持续穿刺与神识御剑 / Classic sorties, relentless piercing, and Spirit Sword Guidance |
 | **环斩 / Circling Sweep** | 六器高速环绕多周，按可见轨迹进行近身范围攻击 / Six implements complete several fast visible circuits for close-range area attacks |
-| **剑气 / Sword-Qi Wave** | 所有就绪御器在目标上空结成光环，放出剑气后同时俯冲 / Every ready implement forms a luminous ring above the target, releases a wave, then dives |
-| **万象护阵 / Myriad Guard** | 按来向格挡，耐久消耗包含基础值并随承受伤害增加 / Directional interception pays base durability plus a cost scaled by blocked damage |
+| **剑阵 / Sword Array** | 实剑同步俯冲，双层剑阵持续追随目标并降下环形剑气，最终以扩阵尾刀、无损地形爆发和分层冲击帧收束；目标提前死亡也不会中断 / Real implements plunge together while a two-layer seal follows its target and rains ring-shaped waves, then ends in an expanding non-griefing finisher with layered impact framing even after an early kill |
+| **万象护阵 / Myriad Guard** | 按来向格挡并反伤，耐久随承受伤害增加，装配核心会传递给攻击者 / Directional interception reflects scaled damage, pays scaled durability, and passes installed core effects to the attacker |
 | **役器 / Spirit Toolcraft** | 每次 `G` 派出下一件就绪御器，最多六件并发采掘，速度与掉落遵循原版工具规则 / Every `G` dispatches the next ready implement; up to six jobs follow vanilla tool rules |
 | **灵钓 / Spirit Fishing** | 可直接瞄准水面连续派出六件钓具，收获直接返回背包 / Aim at water and dispatch up to six concurrent fishing implements; loot returns to inventory |
 
@@ -141,7 +141,7 @@ An implement's nature determines the ritual's recommended art and safe presentat
 
 `Ctrl+J` cycles server-permitted arts without opening the settings screen. The Spirit Replenishing Table consumes one Spirit Crystal to restore 25% of combined physical and module durability.
 
-环斩、剑气、护阵、役器和灵钓的范围、伤害倍率、冷却、目标数量与等待时间保存在世界级 `serverconfig/yujiancraft-techniques-server.toml`，由服务端单独裁决。灵钓继承玩家幸运、海之眷顾和饵钓；优化第三人称会提交屏幕中央的方块，但服务端仍复核距离、区块和遮挡。
+环斩、剑阵、护阵、役器和灵钓的范围、伤害倍率、冷却、目标数量与等待时间保存在世界级 `serverconfig/yujiancraft-techniques-server.toml`，由服务端单独裁决。役器与灵钓会以服务端限频触发已装配核心的非破坏性工作回响；灵钓继承玩家幸运、海之眷顾和饵钓。优化第三人称会提交屏幕中央的方块，但服务端仍复核距离、区块和遮挡。
 
 Ranges, multipliers, cooldowns, target caps, and waiting times live in the world-level `serverconfig/yujiancraft-techniques-server.toml` and remain server-authoritative. Spirit Fishing respects player Luck, Luck of the Sea, and Lure. The shoulder camera submits its actual screen-centre block, while the server still validates reach, chunk state, and obstruction.
 

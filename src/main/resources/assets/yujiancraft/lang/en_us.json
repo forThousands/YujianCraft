@@ -238,9 +238,9 @@
   "guide.yujiancraft.page.9.title": "Damage and Settings",
   "guide.yujiancraft.page.9.body": "Intrinsic pierce damage drives vanilla melee, while Sharpness, Smite and other enchantments feed back into actual piercing. Potions, accessories and Edge Refinement update it live. Tempering saves an enchantment baseline to prevent double counting; lightning and burst modules are never baked in.",
   "guide.yujiancraft.page.10.title": "Implement Natures and Arts",
-  "guide.yujiancraft.page.10.body": "Ctrl+I selects an art independently from A/B/C docking geometry; Ctrl+J cycles permitted arts in combat. Piercing keeps classic attacks, Sweep controls close space, Sword-Qi is a formation strike, Guard surrounds the owner, and Toolcraft or Fishing use G. Old items default to Piercing.",
-  "guide.yujiancraft.page.11.title": "Sweep, Sword-Qi and Guard",
-  "guide.yujiancraft.page.11.body": "Sweep completes several fast visible circuits and hits each target at most once per implement and cycle. When Sword-Qi locks on, every ready implement forms a luminous ring high above the target, releases one wave, then dives together. Guard pays a base durability cost plus an amount scaled by blocked damage.",
+  "guide.yujiancraft.page.10.body": "Deploying an array selects the implement nature's default art: blades use Piercing, heavy weapons Sweep, ranged weapons Sword Array, shields Guard, tools Toolcraft and rods Spirit Fishing. Unclassified implements use Piercing. Ctrl+I selects an art and Ctrl+J cycles permitted arts.",
+  "guide.yujiancraft.page.11.title": "Sweep, Sword Array and Guard",
+  "guide.yujiancraft.page.11.body": "Sweep uses a broad radial hit volume to control close space. Sword Array forms two luminous seals high above its target and rains ring-shaped waves before an expanding finisher; it completes even if the target dies early, and the final blast never breaks blocks. Guard reflects scaled damage and passes installed core effects to the attacker.",
   "guide.yujiancraft.page.12.title": "Toolcraft and Spirit Fishing",
   "guide.yujiancraft.page.12.body": "Each G press dispatches the next ready implement, so all six may mine separate blocks or fish concurrently. Mining speed and harvest eligibility follow vanilla tool rules, drops return to inventory, and claim mods may still cancel breaks. Aim directly at water or let the server find a nearby reachable surface. One crystal at the Replenishing Table restores 25% total durability.",
   "message.yujiancraft.guide_received": "You received the Yujian Guide",
@@ -286,7 +286,7 @@
   "artifact_role.yujiancraft.generic": "Myriad implement",
   "technique.yujiancraft.pierce": "Piercing Art",
   "technique.yujiancraft.sweep": "Circling Sweep",
-  "technique.yujiancraft.sword_qi": "Sword-Qi Wave",
+  "technique.yujiancraft.sword_array": "Sword Array Art",
   "technique.yujiancraft.guard": "Myriad Guard",
   "technique.yujiancraft.tool_use": "Spirit Toolcraft",
   "technique.yujiancraft.spirit_fishing": "Spirit Fishing",
@@ -310,5 +310,5 @@
   "message.yujiancraft.technique.cannot_mine": "This implement cannot spirit-mine that block",
   "message.yujiancraft.technique.need_water": "Aim at a reachable water block",
   "title.yujiancraft.trial.countdown": "%s",
-  "entity.yujiancraft.sword_qi": "Sword-Qi Wave"
+  "entity.yujiancraft.sword_array": "Sword-Array Wave"
 }

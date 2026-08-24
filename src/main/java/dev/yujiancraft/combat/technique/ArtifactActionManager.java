@@ -36,6 +36,9 @@ public final class ArtifactActionManager {
             player.displayClientMessage(Component.translatable("message.yujiancraft.no_sword"), true);
             return;
         }
+        // Deployment first applies the implement nature's default art; read the setting only
+        // afterwards so the same G press can immediately dispatch a tool or fishing implement.
+        List<FlyingSwordEntity> swords = FlyingSwordItem.ensureFormation(player, source);
         TechniqueMode technique = dev.yujiancraft.combat.SwordSettings.read(source).techniqueMode();
         if (technique != TechniqueMode.TOOL_USE && technique != TechniqueMode.SPIRIT_FISHING) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.technique.no_context_action"), true);
@@ -46,7 +49,6 @@ public final class ArtifactActionManager {
             player.displayClientMessage(Component.translatable("message.yujiancraft.technique.no_block"), true);
             return;
         }
-        List<FlyingSwordEntity> swords = FlyingSwordItem.ensureFormation(player, source);
         FlyingSwordEntity actor = swords.stream()
                 .filter(FlyingSwordEntity::isReadyForArtifactAction)
                 .min(Comparator.comparingInt(FlyingSwordEntity::getFormationSlot)).orElse(null);

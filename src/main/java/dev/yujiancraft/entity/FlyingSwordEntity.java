@@ -105,6 +105,9 @@ public final class FlyingSwordEntity extends Entity {
     private UUID sourceBindingId;
     private ItemStack displayStack = ItemStack.EMPTY;
     private int techniqueTicks;
+    private Vec3 swordArrayAnchor;
+    private double swordArrayTargetHeight = 1.8D;
+    private double swordArrayTargetWidth = 0.6D;
     private int postDockCooldown;
     private int guardImpactTicks;
     private BlockPos actionBlockPos;
@@ -342,7 +345,7 @@ public final class FlyingSwordEntity extends Entity {
             case MANUAL_GUIDANCE -> tickManualGuidance(owner);
             case RIDE_SUPPORT -> discard();
             case SWEEP -> tickSweep(owner, serverLevel);
-            case QI_CHARGE -> tickSwordQiCharge(owner, serverLevel);
+            case SWORD_ARRAY -> tickSwordArray(owner, serverLevel);
             case TOOL_APPROACH -> tickToolApproach(owner);
             case TOOL_WORK -> tickToolWork(owner, serverLevel);
             case FISHING_APPROACH -> tickFishingApproach(owner);
@@ -405,9 +408,13 @@ public final class FlyingSwordEntity extends Entity {
             phase = FlightPhase.SWEEP;
             return;
         }
-        if (techniqueMode == TechniqueMode.SWORD_QI) {
+        if (techniqueMode == TechniqueMode.SWORD_ARRAY) {
             techniqueTicks = 0;
-            phase = FlightPhase.QI_CHARGE;
+            techniqueHits.clear();
+            swordArrayAnchor = target.position();
+            swordArrayTargetHeight = target.getBbHeight();
+            swordArrayTargetWidth = target.getBbWidth();
+            phase = FlightPhase.SWORD_ARRAY;
             return;
         }
         if (!formationMode.usesRingGeometry()) {
@@ -547,10 +554,17 @@ public final class FlyingSwordEntity extends Entity {
         setDeltaMovement(motion);
         faceDirection(tangent, 0.75D);
 
-        AABB swept = new AABB(previous, desired).inflate(0.72D);
+        double hitWidth = TechniqueConfig.sweepHitWidth();
+        AABB swept = new AABB(previous, desired).inflate(hitWidth);
+        Vec3 sweepCentre = owner.position().add(0.0D, 1.0D, 0.0D);
+        AABB spoke = new AABB(sweepCentre, desired).inflate(hitWidth * 0.72D,
+                hitWidth * 0.55D, hitWidth * 0.72D);
+        AABB query = swept.minmax(spoke);
         int limit = TechniqueConfig.sweepTargetLimit();
-        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, swept,
-                candidate -> SwordTargetingRules.canActivelyTarget(owner, candidate))) {
+        for (LivingEntity target : serverLevel.getEntitiesOfClass(LivingEntity.class, query,
+                candidate -> SwordTargetingRules.canActivelyTarget(owner, candidate)
+                        && (swept.intersects(candidate.getBoundingBox())
+                        || spoke.intersects(candidate.getBoundingBox())))) {
             if (techniqueHits.size() >= limit || !techniqueHits.add(target.getUUID())) continue;
             if (damageLivingTarget(owner, target, TechniqueConfig.sweepDamageScale(), false)) {
                 techniqueDidDamage = true;
@@ -564,56 +578,122 @@ public final class FlyingSwordEntity extends Entity {
         }
     }
 
-    private void tickSwordQiCharge(ServerPlayer owner, ServerLevel serverLevel) {
+    private void tickSwordArray(ServerPlayer owner, ServerLevel serverLevel) {
         Entity raw = targetId == null ? null : serverLevel.getEntity(targetId);
-        if (!(raw instanceof LivingEntity target) || !target.isAlive()
-                || !SwordTargetingRules.canActivelyTarget(owner, target)) {
+        LivingEntity activeTarget = null;
+        if (raw instanceof LivingEntity target && target.isAlive()
+                && SwordTargetingRules.canActivelyTarget(owner, target)) {
+            activeTarget = target;
+            swordArrayAnchor = target.position();
+            swordArrayTargetHeight = target.getBbHeight();
+            swordArrayTargetWidth = target.getBbWidth();
+        }
+        if (swordArrayAnchor == null) {
             beginReturn();
             return;
         }
-        Vec3 targetPoint = target.position().add(0.0D, target.getBbHeight() * 0.55D, 0.0D);
-        Vec3 circleCentre = target.position().add(0.0D,
-                target.getBbHeight() + TechniqueConfig.qiHeight(), 0.0D);
-        double radius = Math.max(target.getBbWidth() * 0.5D + TechniqueConfig.qiRadiusPadding(), 2.0D);
-        double angle = Math.PI * 2.0D * formationSlot / FlyingSwordItem.FORMATION_SIZE;
-        Vec3 desired = circleCentre.add(Math.cos(angle) * radius, 0.0D, Math.sin(angle) * radius);
-        flyToward(desired, 0.44D, 1.08D);
+        Vec3 targetPoint = swordArrayAnchor.add(0.0D, swordArrayTargetHeight * 0.42D, 0.0D);
+        Vec3 circleCentre = swordArrayAnchor.add(0.0D,
+                swordArrayTargetHeight + TechniqueConfig.swordArrayHeight(), 0.0D);
+        int gatherEnd = TechniqueConfig.swordArrayGatherTicks();
+        int barrageStart = gatherEnd + TechniqueConfig.swordArrayHoldTicks();
+        int barrageEnd = barrageStart + TechniqueConfig.swordArrayBarrageTicks();
+        int finisherEnd = barrageEnd + TechniqueConfig.swordArrayFinisherChargeTicks();
+        int finishLingerEnd = finisherEnd + Math.max(18, (int) Math.ceil(
+                TechniqueConfig.swordArrayRange() / (TechniqueConfig.swordArraySpeed() * 1.22D)) + 4);
+        double baseRadius = Math.max(swordArrayTargetWidth * 0.5D
+                + TechniqueConfig.swordArrayRadiusPadding(), 3.25D);
+        double expansion = 1.0D;
+        if (techniqueTicks >= barrageEnd) {
+            double progress = Mth.clamp((techniqueTicks - barrageEnd)
+                    / (double) Math.max(1, TechniqueConfig.swordArrayFinisherChargeTicks()), 0.0D, 1.0D);
+            double lateBurst = Mth.clamp((progress - 0.38D) / 0.62D, 0.0D, 1.0D);
+            expansion = Mth.lerp(lateBurst * lateBurst, 1.0D,
+                    TechniqueConfig.swordArrayFinisherExpansion());
+        } else if (techniqueTicks >= barrageStart) {
+            expansion += 0.035D * Math.sin(techniqueTicks * 0.42D);
+        }
+        double radius = baseRadius * expansion;
+        double angle = Math.PI * 2.0D * formationSlot / FlyingSwordItem.FORMATION_SIZE
+                + techniqueTicks * 0.018D;
+        Vec3 ringPosition = circleCentre.add(Math.cos(angle) * radius, 0.0D, Math.sin(angle) * radius);
+        Vec3 desired = ringPosition;
+        // At the first release all real implements plunge through the centre and rebound into
+        // their slots. The particle seal stays visible, so the persistent barrage never loses
+        // its silhouette after the physical swords complete their shared strike.
+        int plungeTicks = 16;
+        boolean plunging = techniqueTicks >= barrageStart && techniqueTicks < barrageStart + plungeTicks;
+        if (plunging) {
+            double plungeProgress = (techniqueTicks - barrageStart) / (double) plungeTicks;
+            double inward = Math.sin(Math.PI * plungeProgress);
+            desired = ringPosition.lerp(targetPoint, inward * 0.94D);
+        }
+        Vec3 previous = position();
+        flyToward(desired, plunging ? 0.68D : 0.44D, plunging ? 1.42D : 1.08D);
         faceDirection(targetPoint.subtract(position()), 0.82D);
+        if (plunging && activeTarget != null && !techniqueHits.contains(activeTarget.getUUID())) {
+            AABB hitbox = activeTarget.getBoundingBox().inflate(0.42D);
+            if (hitbox.contains(position()) || hitbox.clip(previous, position()).isPresent()) {
+                techniqueHits.add(activeTarget.getUUID());
+                damageLivingTarget(owner, activeTarget, 1.0D, true);
+            }
+        }
         techniqueTicks++;
-        int gatherTicks = TechniqueConfig.qiGatherTicks();
-        int releaseTick = gatherTicks + TechniqueConfig.qiHoldTicks();
-        if (techniqueTicks >= gatherTicks && isQiCoordinator(owner)) {
-            renderQiRing(serverLevel, circleCentre, radius);
-            if (techniqueTicks == releaseTick) {
-                Vec3 origin = circleCentre.add(0.0D, -0.15D, 0.0D);
-                SwordQiEntity.spawn(serverLevel, owner, displayStack, origin,
+        if (techniqueTicks >= gatherEnd && isSwordArrayCoordinator(owner)) {
+            renderSwordArray(serverLevel, circleCentre, radius, baseRadius, barrageEnd, finisherEnd);
+            if (techniqueTicks >= barrageStart && techniqueTicks < barrageEnd
+                    && (techniqueTicks - barrageStart) % TechniqueConfig.swordArrayBarrageInterval() == 0) {
+                int volley = (techniqueTicks - barrageStart) / TechniqueConfig.swordArrayBarrageInterval();
+                double releaseAngle = Math.PI * 2.0D * volley / FlyingSwordItem.FORMATION_SIZE
+                        + techniqueTicks * 0.025D;
+                Vec3 origin = circleCentre.add(Math.cos(releaseAngle) * baseRadius * 0.72D,
+                        -0.18D, Math.sin(releaseAngle) * baseRadius * 0.72D);
+                SwordArrayQiEntity.spawn(serverLevel, owner, displayStack, origin,
                         safeDirection(targetPoint.subtract(origin), new Vec3(0.0D, -1.0D, 0.0D)),
                         sourceBindingId);
             }
+            if (techniqueTicks == finisherEnd) {
+                Vec3 origin = circleCentre.add(0.0D, -0.22D, 0.0D);
+                SwordArrayQiEntity.spawnFinisher(serverLevel, owner, displayStack, origin,
+                        safeDirection(swordArrayAnchor.add(0.0D, 0.08D, 0.0D).subtract(origin),
+                                new Vec3(0.0D, -1.0D, 0.0D)), sourceBindingId);
+            }
         }
-        if (techniqueTicks <= releaseTick) return;
-        postDockCooldown = TechniqueConfig.qiCooldown();
-        // Every gathered implement dives after the shared ring releases its sword-qi wave.
-        phase = FlightPhase.HOMING;
+        if (techniqueTicks <= finishLingerEnd) return;
+        postDockCooldown = TechniqueConfig.swordArrayCooldown();
+        beginReturn();
     }
 
-    private boolean isQiCoordinator(ServerPlayer owner) {
+    private boolean isSwordArrayCoordinator(ServerPlayer owner) {
         return FlyingSwordItem.getOwnedFormationSwords(owner).stream()
-                .filter(sword -> sword.phase == FlightPhase.QI_CHARGE
+                .filter(sword -> sword.phase == FlightPhase.SWORD_ARRAY
                         && java.util.Objects.equals(sword.targetId, targetId))
                 .mapToInt(FlyingSwordEntity::getFormationSlot).min().orElse(formationSlot) == formationSlot;
     }
 
-    private void renderQiRing(ServerLevel level, Vec3 centre, double radius) {
-        if ((techniqueTicks & 1) != 0) return;
+    private void renderSwordArray(ServerLevel level, Vec3 centre, double radius, double baseRadius,
+                                  int barrageEnd, int finisherEnd) {
+        if (techniqueTicks % 3 != 0) return;
         int color = material.glowColor();
         Vector3f rgb = new Vector3f(((color >> 16) & 0xFF) / 255.0F,
                 ((color >> 8) & 0xFF) / 255.0F, (color & 0xFF) / 255.0F);
         DustParticleOptions dust = new DustParticleOptions(rgb, 1.0F);
-        for (int index = 0; index < 32; index++) {
-            double angle = Math.PI * 2.0D * index / 32.0D;
+        int points = techniqueTicks >= barrageEnd ? 56 : 44;
+        for (int index = 0; index < points; index++) {
+            double angle = Math.PI * 2.0D * index / points + techniqueTicks * 0.022D;
             level.sendParticles(dust, centre.x + Math.cos(angle) * radius, centre.y,
                     centre.z + Math.sin(angle) * radius, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+        // A counter-rotating inner seal gives the formation readable depth without another entity.
+        for (int index = 0; index < 24; index++) {
+            double angle = -Math.PI * 2.0D * index / 24.0D - techniqueTicks * 0.031D;
+            level.sendParticles(dust, centre.x + Math.cos(angle) * baseRadius * 0.55D,
+                    centre.y - 0.14D, centre.z + Math.sin(angle) * baseRadius * 0.55D,
+                    1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+        if (techniqueTicks >= barrageEnd && techniqueTicks <= finisherEnd) {
+            level.sendParticles(ParticleTypes.END_ROD, centre.x, centre.y - 0.35D, centre.z,
+                    6, radius * 0.3D, 0.15D, radius * 0.3D, 0.03D);
         }
     }
 
@@ -651,7 +731,9 @@ public final class FlyingSwordEntity extends Entity {
         }
         techniqueTicks++;
         if (techniqueTicks >= actionWorkTicks) {
-            ArtifactActionManager.completeMining(owner, this, actionBlockPos);
+            if (ArtifactActionManager.completeMining(owner, this, actionBlockPos)) {
+                SwordEffectEngine.applyWorkPulse(owner, Vec3.atCenterOf(actionBlockPos), installedModules);
+            }
             actionBlockPos = null;
             postDockCooldown = 12;
             beginReturn();
@@ -695,6 +777,8 @@ public final class FlyingSwordEntity extends Entity {
             serverLevel.playSound(null, actionBlockPos, SoundEvents.FISHING_BOBBER_SPLASH,
                     SoundSource.PLAYERS, 0.8F, 1.15F);
             ArtifactActionManager.completeFishing(owner, this, actionBlockPos);
+            SwordEffectEngine.applyWorkPulse(owner, Vec3.atCenterOf(actionBlockPos).add(0.0D, 1.0D, 0.0D),
+                    installedModules);
             actionBlockPos = null;
             postDockCooldown = 20;
             beginReturn();
@@ -711,6 +795,7 @@ public final class FlyingSwordEntity extends Entity {
         }
         targetId = null;
         fixedWaypoint = null;
+        swordArrayAnchor = null;
         phase = FlightPhase.RETURN_RALLY;
     }
 
@@ -972,6 +1057,13 @@ public final class FlyingSwordEntity extends Entity {
         if (tag.contains("WaypointX")) {
             fixedWaypoint = new Vec3(tag.getDouble("WaypointX"), tag.getDouble("WaypointY"), tag.getDouble("WaypointZ"));
         }
+        techniqueTicks = tag.getInt("TechniqueTicks");
+        if (tag.contains("SwordArrayAnchorX")) {
+            swordArrayAnchor = new Vec3(tag.getDouble("SwordArrayAnchorX"),
+                    tag.getDouble("SwordArrayAnchorY"), tag.getDouble("SwordArrayAnchorZ"));
+            swordArrayTargetHeight = tag.getDouble("SwordArrayTargetHeight");
+            swordArrayTargetWidth = tag.getDouble("SwordArrayTargetWidth");
+        }
     }
 
     @Override
@@ -994,6 +1086,7 @@ public final class FlyingSwordEntity extends Entity {
         if (sourceBindingId != null) tag.putUUID("SourceBindingId", sourceBindingId);
         if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(new CompoundTag()));
         tag.putInt("FlightPhase", phase.ordinal());
+        tag.putInt("TechniqueTicks", techniqueTicks);
         if (fixedWaypoint != null) {
             tag.putDouble("WaypointX", fixedWaypoint.x);
             tag.putDouble("WaypointY", fixedWaypoint.y);
@@ -1004,6 +1097,13 @@ public final class FlyingSwordEntity extends Entity {
             tag.putDouble("ManualLaunchY", manualLaunchDirection.y);
             tag.putDouble("ManualLaunchZ", manualLaunchDirection.z);
             tag.putInt("ManualLaunchTicks", manualLaunchTicks);
+        }
+        if (swordArrayAnchor != null) {
+            tag.putDouble("SwordArrayAnchorX", swordArrayAnchor.x);
+            tag.putDouble("SwordArrayAnchorY", swordArrayAnchor.y);
+            tag.putDouble("SwordArrayAnchorZ", swordArrayAnchor.z);
+            tag.putDouble("SwordArrayTargetHeight", swordArrayTargetHeight);
+            tag.putDouble("SwordArrayTargetWidth", swordArrayTargetWidth);
         }
     }
 

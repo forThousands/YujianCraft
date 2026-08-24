@@ -3,7 +3,7 @@ package dev.yujiancraft.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import dev.yujiancraft.entity.SwordQiEntity;
+import dev.yujiancraft.entity.SwordArrayQiEntity;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -16,37 +16,44 @@ import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 
 /** Low-polygon emissive crescent with a small depth shell, independent of particle density. */
-public final class SwordQiRenderer extends EntityRenderer<SwordQiEntity> {
-    public SwordQiRenderer(EntityRendererProvider.Context context) {
+public final class SwordArrayQiRenderer extends EntityRenderer<SwordArrayQiEntity> {
+    public SwordArrayQiRenderer(EntityRendererProvider.Context context) {
         super(context);
         shadowRadius = 0.0F;
     }
 
     @Override
-    public void render(SwordQiEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
+    public void render(SwordArrayQiEntity entity, float entityYaw, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffers, int packedLight) {
         poseStack.pushPose();
         float yaw = Mth.lerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
         poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+        if (entity.isFinisher()) poseStack.scale(2.15F, 2.15F, 2.15F);
         float[] color = color(WanxiangSwordData.material(entity.getDisplayStack()));
         VertexConsumer consumer = buffers.getBuffer(RenderType.lightning());
         Matrix4f matrix = poseStack.last().pose();
-        drawCrescent(consumer, matrix, color[0], color[1], color[2], -0.07F, 150);
-        drawCrescent(consumer, matrix, 0.92F, 1.0F, 1.0F, 0.07F, 225);
+        boolean finisher = entity.isFinisher();
+        drawCrescent(consumer, matrix, color[0], color[1], color[2], -0.10F,
+                finisher ? 230 : 156, 1.08F, 1.82F);
+        drawCrescent(consumer, matrix, 0.26F, 0.96F, 1.0F, 0.0F,
+                finisher ? 238 : 196, 1.20F, 1.70F);
+        drawCrescent(consumer, matrix, 1.0F, 1.0F, 0.98F, 0.10F,
+                finisher ? 255 : 228, 1.34F, 1.57F);
         poseStack.popPose();
         super.render(entity, entityYaw, partialTick, poseStack, buffers, packedLight);
     }
 
     private static void drawCrescent(VertexConsumer consumer, Matrix4f matrix,
-                                     float red, float green, float blue, float z, int alpha) {
+                                     float red, float green, float blue, float z, int alpha,
+                                     float innerRadius, float outerRadius) {
         int segments = 12;
         for (int index = 0; index < segments; index++) {
             double a0 = -Math.PI * 0.72D + Math.PI * 1.44D * index / segments;
             double a1 = -Math.PI * 0.72D + Math.PI * 1.44D * (index + 1) / segments;
-            float outer = 1.75F;
-            float inner = 1.12F + 0.10F * (float) Math.cos((a0 + a1) * 0.5D);
+            float outer = outerRadius;
+            float inner = innerRadius + 0.07F * (float) Math.cos((a0 + a1) * 0.5D);
             vertex(consumer, matrix, (float) Math.sin(a0) * inner, (float) Math.cos(a0) * inner, z,
                     red, green, blue, alpha);
             vertex(consumer, matrix, (float) Math.sin(a0) * outer, (float) Math.cos(a0) * outer, z,
@@ -75,7 +82,7 @@ public final class SwordQiRenderer extends EntityRenderer<SwordQiEntity> {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(SwordQiEntity entity) {
+    public ResourceLocation getTextureLocation(SwordArrayQiEntity entity) {
         return TextureAtlas.LOCATION_BLOCKS;
     }
 }

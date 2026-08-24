@@ -2,9 +2,14 @@ package dev.yujiancraft.combat.technique;
 
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.config.TechniqueConfig;
+import dev.yujiancraft.combat.SwordEffectEngine;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.formation.FormationGeometry;
 import dev.yujiancraft.item.FlyingSwordItem;
+import dev.yujiancraft.upgrade.SwordModuleData;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -29,7 +34,8 @@ public final class FormationTechniqueEvents {
     @SubscribeEvent
     public static void onPlayerHurt(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || event.getAmount() <= 0.0F
-                || event.getSource().is(DamageTypeTags.BYPASSES_SHIELD)) return;
+                || event.getSource().is(DamageTypeTags.BYPASSES_SHIELD)
+                || event.getSource().is(DamageTypes.THORNS)) return;
         List<FlyingSwordEntity> guards = FlyingSwordItem.getOwnedFormationSwords(player).stream()
                 .filter(FlyingSwordEntity::isGuarding).toList();
         if (guards.isEmpty()) return;
@@ -65,6 +71,19 @@ public final class FormationTechniqueEvents {
         if (direct instanceof Projectile projectile) {
             Vec3 motion = projectile.getDeltaMovement();
             if (motion.lengthSqr() > 1.0E-6D) projectile.setDeltaMovement(motion.scale(-0.35D));
+        }
+
+        Entity responsible = event.getSource().getEntity();
+        if (responsible instanceof LivingEntity attacker && attacker != player && attacker.isAlive()) {
+            float reflected = (float) Math.min(TechniqueConfig.guardReflectCap(),
+                    original * TechniqueConfig.guardReflectPercent());
+            if (reflected > 0.0F) {
+                attacker.hurt(player.damageSources().thorns(player), reflected);
+            }
+            ItemStack sourceSword = FlyingSwordItem.findFlyingSword(player, guard.getSourceBindingId());
+            if (!sourceSword.isEmpty() && attacker.isAlive()) {
+                SwordEffectEngine.applyOnHit(player, attacker, SwordModuleData.copyModules(sourceSword));
+            }
         }
     }
 }

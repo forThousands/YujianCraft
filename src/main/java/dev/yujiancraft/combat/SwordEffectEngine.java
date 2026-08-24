@@ -2,6 +2,7 @@ package dev.yujiancraft.combat;
 
 import dev.yujiancraft.config.EffectBalanceConfig;
 import dev.yujiancraft.config.EffectParameter;
+import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.registry.ModEffects;
 import dev.yujiancraft.upgrade.FlyingSwordModule;
 import dev.yujiancraft.upgrade.SwordModuleData;
@@ -18,9 +19,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import org.joml.Vector3f;
 
 public final class SwordEffectEngine {
     private static final String LAST_EFFECT_TICK = "YujianCraftLastModuleEffectTick";
+    private static final String LAST_WORK_EFFECT_TICK = "YujianCraftLastWorkModuleEffectTick";
 
     private SwordEffectEngine() {
     }
@@ -57,6 +62,54 @@ public final class SwordEffectEngine {
         applyPoison(target, modules);
         applyExplosion(owner, target, modules, level);
         applyArrowRain(owner, target, modules, level);
+    }
+
+    /**
+     * Low-frequency, non-damaging module echo used by mining and spirit fishing. It never changes
+     * blocks and uses one owner-wide cooldown, so six simultaneous implements cannot particle-spam.
+     */
+    public static void applyWorkPulse(ServerPlayer owner, Vec3 position, CompoundTag modules) {
+        if (!SwordModuleData.hasAnyEffect(modules) || !(owner.level() instanceof ServerLevel level)) return;
+        long now = level.getGameTime();
+        CompoundTag ownerData = owner.getPersistentData();
+        int cooldown = TechniqueConfig.workEffectCooldown();
+        if (ownerData.contains(LAST_WORK_EFFECT_TICK)
+                && now - ownerData.getLong(LAST_WORK_EFFECT_TICK) < cooldown) return;
+        ownerData.putLong(LAST_WORK_EFFECT_TICK, now);
+        BlockPos soundPos = BlockPos.containing(position);
+
+        int flame = SwordModuleData.getLevel(modules, FlyingSwordModule.FLAME);
+        if (flame > 0) {
+            level.sendParticles(ParticleTypes.FLAME, position.x, position.y, position.z,
+                    4 + flame * 2, 0.18D, 0.18D, 0.18D, 0.025D);
+        }
+        int lightningLevel = SwordModuleData.getLevel(modules, FlyingSwordModule.LIGHTNING);
+        if (lightningLevel > 0) {
+            LightningBolt lightning = EntityType.LIGHTNING_BOLT.create(level);
+            if (lightning != null) {
+                lightning.moveTo(position.x, position.y, position.z);
+                lightning.setVisualOnly(true);
+                level.addFreshEntity(lightning);
+            }
+        }
+        int poison = SwordModuleData.getLevel(modules, FlyingSwordModule.POISON);
+        if (poison > 0) {
+            DustParticleOptions green = new DustParticleOptions(new Vector3f(0.24F, 0.88F, 0.38F), 0.85F);
+            level.sendParticles(green, position.x, position.y, position.z,
+                    5 + poison * 2, 0.28D, 0.16D, 0.28D, 0.015D);
+        }
+        int explosion = SwordModuleData.getLevel(modules, FlyingSwordModule.EXPLOSION);
+        if (explosion > 0) {
+            level.sendParticles(ParticleTypes.EXPLOSION, position.x, position.y, position.z,
+                    1, 0.08D, 0.08D, 0.08D, 0.0D);
+            level.playSound(null, soundPos, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS,
+                    0.22F, 1.75F);
+        }
+        int arrowRain = SwordModuleData.getLevel(modules, FlyingSwordModule.ARROW_RAIN);
+        if (arrowRain > 0) {
+            level.sendParticles(ParticleTypes.SWEEP_ATTACK, position.x, position.y, position.z,
+                    1 + arrowRain, 0.2D, 0.15D, 0.2D, 0.0D);
+        }
     }
 
     private static void applyFlame(LivingEntity target, CompoundTag modules) {

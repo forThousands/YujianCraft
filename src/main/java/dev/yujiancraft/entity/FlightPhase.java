@@ -13,7 +13,7 @@ public enum FlightPhase {
     MANUAL_GUIDANCE,
     RIDE_SUPPORT,
     SWEEP,
-    QI_CHARGE,
+    SWORD_ARRAY,
     TOOL_APPROACH,
     TOOL_WORK,
     FISHING_APPROACH,

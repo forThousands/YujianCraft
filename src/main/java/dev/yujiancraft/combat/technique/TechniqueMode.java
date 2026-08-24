@@ -4,7 +4,7 @@ package dev.yujiancraft.combat.technique;
 public enum TechniqueMode {
     PIERCE("pierce"),
     SWEEP("sweep"),
-    SWORD_QI("sword_qi"),
+    SWORD_ARRAY("sword_array"),
     GUARD("guard"),
     TOOL_USE("tool_use"),
     SPIRIT_FISHING("spirit_fishing");

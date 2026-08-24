@@ -150,7 +150,7 @@ public final class ClientModEvents {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.FLYING_SWORD.get(), FlyingSwordRenderer::new);
         event.registerEntityRenderer(ModEntities.SPIRIT_TRIAL_DUMMY.get(), SpiritTrialDummyRenderer::new);
-        event.registerEntityRenderer(ModEntities.SWORD_QI.get(), SwordQiRenderer::new);
+        event.registerEntityRenderer(ModEntities.SWORD_ARRAY.get(), SwordArrayQiRenderer::new);
     }
 
     @SubscribeEvent
@@ -173,6 +173,7 @@ public final class ClientModEvents {
         event.registerAboveAll("optimized_third_person_crosshair",
                 OptimizedThirdPersonController::renderCrosshair);
         event.registerAboveAll("spirit_trial_countdown", ClientTrialCountdownState::render);
+        event.registerAboveAll("technique_calligraphy", ClientTechniqueOverlayState::render);
     }
 
     @SubscribeEvent

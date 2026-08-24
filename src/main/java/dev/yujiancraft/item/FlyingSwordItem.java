@@ -7,6 +7,7 @@ import dev.yujiancraft.registry.ModEntities;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.combat.SwordEffectEngine;
 import dev.yujiancraft.combat.ManualGuidanceManager;
+import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.upgrade.FlyingSwordModule;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.client.ClientOptions;
@@ -147,6 +148,7 @@ public final class FlyingSwordItem extends SwordItem {
         getOwnedFormationSwords(player).forEach(sword -> sword.setFormationMode(mode));
         player.displayClientMessage(Component.translatable("message.yujiancraft.formation_changed",
                 Component.translatable(mode.translationKey())), true);
+        playFormationChime(player, 1.35F);
     }
 
     public static SwordSettings getSettings(ServerPlayer player) {
@@ -187,6 +189,8 @@ public final class FlyingSwordItem extends SwordItem {
         setSettings(player, updated);
         player.displayClientMessage(Component.translatable("message.yujiancraft.technique.changed",
                 Component.translatable(next.translationKey())), true);
+        playFormationChime(player, 1.42F);
+        ModNetwork.sendTechniqueNotice(player, next);
         return updated;
     }
 
@@ -237,7 +241,10 @@ public final class FlyingSwordItem extends SwordItem {
         ServerLevel level = player.serverLevel();
         WanxiangSwordData.ensureBinding(stack);
         FormationMode formationMode = getFormationMode(stack);
-        SwordSettings settings = validatedSettings(player, stack);
+        SwordSettings settings = defaultSettingsForSummon(player, stack);
+        settings.write(stack);
+        ModNetwork.sendSettings(player, settings);
+        ModNetwork.sendTechniqueNotice(player, settings.techniqueMode());
         int formationSize = ManualSpiritTrialManager.formationSize(player, FORMATION_SIZE);
         for (int slot = 0; slot < formationSize; slot++) {
             FlyingSwordEntity sword = ModEntities.FLYING_SWORD.get().create(level);
@@ -246,6 +253,24 @@ public final class FlyingSwordItem extends SwordItem {
             sword.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), 0.0F);
             level.addFreshEntity(sword);
         }
+    }
+
+    /** Each deployment begins from the implement's nature instead of inheriting another item's art. */
+    private static SwordSettings defaultSettingsForSummon(ServerPlayer player, ItemStack stack) {
+        SwordSettings current = SwordSettings.read(stack);
+        dev.yujiancraft.combat.technique.TechniqueMode recommended = WanxiangSwordData.isTempered(stack)
+                ? WanxiangWeaponCatalog.defaultTechnique(player.server, stack)
+                : WanxiangSwordData.role(stack).recommendedTechnique();
+        if (WanxiangSwordData.isTempered(stack)) {
+            recommended = WanxiangWeaponCatalog.effectiveTechnique(player.server, stack, recommended);
+        }
+        return new SwordSettings(current.minimumDockTicks(), current.automaticTargetRadius(),
+                current.crosshairLockRadius(), current.targetingMode(), current.attackMode(), recommended);
+    }
+
+    private static void playFormationChime(ServerPlayer player, float pitch) {
+        player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
+                SoundSource.PLAYERS, 0.8F, pitch);
     }
 
     private static SwordSettings validatedSettings(ServerPlayer player, ItemStack stack) {

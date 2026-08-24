@@ -238,9 +238,9 @@
   "guide.yujiancraft.page.9.title": "伤害与设置",
   "guide.yujiancraft.page.9.body": "本源穿刺值会写入原版近战属性；锋利、亡灵杀手等附魔又会反向影响实际穿刺，药水、饰品和锋锐核心也会实时参与。淬灵保存附魔基线，避免完成后重复叠加；引雷、爆裂等模块效果不会写入。",
   "guide.yujiancraft.page.10.title": "器物定性与御器术式",
-  "guide.yujiancraft.page.10.body": "Ctrl+I 可选择独立于 A/B/C 停靠阵型的御器术式，Ctrl+J 可在战斗中依次切换。穿刺保留经典攻击；环斩进行近身扫掠；剑气由整阵合击；万象护阵环绕防御；役器与灵钓使用 G 主动交互。旧物品默认保持穿刺。",
-  "guide.yujiancraft.page.11.title": "环斩、剑气与护阵",
-  "guide.yujiancraft.page.11.body": "环斩高速环绕多周，按可见轨迹判定且每柄每轮只命中同一目标一次。剑气锁敌后令所有就绪飞剑升至目标上空结成光环，蓄势放出剑气并同时俯冲。护阵按来向格挡，基础消耗外还随本次伤害快速消耗真实源物品耐久。",
+  "guide.yujiancraft.page.10.body": "展开剑阵时会按器物定性切换默认术式：兵刃穿刺、重器环斩、远兵剑阵、盾器护阵、工具役器、钓具灵钓；未定性器物采用穿刺。Ctrl+I 可选择术式，Ctrl+J 可在战斗中依次切换。",
+  "guide.yujiancraft.page.11.title": "环斩、剑阵与护阵",
+  "guide.yujiancraft.page.11.body": "环斩以宽幅径向判定覆盖近身空间。剑阵锁敌后升至目标上空，双层灵环持续降下环形剑气；即使目标提前死亡也会完成扩阵尾刀和无损地形的落地爆发。护阵会按比例反伤，并把飞剑核心效果传递给攻击者。",
   "guide.yujiancraft.page.12.title": "役器与灵钓",
   "guide.yujiancraft.page.12.body": "每按一次 G 会派出下一件已冷却御器；六件可同时采掘不同方块或在水域灵钓。采掘速度与能否掉落遵循原版工具逻辑，战利品直接送回背包，领地模组仍可取消破坏。水面可直接瞄准，系统也会在小范围寻找可达水面。补灵台每枚灵晶恢复总灵韧的四分之一。",
   "message.yujiancraft.guide_received": "你获得了《御剑要略》",
@@ -286,7 +286,7 @@
   "artifact_role.yujiancraft.generic": "万象器物",
   "technique.yujiancraft.pierce": "穿刺术式",
   "technique.yujiancraft.sweep": "环斩术式",
-  "technique.yujiancraft.sword_qi": "剑气术式",
+  "technique.yujiancraft.sword_array": "剑阵术式",
   "technique.yujiancraft.guard": "万象护阵",
   "technique.yujiancraft.tool_use": "役器术式",
   "technique.yujiancraft.spirit_fishing": "灵钓术式",
@@ -310,5 +310,5 @@
   "message.yujiancraft.technique.cannot_mine": "此器物无法役使开采该方块",
   "message.yujiancraft.technique.need_water": "请瞄准可到达的水域",
   "title.yujiancraft.trial.countdown": "%s",
-  "entity.yujiancraft.sword_qi": "剑气"
+  "entity.yujiancraft.sword_array": "剑阵剑气"
 }

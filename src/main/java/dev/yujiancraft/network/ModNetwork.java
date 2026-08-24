@@ -39,7 +39,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "15";
+    private static final String PROTOCOL = "16";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -120,6 +120,12 @@ public final class ModNetwork {
         CHANNEL.registerMessage(23, TrialCountdownPacket.class,
                 TrialCountdownPacket::encode, TrialCountdownPacket::decode,
                 ModNetwork::handleTrialCountdown, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(24, TechniqueNoticePacket.class,
+                TechniqueNoticePacket::encode, TechniqueNoticePacket::decode,
+                ModNetwork::handleTechniqueNotice, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(25, SwordArrayFinisherPacket.class,
+                (message, buffer) -> { }, buffer -> new SwordArrayFinisherPacket(),
+                ModNetwork::handleSwordArrayFinisher, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private static void handleCycleTechnique(CycleTechniquePacket message,
@@ -140,6 +146,22 @@ public final class ModNetwork {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> () -> dev.yujiancraft.client.ClientTrialCountdownState.show(message.seconds)));
+        context.setPacketHandled(true);
+    }
+
+    private static void handleTechniqueNotice(TechniqueNoticePacket message,
+                                              Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ClientTechniqueOverlayState.showTechnique(message.technique)));
+        context.setPacketHandled(true);
+    }
+
+    private static void handleSwordArrayFinisher(SwordArrayFinisherPacket message,
+                                                  Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> dev.yujiancraft.client.ClientTechniqueOverlayState::showFinisherFlash));
         context.setPacketHandled(true);
     }
 
@@ -259,12 +281,12 @@ public final class ModNetwork {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender != null) {
+                SwordSettings before = FlyingSwordItem.getSettings(sender);
                 SwordSettings requested = message.toSettings();
                 SwordSettings applied = requested;
                 if (!sender.hasPermissions(2)) {
-                    SwordSettings current = FlyingSwordItem.getSettings(sender);
-                    applied = new SwordSettings(current.minimumDockTicks(), current.automaticTargetRadius(),
-                            current.crosshairLockRadius(), requested.targetingMode(), requested.attackMode(),
+                    applied = new SwordSettings(before.minimumDockTicks(), before.automaticTargetRadius(),
+                            before.crosshairLockRadius(), requested.targetingMode(), requested.attackMode(),
                             requested.techniqueMode());
                 }
                 net.minecraft.world.item.ItemStack controlled = FlyingSwordItem.findFlyingSword(sender);
@@ -278,6 +300,11 @@ public final class ModNetwork {
                 }
                 FlyingSwordItem.setSettings(sender, applied);
                 sendSettings(sender, applied);
+                if (before.techniqueMode() != applied.techniqueMode()) {
+                    sender.level().playSound(null, sender.blockPosition(), net.minecraft.sounds.SoundEvents.TRIDENT_RETURN,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 1.42F);
+                    sendTechniqueNotice(sender, applied.techniqueMode());
+                }
             }
         });
         context.setPacketHandled(true);
@@ -412,6 +439,16 @@ public final class ModNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new TrialCountdownPacket(seconds));
     }
 
+    public static void sendTechniqueNotice(ServerPlayer player,
+                                           dev.yujiancraft.combat.technique.TechniqueMode technique) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new TechniqueNoticePacket(technique.ordinal()));
+    }
+
+    public static void sendSwordArrayFinisher(ServerPlayer player) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordArrayFinisherPacket());
+    }
+
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
         Vec3 safeDirection = direction.lengthSqr() < 1.0E-6D
                 ? new Vec3(0.0D, 1.0D, 0.0D) : direction.normalize();
@@ -463,6 +500,19 @@ public final class ModNetwork {
         private static TrialCountdownPacket decode(FriendlyByteBuf buffer) {
             return new TrialCountdownPacket(buffer.readVarInt());
         }
+    }
+
+    public record TechniqueNoticePacket(int technique) {
+        private static void encode(TechniqueNoticePacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.technique);
+        }
+
+        private static TechniqueNoticePacket decode(FriendlyByteBuf buffer) {
+            return new TechniqueNoticePacket(buffer.readVarInt());
+        }
+    }
+
+    public record SwordArrayFinisherPacket() {
     }
 
     public record ArtifactActionPacket(boolean hasBlock, net.minecraft.core.BlockPos blockPos,

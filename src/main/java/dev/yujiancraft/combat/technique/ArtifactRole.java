@@ -47,7 +47,7 @@ public enum ArtifactRole {
             case TOOL -> TechniqueMode.TOOL_USE;
             case FISHING -> TechniqueMode.SPIRIT_FISHING;
             case HEAVY -> TechniqueMode.SWEEP;
-            case RANGED -> TechniqueMode.SWORD_QI;
+            case RANGED -> TechniqueMode.SWORD_ARRAY;
             case BLADE, GENERIC -> TechniqueMode.PIERCE;
         };
     }
