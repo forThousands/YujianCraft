@@ -16,7 +16,7 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.0`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.1`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
