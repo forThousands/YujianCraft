@@ -3,16 +3,19 @@
   "category": "equipment",
   "key": {
     "A": {
-      "item": "minecraft:oak_planks"
+      "item": "yujiancraft:spirit_crystal"
     },
     "B": {
+      "item": "minecraft:oak_planks"
+    },
+    "C": {
       "item": "minecraft:wooden_sword"
     }
   },
   "pattern": [
-    " A ",
     "ABA",
-    " A "
+    "BCB",
+    "ABA"
   ],
   "result": {
     "item": "yujiancraft:wooden_flying_sword"

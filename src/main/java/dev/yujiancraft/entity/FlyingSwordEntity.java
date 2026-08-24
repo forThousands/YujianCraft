@@ -18,6 +18,10 @@ import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.upgrade.FlyingSwordModule;
 import dev.yujiancraft.visual.FlyingSwordSeries;
+import dev.yujiancraft.wanxiang.WanxiangSwordData;
+import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
+import dev.yujiancraft.wanxiang.FlyingSwordDamage;
+import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -61,6 +65,8 @@ public final class FlyingSwordEntity extends Entity {
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_RIDE_SUPPORT =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_STACK =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.ITEM_STACK);
 
     private UUID ownerId;
     private UUID targetId;
@@ -81,6 +87,8 @@ public final class FlyingSwordEntity extends Entity {
     private Vec3 manualLaunchDirection;
     private int manualLaunchTicks;
     private boolean visualPreview;
+    private UUID sourceBindingId;
+    private ItemStack displayStack = ItemStack.EMPTY;
 
     public FlyingSwordEntity(EntityType<? extends FlyingSwordEntity> type, Level level) {
         super(type, level);
@@ -88,17 +96,20 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     public void bindTo(ServerPlayer owner, int slot, FormationMode mode, SwordSettings settings,
-                       FlyingSwordMaterial material, FlyingSwordSeries series, CompoundTag installedModules) {
+                       ItemStack sourceStack) {
         ownerId = owner.getUUID();
         entityData.set(DATA_OWNER_ID, Optional.of(ownerId));
         formationSlot = slot;
         formationMode = mode;
         applySettings(settings);
-        this.material = material;
-        this.series = series;
-        this.installedModules = installedModules.copy();
+        this.material = WanxiangSwordData.material(sourceStack);
+        this.series = WanxiangSwordData.series(sourceStack);
+        this.installedModules = SwordModuleData.copyModules(sourceStack);
+        this.sourceBindingId = WanxiangSwordData.ensureBinding(sourceStack);
+        this.displayStack = displayCopy(sourceStack);
         entityData.set(DATA_MATERIAL, material.ordinal());
         entityData.set(DATA_SERIES, series.ordinal());
+        entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(this.installedModules));
@@ -107,13 +118,14 @@ public final class FlyingSwordEntity extends Entity {
         attackCooldown = 20 + slot * 7;
     }
 
-    public void bindAsRideSupport(ServerPlayer owner, FlyingSwordMaterial material,
-                                  FlyingSwordSeries series, CompoundTag installedModules) {
+    public void bindAsRideSupport(ServerPlayer owner, ItemStack sourceStack) {
         ownerId = owner.getUUID();
         entityData.set(DATA_OWNER_ID, Optional.of(ownerId));
-        this.material = material;
-        this.series = series;
-        this.installedModules = installedModules.copy();
+        this.material = WanxiangSwordData.material(sourceStack);
+        this.series = WanxiangSwordData.series(sourceStack);
+        this.installedModules = SwordModuleData.copyModules(sourceStack);
+        this.sourceBindingId = WanxiangSwordData.ensureBinding(sourceStack);
+        this.displayStack = displayCopy(sourceStack);
         rideSupport = true;
         phase = FlightPhase.RIDE_SUPPORT;
         formationSlot = 0;
@@ -122,6 +134,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_FORMATION_SLOT, 0);
         entityData.set(DATA_DOCKED, false);
         entityData.set(DATA_RIDE_SUPPORT, true);
+        entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
         entityData.set(DATA_WHITE_HOT,
                 SwordModuleData.getLevel(this.installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(this.installedModules));
@@ -201,6 +214,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.define(DATA_WHITE_HOT, false);
         entityData.define(DATA_VISUAL_MODULES, 0);
         entityData.define(DATA_RIDE_SUPPORT, false);
+        entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
     }
 
     @Override
@@ -215,6 +229,15 @@ public final class FlyingSwordEntity extends Entity {
 
         ServerPlayer owner = serverLevel.getServer().getPlayerList().getPlayer(ownerId);
         if (owner == null || !owner.isAlive() || owner.level() != level()) {
+            discard();
+            return;
+        }
+        if (sourceBindingId != null && FlyingSwordItem.findFlyingSword(owner, sourceBindingId).isEmpty()) {
+            discard();
+            return;
+        }
+        if (WanxiangSwordData.isTempered(displayStack)
+                && !WanxiangWeaponCatalog.enabled(serverLevel.getServer(), displayStack)) {
             discard();
             return;
         }
@@ -349,9 +372,19 @@ public final class FlyingSwordEntity extends Entity {
         boolean crossedHitbox = target.getBoundingBox().inflate(0.3D).contains(position())
                 || target.getBoundingBox().inflate(0.3D).clip(previousPosition, position()).isPresent();
         if (crossedHitbox || closeTo(aimPoint, 0.92D)) {
-            double damage = SwordBalanceConfig.get(material).damage()
-                    + SwordEffectEngine.damageBonus(installedModules);
-            boolean successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
+            double baseDamage = WanxiangSwordData.isTempered(displayStack)
+                    ? WanxiangWeaponCatalog.damage(serverLevel.getServer(), displayStack)
+                    : WanxiangSwordData.pierceDamage(displayStack);
+            if (baseDamage <= 0.0D) baseDamage = SwordBalanceConfig.get(material).damage();
+            double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
+                    baseDamage + SwordEffectEngine.damageBonus(installedModules), target.getMobType());
+            boolean markedTrialHit = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
+            boolean successfulHit;
+            try {
+                successfulHit = target.hurt(damageSources().playerAttack(owner), (float) damage);
+            } finally {
+                if (markedTrialHit) ManualSpiritTrialManager.endFlyingSwordDamage(owner);
+            }
             // Contact feedback describes the sword crossing the target, not only vanilla's
             // accepted-damage result. Hurt immunity can reject closely spaced swords, but the
             // visible blade still struck and must produce the same base flash and impact ring.
@@ -423,16 +456,21 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void damageSourceSword(ServerPlayer owner) {
-        ItemStack stack = FlyingSwordItem.findFlyingSword(owner, material, series);
+        ItemStack stack = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
+        if (stack.isEmpty()) stack = FlyingSwordItem.findFlyingSword(owner, material, series);
         if (stack.isEmpty()) {
             discard();
             return;
         }
         if (stack.getTag() != null && stack.getTag().getBoolean("Unbreakable")) return;
-        if (stack.hurt(1, owner.getRandom(), owner)) {
+        int durabilityCost = WanxiangSwordData.isTempered(stack)
+                ? WanxiangWeaponCatalog.durabilityCost(owner.server, stack) : 1;
+        durabilityCost = SwordModuleData.consumeVirtualDurability(stack, durabilityCost);
+        if (durabilityCost <= 0) return;
+        if (stack.hurt(durabilityCost, owner.getRandom(), owner)) {
             stack.shrink(1);
             FlyingSwordItem.getOwnedFormationSwords(owner).stream()
-                    .filter(sword -> sword.material == material && sword.series == series)
+                    .filter(sword -> java.util.Objects.equals(sword.sourceBindingId, sourceBindingId))
                     .forEach(Entity::discard);
         }
     }
@@ -476,7 +514,11 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void flyToward(Vec3 destination, double steering, double maxSpeed) {
-        updateVelocity(destination, steering, maxSpeed * SwordBalanceConfig.get(material).flightSpeed());
+        double multiplier = SwordBalanceConfig.get(material).flightSpeed();
+        if (WanxiangSwordData.isTempered(displayStack) && level().getServer() != null) {
+            multiplier *= WanxiangWeaponCatalog.flightSpeedMultiplier(level().getServer(), displayStack);
+        }
+        updateVelocity(destination, steering, maxSpeed * multiplier);
         Vec3 motion = getDeltaMovement();
         setPos(position().add(motion));
         if (motion.lengthSqr() > 1.0E-5D) {
@@ -513,9 +555,11 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     public ItemStack getDisplayItem() {
-        ItemStack display = new ItemStack(ModItems.getFlyingSword(getVisualMaterial(), getVisualSeries()));
-        display.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
-        return display;
+        ItemStack synced = entityData.get(DATA_DISPLAY_STACK);
+        if (!synced.isEmpty()) return synced.copy();
+        ItemStack fallback = new ItemStack(ModItems.getFlyingSword(getVisualMaterial(), getVisualSeries()));
+        fallback.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
+        return fallback;
     }
 
     public FormationMode getVisualFormationMode() {
@@ -561,10 +605,12 @@ public final class FlyingSwordEntity extends Entity {
 
     /** Configures an unspawned client entity so the workbench renders the real sword pipeline. */
     public void configureVisualPreview(ItemStack stack) {
-        if (!(stack.getItem() instanceof FlyingSwordItem swordItem)) return;
-        material = swordItem.getMaterialType();
-        series = swordItem.getSeries();
+        if (!WanxiangSwordData.isUsable(stack)) return;
+        material = WanxiangSwordData.material(stack);
+        series = WanxiangSwordData.series(stack);
         installedModules = SwordModuleData.copyModules(stack);
+        displayStack = displayCopy(stack);
+        sourceBindingId = WanxiangSwordData.binding(stack);
         visualPreview = true;
         phase = FlightPhase.DOCKED;
         entityData.set(DATA_MATERIAL, material.ordinal());
@@ -575,10 +621,15 @@ public final class FlyingSwordEntity extends Entity {
                 SwordModuleData.getLevel(installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(installedModules));
         entityData.set(DATA_RIDE_SUPPORT, false);
+        entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
     }
 
     public boolean isVisualRideSupport() {
         return entityData.get(DATA_RIDE_SUPPORT);
+    }
+
+    public UUID getSourceBindingId() {
+        return sourceBindingId;
     }
 
     @Override
@@ -603,6 +654,8 @@ public final class FlyingSwordEntity extends Entity {
         installedModules = tag.contains(SwordModuleData.ROOT_TAG)
                 ? tag.getCompound(SwordModuleData.ROOT_TAG).copy() : new CompoundTag();
         rideSupport = tag.getBoolean("RideSupport");
+        sourceBindingId = tag.hasUUID("SourceBindingId") ? tag.getUUID("SourceBindingId") : null;
+        displayStack = tag.contains("DisplayItem") ? ItemStack.of(tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
         int phaseIndex = Mth.clamp(tag.getInt("FlightPhase"), 0, FlightPhase.values().length - 1);
         phase = FlightPhase.values()[phaseIndex];
         entityData.set(DATA_FORMATION_SLOT, formationSlot);
@@ -615,6 +668,7 @@ public final class FlyingSwordEntity extends Entity {
                 SwordModuleData.getLevel(installedModules, FlyingSwordModule.WHITE_HOT) > 0);
         entityData.set(DATA_VISUAL_MODULES, SwordModuleData.packVisualEffects(installedModules));
         entityData.set(DATA_RIDE_SUPPORT, rideSupport);
+        entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
         if (tag.contains("ManualLaunchX")) {
             manualLaunchDirection = new Vec3(tag.getDouble("ManualLaunchX"), tag.getDouble("ManualLaunchY"),
                     tag.getDouble("ManualLaunchZ"));
@@ -641,6 +695,8 @@ public final class FlyingSwordEntity extends Entity {
         tag.putInt("Series", series.ordinal());
         if (!installedModules.isEmpty()) tag.put(SwordModuleData.ROOT_TAG, installedModules.copy());
         tag.putBoolean("RideSupport", rideSupport);
+        if (sourceBindingId != null) tag.putUUID("SourceBindingId", sourceBindingId);
+        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(new CompoundTag()));
         tag.putInt("FlightPhase", phase.ordinal());
         if (fixedWaypoint != null) {
             tag.putDouble("WaypointX", fixedWaypoint.x);
@@ -658,5 +714,12 @@ public final class FlyingSwordEntity extends Entity {
     @Override
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
+    }
+
+    private static ItemStack displayCopy(ItemStack source) {
+        ItemStack display = source.copy();
+        display.setCount(1);
+        display.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
+        return display;
     }
 }

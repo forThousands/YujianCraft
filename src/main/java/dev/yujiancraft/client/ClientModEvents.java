@@ -12,6 +12,9 @@ import dev.yujiancraft.registry.ModEntities;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.visual.FlyingSwordSeries;
 import dev.yujiancraft.upgrade.FlyingSwordModule;
+import dev.yujiancraft.wanxiang.WanxiangGlowMode;
+import dev.yujiancraft.wanxiang.WanxiangRenderPreset;
+import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderType;
@@ -19,6 +22,9 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.BakedModel;
@@ -27,6 +33,7 @@ import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.player.Player;
@@ -49,6 +56,9 @@ import org.lwjgl.glfw.GLFW;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import net.minecraftforge.registries.ForgeRegistries;
 
 @Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ClientModEvents {
@@ -68,6 +78,14 @@ public final class ClientModEvents {
             KeyModifier.CONTROL,
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_I,
+            "key.categories.yujiancraft"
+    );
+    public static final KeyMapping TOGGLE_SWORDS = new KeyMapping(
+            "key.yujiancraft.toggle_swords",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_V,
             "key.categories.yujiancraft"
     );
 
@@ -115,12 +133,20 @@ public final class ClientModEvents {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.FLYING_SWORD.get(), FlyingSwordRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPIRIT_TRIAL_DUMMY.get(), SpiritTrialDummyRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(SpiritTrialDummyRenderer.LAYER, () -> LayerDefinition.create(
+                HumanoidModel.createMesh(CubeDeformation.NONE, 0.0F), 64, 64));
     }
 
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(SWITCH_FORMATION);
         event.register(OPEN_CONFIG);
+        event.register(TOGGLE_SWORDS);
     }
 
     @SubscribeEvent
@@ -135,6 +161,8 @@ public final class ClientModEvents {
             ClientOptions.load();
             MenuScreens.register(dev.yujiancraft.registry.ModMenus.FLYING_SWORD_WORKBENCH.get(),
                     FlyingSwordWorkbenchScreen::new);
+            MenuScreens.register(dev.yujiancraft.registry.ModMenus.SPIRIT_TEMPERING_TABLE.get(),
+                    SpiritTemperingScreen::new);
         });
     }
 
@@ -144,6 +172,7 @@ public final class ClientModEvents {
         private static final ResourceLocation SPIRIT_PULSE_TEXTURE = ResourceLocation.fromNamespaceAndPath(
                 YujianCraft.MOD_ID, "textures/effect/spirit_pulse.png");
         private static final int SPIRIT_SIDES = 8;
+        private static final Set<ResourceLocation> QUARANTINED_MODELS = new HashSet<>();
         private final ItemRenderer itemRenderer;
 
         private FlyingSwordRenderer(EntityRendererProvider.Context context) {
@@ -206,20 +235,26 @@ public final class ClientModEvents {
             // formation and material must put the blade tip on the velocity vector.
             boolean legacyDockPose = sword.isVisuallyDocked()
                     && sword.getVisualFormationMode().usesLegacyVisualAxis();
-            boolean customThreeDimensionalModel = sword.getVisualSeries() == FlyingSwordSeries.SPIRITFORGED;
-            float axisCorrection = customThreeDimensionalModel
-                    ? (legacyDockPose ? 90.0F : 0.0F)
-                    : (legacyDockPose ? 45.0F : -45.0F);
+            ItemStack visualStack = sword.getDisplayItem();
+            WanxiangRenderPreset renderPreset = WanxiangSwordData.renderPreset(visualStack);
+            WanxiangGlowMode glowMode = WanxiangSwordData.glowMode(visualStack);
+            boolean flippedAxis = WanxiangSwordData.flipAxis(visualStack);
+            boolean formalDimensions = renderPreset != WanxiangRenderPreset.VANILLA_FLAT;
+            float axisCorrection = legacyDockPose
+                    ? (renderPreset == WanxiangRenderPreset.AXIAL_3D ? 90.0F : 45.0F)
+                    : renderPreset.flightAxisCorrection();
+            if (flippedAxis) axisCorrection += 180.0F;
             poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(axisCorrection));
             // Keep the sword, its aura and its moving energy pulse in the same scale space.
             // Previously the aura was rendered before this shared enlargement, causing most of
             // its already-thin shell to disappear inside the vanilla sword silhouette.
-            poseStack.scale(1.25F, 1.25F, 1.25F);
+            float profileScale = WanxiangSwordData.scalePercent(visualStack) / 100.0F;
+            poseStack.scale(1.25F * profileScale, 1.25F * profileScale, 1.25F * profileScale);
 
             // Render the material-coloured sword first so the following translucent aura layers
             // can sit around it instead of depth-flattening it into an opaque plastic shell.
             poseStack.pushPose();
-            if (!customThreeDimensionalModel) {
+            if (renderPreset == WanxiangRenderPreset.VANILLA_FLAT) {
                 // Elongate the vanilla sprite along its own post-FIXED diagonal instead of scaling
                 // X or Y globally. Its familiar pixel width remains intact while the flying sword
                 // gains a longer silhouette; inventory and ordinary held rendering are untouched.
@@ -227,43 +262,98 @@ public final class ClientModEvents {
                 poseStack.scale(1.22F, 0.98F, 1.0F);
                 poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-135.0F));
             }
-            int swordLight = ClientOptions.swordBodyGlow() ? LightTexture.FULL_BRIGHT : packedLight;
-            if (ClientOptions.swordBodyGlow()) {
-                SwordGlowBrightness brightness = ClientOptions.glowBrightness();
-                if (brightness.usesLegacyRenderer()) {
-                    // This is deliberately the untouched 0.9.6 body path. DEFAULT must never
-                    // travel through brightness arithmetic, even when that arithmetic is nominally 1.0.
-                    renderLegacyEnergySword(sword, partialTick, poseStack, buffers);
-                } else {
-                    renderLayeredEnergySword(sword, partialTick, poseStack, buffers, packedLight, brightness);
+            boolean customRenderer = hasUnsafeCustomRenderer(sword, visualStack);
+            boolean bodyGlow = ClientOptions.swordBodyGlow()
+                    && glowMode == WanxiangGlowMode.FULL_BODY && !customRenderer;
+            boolean auraGlow = ClientOptions.swordBodyGlow() && glowMode != WanxiangGlowMode.ORIGINAL;
+            int swordLight = bodyGlow ? LightTexture.FULL_BRIGHT : packedLight;
+            if (bodyGlow) {
+                try {
+                    SwordGlowBrightness brightness = ClientOptions.glowBrightness();
+                    if (brightness.usesLegacyRenderer()) {
+                        // This is deliberately the untouched 0.9.6 body path. DEFAULT must never
+                        // travel through brightness arithmetic, even when that arithmetic is nominally 1.0.
+                        renderLegacyEnergySword(sword, partialTick, poseStack, buffers);
+                    } else {
+                        renderLayeredEnergySword(sword, partialTick, poseStack, buffers, packedLight, brightness);
+                    }
+                } catch (RuntimeException exception) {
+                    quarantineModel(visualStack, exception);
+                    renderSafeStatic(sword, visualStack, packedLight, poseStack, buffers);
                 }
             } else {
-                itemRenderer.renderStatic(sword.getDisplayItem(), ItemDisplayContext.FIXED, swordLight,
-                        OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
+                renderSafeStatic(sword, visualStack, swordLight, poseStack, buffers);
             }
             poseStack.popPose();
 
-            if (ClientOptions.swordBodyGlow()) {
+            if (auraGlow) {
                 poseStack.pushPose();
-                alignBladeVisualEffects(poseStack, customThreeDimensionalModel);
-                renderBladeAura(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
+                alignBladeVisualEffects(poseStack, renderPreset, flippedAxis);
+                scaleAttachedBladeEffects(poseStack, visualStack);
+                renderBladeAura(sword, partialTick, poseStack, buffers, formalDimensions);
                 poseStack.popPose();
             }
             // Module accents are authored around the same local +Y blade axis as the aura.
             // Vanilla item sprites still carry their diagonal FIXED transform, so they need the
             // identical correction or every spark, arc and pulse appears rotated off the blade.
             poseStack.pushPose();
-            alignBladeVisualEffects(poseStack, customThreeDimensionalModel);
-            renderModuleAccents(sword, partialTick, poseStack, buffers, customThreeDimensionalModel);
+            alignBladeVisualEffects(poseStack, renderPreset, flippedAxis);
+            scaleAttachedBladeEffects(poseStack, visualStack);
+            renderModuleAccents(sword, partialTick, poseStack, buffers, formalDimensions);
             poseStack.popPose();
             poseStack.popPose();
             super.render(sword, yaw, partialTick, poseStack, buffers, packedLight);
         }
 
-        private static void alignBladeVisualEffects(PoseStack poseStack, boolean customThreeDimensionalModel) {
-            if (!customThreeDimensionalModel) {
-                // FIXED mirrors the vanilla item sprite. +45 puts its visible blade on local +Y.
-                poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(45.0F));
+        private static void alignBladeVisualEffects(PoseStack poseStack, WanxiangRenderPreset preset,
+                                                    boolean flippedAxis) {
+            float correction = preset.effectAxisCorrection() - (flippedAxis ? 180.0F : 0.0F);
+            if (Math.abs(correction) > 0.001F) {
+                poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(correction));
+            }
+        }
+
+        private static void scaleAttachedBladeEffects(PoseStack poseStack, ItemStack stack) {
+            float radius = WanxiangSwordData.auraRadiusPercent(stack) / 100.0F;
+            float length = WanxiangSwordData.auraLengthPercent(stack) / 100.0F;
+            poseStack.scale(radius, length, radius);
+        }
+
+        private void renderSafeStatic(FlyingSwordEntity sword, ItemStack stack, int light,
+                                      PoseStack poseStack, MultiBufferSource buffers) {
+            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (itemId != null && QUARANTINED_MODELS.contains(itemId)) {
+                itemRenderer.renderStatic(new ItemStack(Items.IRON_SWORD), ItemDisplayContext.FIXED, light,
+                        OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
+                return;
+            }
+            try {
+                itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, light,
+                        OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
+            } catch (RuntimeException exception) {
+                quarantineModel(stack, exception);
+                itemRenderer.renderStatic(new ItemStack(Items.IRON_SWORD), ItemDisplayContext.FIXED, light,
+                        OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
+            }
+        }
+
+        private boolean hasUnsafeCustomRenderer(FlyingSwordEntity sword, ItemStack stack) {
+            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (itemId != null && QUARANTINED_MODELS.contains(itemId)) return true;
+            try {
+                return itemRenderer.getModel(stack, sword.level(), null, sword.getId()).isCustomRenderer();
+            } catch (RuntimeException exception) {
+                quarantineModel(stack, exception);
+                return true;
+            }
+        }
+
+        private static void quarantineModel(ItemStack stack, RuntimeException exception) {
+            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (itemId != null && QUARANTINED_MODELS.add(itemId)) {
+                org.slf4j.LoggerFactory.getLogger(ClientModEvents.class).error(
+                        "Quarantined incompatible flying item model {}; using the safe fallback until restart",
+                        itemId, exception);
             }
         }
 
@@ -272,56 +362,38 @@ public final class ClientModEvents {
             ItemStack stack = sword.getDisplayItem();
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
-            model = ForgeHooksClient.handleCameraTransforms(
-                    poseStack, model, ItemDisplayContext.FIXED, false);
-            poseStack.translate(-0.5F, -0.5F, -0.5F);
+            try {
+                model = ForgeHooksClient.handleCameraTransforms(
+                        poseStack, model, ItemDisplayContext.FIXED, false);
+                poseStack.translate(-0.5F, -0.5F, -0.5F);
 
-            RenderType bodyRenderType = sword.hasVisualWhiteHotModule()
-                    ? YujianCraftRenderTypes.WHITE_HOT_ENERGY
-                    : RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_BLOCKS, false);
-            VertexConsumer energyBody = new EnergyVertexConsumer(
-                    buffers.getBuffer(bodyRenderType), 188, 0.0F);
-            for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, poseStack, energyBody);
-            }
+                RenderType bodyRenderType = sword.hasVisualWhiteHotModule()
+                        ? YujianCraftRenderTypes.WHITE_HOT_ENERGY
+                        : RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_BLOCKS, false);
+                renderEnergyModelLayer(model, stack, poseStack,
+                        new EnergyVertexConsumer(buffers.getBuffer(bodyRenderType), 188, 0.0F),
+                        1.0F, 1.0F, 1.0F);
 
-            if (ClientOptions.swordEnergyHighlight()) {
-                float time = sword.tickCount + partialTick;
-                float slowPulse = 0.5F + 0.5F * Mth.sin(time * 0.115F
-                        + sword.getVisualFormationSlot() * 0.83F);
-                float hotPulse = 0.5F + 0.5F * Mth.sin(time * 0.197F
-                        + sword.getVisualFormationSlot() * 1.17F + 1.4F);
-
-                // A close white-hot skin keeps the original pixel pattern visible while making
-                // its brightest regions resemble heated, light-emitting metal.
-                poseStack.pushPose();
-                poseStack.scale(1.012F, 1.012F, 1.018F);
-                VertexConsumer hotSkin = new EnergyVertexConsumer(
-                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
-                                TextureAtlas.LOCATION_BLOCKS, false)),
-                        Math.round(214.0F + hotPulse * 41.0F), 0.92F + hotPulse * 0.08F);
-                for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                            OverlayTexture.NO_OVERLAY, poseStack, hotSkin);
+                if (ClientOptions.swordEnergyHighlight()) {
+                    float time = sword.tickCount + partialTick;
+                    float slowPulse = 0.5F + 0.5F * Mth.sin(time * 0.115F
+                            + sword.getVisualFormationSlot() * 0.83F);
+                    float hotPulse = 0.5F + 0.5F * Mth.sin(time * 0.197F
+                            + sword.getVisualFormationSlot() * 1.17F + 1.4F);
+                    renderEnergyModelLayer(model, stack, poseStack,
+                            new EnergyVertexConsumer(buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                    TextureAtlas.LOCATION_BLOCKS, false)),
+                                    Math.round(214.0F + hotPulse * 41.0F), 0.92F + hotPulse * 0.08F),
+                            1.012F, 1.012F, 1.018F);
+                    renderEnergyModelLayer(model, stack, poseStack,
+                            new EnergyVertexConsumer(buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                    TextureAtlas.LOCATION_BLOCKS, false)),
+                                    Math.round(102.0F + slowPulse * 68.0F), 0.58F + slowPulse * 0.16F),
+                            1.060F, 1.060F, 1.072F);
                 }
-                poseStack.popPose();
-
-                // A slightly expanded, low-alpha material-coloured skin supplies the hot bloom
-                // that Minecraft's renderer lacks without turning this into a hard outline.
-                poseStack.pushPose();
-                poseStack.scale(1.060F, 1.060F, 1.072F);
-                VertexConsumer materialBloom = new EnergyVertexConsumer(
-                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
-                                TextureAtlas.LOCATION_BLOCKS, false)),
-                        Math.round(102.0F + slowPulse * 68.0F), 0.58F + slowPulse * 0.16F);
-                for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                            OverlayTexture.NO_OVERLAY, poseStack, materialBloom);
-                }
+            } finally {
                 poseStack.popPose();
             }
-            poseStack.popPose();
         }
 
         /**
@@ -337,58 +409,57 @@ public final class ClientModEvents {
 
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
-            model = ForgeHooksClient.handleCameraTransforms(
-                    poseStack, model, ItemDisplayContext.FIXED, false);
-            poseStack.translate(-0.5F, -0.5F, -0.5F);
+            try {
+                model = ForgeHooksClient.handleCameraTransforms(
+                        poseStack, model, ItemDisplayContext.FIXED, false);
+                poseStack.translate(-0.5F, -0.5F, -0.5F);
 
-            RenderType bodyRenderType = sword.hasVisualWhiteHotModule()
-                    ? YujianCraftRenderTypes.WHITE_HOT_ENERGY
-                    : RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_BLOCKS, false);
-            VertexConsumer energyOverlay = new EnergyVertexConsumer(
-                    buffers.getBuffer(bodyRenderType), brightness.bodyOverlayAlpha(), brightness.whiteMix());
-            for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, poseStack, energyOverlay);
-            }
+                RenderType bodyRenderType = sword.hasVisualWhiteHotModule()
+                        ? YujianCraftRenderTypes.WHITE_HOT_ENERGY
+                        : RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_BLOCKS, false);
+                renderEnergyModelLayer(model, stack, poseStack,
+                        new EnergyVertexConsumer(buffers.getBuffer(bodyRenderType),
+                                brightness.bodyOverlayAlpha(), brightness.whiteMix()),
+                        1.0F, 1.0F, 1.0F);
 
-            // The option owns these layers completely: OFF draws none; ON only adds bloom and
-            // never changes either the opaque body or the main emissive overlay.
-            if (ClientOptions.swordEnergyHighlight()) {
-                float time = sword.tickCount + partialTick;
-                float slowPulse = 0.5F + 0.5F * Mth.sin(time * 0.115F
-                        + sword.getVisualFormationSlot() * 0.83F);
-                float hotPulse = 0.5F + 0.5F * Mth.sin(time * 0.197F
-                        + sword.getVisualFormationSlot() * 1.17F + 1.4F);
-
-                poseStack.pushPose();
-                poseStack.scale(1.012F, 1.012F, 1.018F);
-                int hotAlpha = scaleEffectAlpha(Math.round(214.0F + hotPulse * 41.0F),
-                        brightness.bloomStrength());
-                VertexConsumer hotSkin = new EnergyVertexConsumer(
-                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
-                                TextureAtlas.LOCATION_BLOCKS, false)), hotAlpha,
-                        combineWhiteMix(0.92F + hotPulse * 0.08F, brightness.whiteMix()));
-                for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                            OverlayTexture.NO_OVERLAY, poseStack, hotSkin);
+                if (ClientOptions.swordEnergyHighlight()) {
+                    float time = sword.tickCount + partialTick;
+                    float slowPulse = 0.5F + 0.5F * Mth.sin(time * 0.115F
+                            + sword.getVisualFormationSlot() * 0.83F);
+                    float hotPulse = 0.5F + 0.5F * Mth.sin(time * 0.197F
+                            + sword.getVisualFormationSlot() * 1.17F + 1.4F);
+                    int hotAlpha = scaleEffectAlpha(Math.round(214.0F + hotPulse * 41.0F),
+                            brightness.bloomStrength());
+                    renderEnergyModelLayer(model, stack, poseStack,
+                            new EnergyVertexConsumer(buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                    TextureAtlas.LOCATION_BLOCKS, false)), hotAlpha,
+                                    combineWhiteMix(0.92F + hotPulse * 0.08F, brightness.whiteMix())),
+                            1.012F, 1.012F, 1.018F);
+                    int bloomAlpha = scaleEffectAlpha(Math.round(102.0F + slowPulse * 68.0F),
+                            brightness.bloomStrength());
+                    renderEnergyModelLayer(model, stack, poseStack,
+                            new EnergyVertexConsumer(buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                                    TextureAtlas.LOCATION_BLOCKS, false)), bloomAlpha,
+                                    combineWhiteMix(0.58F + slowPulse * 0.16F, brightness.whiteMix())),
+                            1.060F, 1.060F, 1.072F);
                 }
-                poseStack.popPose();
-
-                poseStack.pushPose();
-                poseStack.scale(1.060F, 1.060F, 1.072F);
-                int bloomAlpha = scaleEffectAlpha(Math.round(102.0F + slowPulse * 68.0F),
-                        brightness.bloomStrength());
-                VertexConsumer materialBloom = new EnergyVertexConsumer(
-                        buffers.getBuffer(RenderType.entityTranslucentEmissive(
-                                TextureAtlas.LOCATION_BLOCKS, false)), bloomAlpha,
-                        combineWhiteMix(0.58F + slowPulse * 0.16F, brightness.whiteMix()));
-                for (BakedModel pass : model.getRenderPasses(stack, true)) {
-                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
-                            OverlayTexture.NO_OVERLAY, poseStack, materialBloom);
-                }
+            } finally {
                 poseStack.popPose();
             }
-            poseStack.popPose();
+        }
+
+        private void renderEnergyModelLayer(BakedModel model, ItemStack stack, PoseStack poseStack,
+                                            VertexConsumer consumer, float scaleX, float scaleY, float scaleZ) {
+            poseStack.pushPose();
+            try {
+                poseStack.scale(scaleX, scaleY, scaleZ);
+                for (BakedModel pass : model.getRenderPasses(stack, true)) {
+                    itemRenderer.renderModelLists(pass, stack, LightTexture.FULL_BRIGHT,
+                            OverlayTexture.NO_OVERLAY, poseStack, consumer);
+                }
+            } finally {
+                poseStack.popPose();
+            }
         }
 
         private void renderTrail(FlyingSwordEntity sword, Vec3 renderedPosition, PoseStack poseStack,

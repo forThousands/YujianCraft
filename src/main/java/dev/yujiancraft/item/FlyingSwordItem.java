@@ -11,6 +11,9 @@ import dev.yujiancraft.upgrade.FlyingSwordModule;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.client.ClientOptions;
 import dev.yujiancraft.visual.FlyingSwordSeries;
+import dev.yujiancraft.wanxiang.WanxiangSwordData;
+import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
+import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -21,16 +24,17 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.UUID;
 
-public final class FlyingSwordItem extends Item {
+public final class FlyingSwordItem extends SwordItem {
     public static final int FORMATION_SIZE = 6;
     public static final String ENTITY_DISPLAY_TAG = "YujianCraftEntityDisplay";
     private static final String MODE_TAG = "FormationMode";
@@ -38,7 +42,10 @@ public final class FlyingSwordItem extends Item {
     private final FlyingSwordSeries series;
 
     public FlyingSwordItem(FlyingSwordMaterial material, FlyingSwordSeries series, Properties properties) {
-        super(properties);
+        // All vanilla sword tiers use an attack-damage modifier of 3. The dynamic Yujian modifier
+        // replaces that damage later, while SwordItem keeps the correct 1.6 attack speed and
+        // vanilla sword-enchantment behaviour.
+        super(material.vanillaTier(), 3, -2.4F, properties);
         this.material = material;
         this.series = series;
     }
@@ -50,18 +57,7 @@ public final class FlyingSwordItem extends Item {
         if (!(level instanceof ServerLevel serverLevel) || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
-
-        List<FlyingSwordEntity> activeSwords = getOwnedFormationSwords(serverPlayer);
-
-        if (!activeSwords.isEmpty()) {
-            ManualGuidanceManager.cancel(serverPlayer);
-            activeSwords.forEach(Entity::discard);
-        } else {
-            summonFormation(serverPlayer, stack);
-        }
-
-        level.playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
-                SoundSource.PLAYERS, 0.8F, activeSwords.isEmpty() ? 1.4F : 0.9F);
+        toggleSummonedFormation(serverPlayer, stack);
         player.getCooldowns().addCooldown(this, 10);
         player.awardStat(Stats.ITEM_USED.get(this));
         return InteractionResultHolder.consume(stack);
@@ -177,37 +173,82 @@ public final class FlyingSwordItem extends Item {
 
     public static List<FlyingSwordEntity> ensureFormation(ServerPlayer player, ItemStack stack) {
         List<FlyingSwordEntity> existing = getOwnedFormationSwords(player);
-        if (!existing.isEmpty() || !(stack.getItem() instanceof FlyingSwordItem item)) return existing;
-        item.summonFormation(player, stack);
+        if (!existing.isEmpty() || !isUsableFlyingSword(stack) || !catalogueAllows(player, stack)) return existing;
+        summonFormation(player, stack);
         return getOwnedFormationSwords(player);
     }
 
-    private void summonFormation(ServerPlayer player, ItemStack stack) {
+    public static boolean toggleSummonedFormation(ServerPlayer player, ItemStack requestedStack) {
+        ItemStack stack = isUsableFlyingSword(requestedStack) ? requestedStack : findFlyingSword(player);
+        if (stack.isEmpty()) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.no_sword"), true);
+            return false;
+        }
+        if (!catalogueAllows(player, stack)) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.wanxiang.disabled"), true);
+            return false;
+        }
+        List<FlyingSwordEntity> activeSwords = getOwnedFormationSwords(player);
+        if (!activeSwords.isEmpty()) {
+            ManualGuidanceManager.cancel(player);
+            activeSwords.forEach(Entity::discard);
+        } else {
+            summonFormation(player, stack);
+        }
+        player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
+                SoundSource.PLAYERS, 0.8F, activeSwords.isEmpty() ? 1.4F : 0.9F);
+        return true;
+    }
+
+    private static boolean catalogueAllows(ServerPlayer player, ItemStack stack) {
+        return !WanxiangSwordData.isTempered(stack)
+                || WanxiangWeaponCatalog.enabled(player.server, stack);
+    }
+
+    private static void summonFormation(ServerPlayer player, ItemStack stack) {
         ServerLevel level = player.serverLevel();
-        for (int slot = 0; slot < FORMATION_SIZE; slot++) {
+        WanxiangSwordData.ensureBinding(stack);
+        FormationMode formationMode = getFormationMode(stack);
+        SwordSettings settings = SwordSettings.read(stack);
+        int formationSize = ManualSpiritTrialManager.formationSize(player, FORMATION_SIZE);
+        for (int slot = 0; slot < formationSize; slot++) {
             FlyingSwordEntity sword = ModEntities.FLYING_SWORD.get().create(level);
             if (sword == null) continue;
-            sword.bindTo(player, slot, getFormationMode(stack), SwordSettings.read(stack), material,
-                    series, SwordModuleData.copyModules(stack));
+            sword.bindTo(player, slot, formationMode, settings, stack);
             sword.moveTo(player.getX(), player.getEyeY(), player.getZ(), player.getYRot(), 0.0F);
             level.addFreshEntity(sword);
         }
     }
 
+    public static boolean isUsableFlyingSword(ItemStack stack) {
+        return WanxiangSwordData.isUsable(stack);
+    }
+
     public static ItemStack findFlyingSword(ServerPlayer player) {
-        if (player.getMainHandItem().getItem() instanceof FlyingSwordItem) {
+        if (isUsableFlyingSword(player.getMainHandItem())) {
             return player.getMainHandItem();
         }
-        if (player.getOffhandItem().getItem() instanceof FlyingSwordItem) {
+        if (isUsableFlyingSword(player.getOffhandItem())) {
             return player.getOffhandItem();
         }
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             ItemStack stack = player.getInventory().getItem(slot);
-            if (stack.getItem() instanceof FlyingSwordItem) {
+            if (isUsableFlyingSword(stack)) {
                 return stack;
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    public static ItemStack findFlyingSword(ServerPlayer player, UUID bindingId) {
+        if (bindingId == null) return ItemStack.EMPTY;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (isUsableFlyingSword(stack) && bindingId.equals(WanxiangSwordData.binding(stack))) return stack;
+        }
+        ItemStack offhand = player.getOffhandItem();
+        return isUsableFlyingSword(offhand) && bindingId.equals(WanxiangSwordData.binding(offhand))
+                ? offhand : ItemStack.EMPTY;
     }
 
     public static ItemStack findFlyingSword(ServerPlayer player, FlyingSwordMaterial material,

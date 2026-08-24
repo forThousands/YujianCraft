@@ -41,6 +41,9 @@ public final class ClientInputEvents {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new YujianCraftConfigScreen(minecraft.screen));
         }
+        while (ClientModEvents.TOGGLE_SWORDS.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSummonedSwordsPacket());
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
                 && ClientOptions.swordRidingEnabled()
@@ -63,10 +66,15 @@ public final class ClientInputEvents {
         Minecraft minecraft = Minecraft.getInstance();
         boolean optimizedAim = OptimizedThirdPersonController.refreshScreenCenterHit();
         if (event.isAttack() && minecraft.player != null
-                && minecraft.player.getMainHandItem().getItem() instanceof FlyingSwordItem) {
-            event.setCanceled(true);
+                && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
+            boolean directLivingAttack = minecraft.hitResult instanceof EntityHitResult entityHit
+                    && entityHit.getEntity() instanceof LivingEntity living && living.isAlive();
             if (ClientSettingsState.get().targetingMode()
-                    == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE) {
+                    == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE
+                    && !directLivingAttack) {
+                // Empty-space/block attack keeps the manual-guidance launch gesture. Clicking a
+                // living entity always remains an ordinary vanilla melee attack.
+                event.setCanceled(true);
                 ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualLaunchPacket(
                         minecraft.player.getViewVector(1.0F)));
                 return;
@@ -77,8 +85,9 @@ public final class ClientInputEvents {
                 targetId = entityHit.getEntity().getId();
             }
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(targetId));
+            // Do not cancel: the same click must still swing, attack an entity or mine a block.
         } else if (event.isUseItem() && minecraft.player != null
-                && minecraft.player.getMainHandItem().getItem() instanceof FlyingSwordItem
+                && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())
                 && !minecraft.player.isShiftKeyDown()
                 && ClientSettingsState.get().targetingMode()
                 == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE
@@ -115,7 +124,7 @@ public final class ClientInputEvents {
             blockAttackHandledThisTick = true;
         }
         if (minecraft.player != null && minecraft.screen == null && ClientManualGuidanceState.isGuiding()
-                && minecraft.player.getMainHandItem().getItem() instanceof FlyingSwordItem) {
+                && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
             if (manualAimSyncCountdown-- <= 0) {
                 manualAimSyncCountdown = 1;
                 ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualAimPacket(
@@ -143,10 +152,10 @@ public final class ClientInputEvents {
     }
 
     private static boolean hasFlyingSword(net.minecraft.world.entity.player.Player player) {
-        if (player.getMainHandItem().getItem() instanceof FlyingSwordItem
-                || player.getOffhandItem().getItem() instanceof FlyingSwordItem) return true;
+        if (FlyingSwordItem.isUsableFlyingSword(player.getMainHandItem())
+                || FlyingSwordItem.isUsableFlyingSword(player.getOffhandItem())) return true;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            if (player.getInventory().getItem(slot).getItem() instanceof FlyingSwordItem) return true;
+            if (FlyingSwordItem.isUsableFlyingSword(player.getInventory().getItem(slot))) return true;
         }
         return false;
     }

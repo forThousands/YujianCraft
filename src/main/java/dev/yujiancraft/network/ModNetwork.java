@@ -36,7 +36,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "10";
+    private static final String PROTOCOL = "13";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -99,6 +99,15 @@ public final class ModNetwork {
         CHANNEL.registerMessage(17, SwordImpactPacket.class,
                 SwordImpactPacket::encode, SwordImpactPacket::decode,
                 ModNetwork::handleSwordImpact, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(18, ToggleSummonedSwordsPacket.class,
+                (message, buffer) -> { }, buffer -> new ToggleSummonedSwordsPacket(),
+                ModNetwork::handleToggleSummonedSwords, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(19, OpenGuidePacket.class,
+                (message, buffer) -> { }, buffer -> new OpenGuidePacket(),
+                ModNetwork::handleOpenGuide, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(20, ManualTrialResultPacket.class,
+                ManualTrialResultPacket::encode, ManualTrialResultPacket::decode,
+                ModNetwork::handleManualTrialResult, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
@@ -107,6 +116,34 @@ public final class ModNetwork {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender != null) FlyingSwordItem.toggleFormationMode(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleOpenGuide(OpenGuidePacket message,
+                                        Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.YujianGuideScreen.open()));
+        context.setPacketHandled(true);
+    }
+
+    private static void handleManualTrialResult(ManualTrialResultPacket message,
+                                                Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ManualSpiritTrialResultScreen.open(
+                        message.damage, message.dps, message.mode)));
+        context.setPacketHandled(true);
+    }
+
+
+    private static void handleToggleSummonedSwords(ToggleSummonedSwordsPacket message,
+                                                   Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) FlyingSwordItem.toggleSummonedFormation(sender, sender.getMainHandItem());
         });
         context.setPacketHandled(true);
     }
@@ -308,6 +345,15 @@ public final class ModNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ManualGuidanceStatePacket(guiding));
     }
 
+    public static void openGuide(ServerPlayer player) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenGuidePacket());
+    }
+
+    public static void sendManualTrialResult(ServerPlayer player, double damage, double dps, int mode) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new ManualTrialResultPacket(damage, dps, mode));
+    }
+
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
         Vec3 safeDirection = direction.lengthSqr() < 1.0E-6D
                 ? new Vec3(0.0D, 1.0D, 0.0D) : direction.normalize();
@@ -325,6 +371,25 @@ public final class ModNetwork {
 
     public record ToggleFormationPacket() {
     }
+
+    public record ToggleSummonedSwordsPacket() {
+    }
+
+    public record OpenGuidePacket() {
+    }
+
+    public record ManualTrialResultPacket(double damage, double dps, int mode) {
+        private static void encode(ManualTrialResultPacket message, FriendlyByteBuf buffer) {
+            buffer.writeDouble(message.damage);
+            buffer.writeDouble(message.dps);
+            buffer.writeVarInt(message.mode);
+        }
+
+        private static ManualTrialResultPacket decode(FriendlyByteBuf buffer) {
+            return new ManualTrialResultPacket(buffer.readDouble(), buffer.readDouble(), buffer.readVarInt());
+        }
+    }
+
 
     public record RequestSettingsPacket() {
     }

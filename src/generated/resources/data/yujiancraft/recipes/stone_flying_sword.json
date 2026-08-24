@@ -3,16 +3,19 @@
   "category": "equipment",
   "key": {
     "A": {
-      "item": "minecraft:cobblestone"
+      "item": "yujiancraft:spirit_crystal"
     },
     "B": {
+      "item": "minecraft:cobblestone"
+    },
+    "C": {
       "item": "minecraft:stone_sword"
     }
   },
   "pattern": [
-    " A ",
     "ABA",
-    " A "
+    "BCB",
+    "ABA"
   ],
   "result": {
     "item": "yujiancraft:stone_flying_sword"

@@ -56,15 +56,14 @@ public final class SwordRidingManager {
     private static void start(ServerPlayer player) {
         RESTORE_GUARDS.remove(player.getUUID());
         ItemStack stack = FlyingSwordItem.findFlyingSword(player);
-        if (!(stack.getItem() instanceof FlyingSwordItem swordItem)) {
+        if (!FlyingSwordItem.isUsableFlyingSword(stack)) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.riding_need_sword"), true);
             ModNetwork.sendSwordRidingState(player, false);
             return;
         }
         FlyingSwordEntity support = ModEntities.FLYING_SWORD.get().create(player.serverLevel());
         if (support == null) return;
-        support.bindAsRideSupport(player, swordItem.getMaterialType(), swordItem.getSeries(),
-                SwordModuleData.copyModules(stack));
+        support.bindAsRideSupport(player, stack);
         support.moveTo(player.getX(), player.getY() - 0.28D, player.getZ(), player.getYRot(), 0.0F);
         if (!player.serverLevel().addFreshEntity(support)) return;
 

@@ -3,16 +3,19 @@
   "category": "equipment",
   "key": {
     "A": {
-      "item": "minecraft:gold_ingot"
+      "item": "yujiancraft:spirit_crystal"
     },
     "B": {
+      "item": "minecraft:gold_ingot"
+    },
+    "C": {
       "item": "minecraft:golden_sword"
     }
   },
   "pattern": [
-    " A ",
     "ABA",
-    " A "
+    "BCB",
+    "ABA"
   ],
   "result": {
     "item": "yujiancraft:golden_flying_sword"

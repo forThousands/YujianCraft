@@ -4,6 +4,8 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Tier;
+import net.minecraft.world.item.Tiers;
 
 public enum FlyingSwordMaterial {
     WOODEN("wooden", Items.WOODEN_SWORD, Items.OAK_PLANKS, 384, 4.0D, 0.9D, 0xD49A55),
@@ -41,6 +43,18 @@ public enum FlyingSwordMaterial {
     public double defaultFlightSpeed() { return defaultFlightSpeed; }
     public int glowColor() { return glowColor; }
     public String translationKey() { return "material.yujiancraft." + serializedName; }
+
+    /** Supplies vanilla sword behaviour such as attack speed and enchantment compatibility. */
+    public Tier vanillaTier() {
+        return switch (this) {
+            case WOODEN -> Tiers.WOOD;
+            case STONE -> Tiers.STONE;
+            case IRON -> Tiers.IRON;
+            case GOLDEN -> Tiers.GOLD;
+            case DIAMOND -> Tiers.DIAMOND;
+            case NETHERITE -> Tiers.NETHERITE;
+        };
+    }
 
     public boolean isRepairIngredient(ItemStack stack) {
         return this == WOODEN ? stack.is(ItemTags.PLANKS) : stack.is(repairItem);

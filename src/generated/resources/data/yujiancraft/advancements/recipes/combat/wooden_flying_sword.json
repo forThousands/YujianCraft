@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_oak_planks": {
+    "has_spirit_crystal": {
       "conditions": {
         "items": [
           {
             "items": [
-              "minecraft:oak_planks"
+              "yujiancraft:spirit_crystal"
             ]
           }
         ]
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_oak_planks",
+      "has_spirit_crystal",
       "has_the_recipe"
     ]
   ],

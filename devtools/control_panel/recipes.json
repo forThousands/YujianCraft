@@ -8,15 +8,15 @@
       "result": "yujiancraft:diamond_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:diamond",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:diamond",
         "minecraft:diamond_sword",
         "minecraft:diamond",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:diamond",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -26,15 +26,15 @@
       "result": "yujiancraft:diamond_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:diamond_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -44,15 +44,15 @@
       "result": "yujiancraft:flying_sword_workbench",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
         "minecraft:crafting_table",
         "minecraft:iron_ingot",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -62,15 +62,15 @@
       "result": "yujiancraft:golden_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:gold_ingot",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:gold_ingot",
         "minecraft:golden_sword",
         "minecraft:gold_ingot",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:gold_ingot",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -80,15 +80,15 @@
       "result": "yujiancraft:golden_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:golden_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -98,15 +98,15 @@
       "result": "yujiancraft:iron_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
         "minecraft:iron_sword",
         "minecraft:iron_ingot",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:iron_ingot",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -116,15 +116,15 @@
       "result": "yujiancraft:iron_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:iron_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -134,15 +134,15 @@
       "result": "yujiancraft:netherite_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:netherite_scrap",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:netherite_scrap",
         "minecraft:netherite_sword",
         "minecraft:netherite_scrap",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:netherite_scrap",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -152,15 +152,33 @@
       "result": "yujiancraft:netherite_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:netherite_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "spirit_tempering_table",
+      "type": "shaped",
+      "category": "decorations",
+      "result": "yujiancraft:spirit_tempering_table",
+      "count": 1,
+      "grid": [
+        "minecraft:lapis_lazuli",
+        "yujiancraft:spirit_crystal",
+        "minecraft:lapis_lazuli",
+        "yujiancraft:spirit_crystal",
+        "minecraft:smithing_table",
+        "yujiancraft:spirit_crystal",
+        "minecraft:lapis_lazuli",
+        "yujiancraft:spirit_crystal",
+        "minecraft:lapis_lazuli"
       ]
     },
     {
@@ -170,15 +188,15 @@
       "result": "yujiancraft:stone_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:cobblestone",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:cobblestone",
         "minecraft:stone_sword",
         "minecraft:cobblestone",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:cobblestone",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -188,15 +206,15 @@
       "result": "yujiancraft:stone_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:stone_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -206,15 +224,15 @@
       "result": "yujiancraft:wooden_flying_sword",
       "count": 1,
       "grid": [
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:oak_planks",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:oak_planks",
         "minecraft:wooden_sword",
         "minecraft:oak_planks",
-        "",
+        "yujiancraft:spirit_crystal",
         "minecraft:oak_planks",
-        ""
+        "yujiancraft:spirit_crystal"
       ]
     },
     {
@@ -224,15 +242,33 @@
       "result": "yujiancraft:wooden_spiritforged_flying_sword",
       "count": 1,
       "grid": [
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
         "yujiancraft:wooden_flying_sword",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard",
-        "minecraft:amethyst_shard"
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "yujian_guide",
+      "type": "shapeless",
+      "category": "misc",
+      "result": "yujiancraft:yujian_guide",
+      "count": 1,
+      "grid": [
+        "minecraft:book",
+        "yujiancraft:spirit_crystal",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
       ]
     }
   ]

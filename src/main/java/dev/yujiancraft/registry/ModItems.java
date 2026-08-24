@@ -2,6 +2,7 @@ package dev.yujiancraft.registry;
 
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.item.FlyingSwordItem;
+import dev.yujiancraft.item.YujianGuideItem;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.visual.FlyingSwordSeries;
 import net.minecraft.core.registries.Registries;
@@ -36,6 +37,16 @@ public final class ModItems {
             () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> FLYING_SWORD_WORKBENCH = ITEMS.register("flying_sword_workbench",
             () -> new BlockItem(ModBlocks.FLYING_SWORD_WORKBENCH.get(), new Item.Properties()));
+    public static final RegistryObject<Item> SPIRIT_TEMPERING_TABLE = ITEMS.register("spirit_tempering_table",
+            () -> new BlockItem(ModBlocks.SPIRIT_TEMPERING_TABLE.get(), new Item.Properties()));
+    public static final RegistryObject<Item> SPIRIT_ORE = ITEMS.register("spirit_ore",
+            () -> new BlockItem(ModBlocks.SPIRIT_ORE.get(), new Item.Properties()));
+    public static final RegistryObject<Item> DEEPSLATE_SPIRIT_ORE = ITEMS.register("deepslate_spirit_ore",
+            () -> new BlockItem(ModBlocks.DEEPSLATE_SPIRIT_ORE.get(), new Item.Properties()));
+    public static final RegistryObject<Item> SPIRIT_CRYSTAL = ITEMS.register("spirit_crystal",
+            () -> new Item(new Item.Properties()));
+    public static final RegistryObject<Item> YUJIAN_GUIDE = ITEMS.register("yujian_guide",
+            () -> new YujianGuideItem(new Item.Properties().stacksTo(1)));
 
     static {
         for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
@@ -67,6 +78,11 @@ public final class ModItems {
                             output.accept(getFlyingSword(material, FlyingSwordSeries.SPIRITFORGED));
                         }
                         output.accept(FLYING_SWORD_WORKBENCH.get());
+                        output.accept(SPIRIT_TEMPERING_TABLE.get());
+                        output.accept(SPIRIT_ORE.get());
+                        output.accept(DEEPSLATE_SPIRIT_ORE.get());
+                        output.accept(SPIRIT_CRYSTAL.get());
+                        output.accept(YUJIAN_GUIDE.get());
                     })
                     .build()
     );

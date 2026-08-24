@@ -16,15 +16,15 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.9.19`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.12.2`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
 ## 模组简介 / About
 
-御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以原版材料、锻造和附魔语言为基础，加入六柄飞剑组成的动态剑阵、三种索敌方式、持续穿刺、御剑飞行，以及可以自由安装和拆卸的飞剑模块。
+御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以灵矿资源和原版锻造语言为基础，加入六柄飞剑组成的动态剑阵、三种索敌方式、持续穿刺、御剑飞行、可逆飞剑模块，以及将其他模组武器炼成“万象飞剑”的淬灵系统。
 
-Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around vanilla materials and progression, it adds six-sword formations, three targeting styles, repeated piercing attacks, sword riding, and a reversible module system.
+Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around Spirit Ore and vanilla-style progression, it adds six-sword formations, three targeting styles, repeated piercing attacks, sword riding, reversible modules, and spirit tempering that turns third-party weapons into Myriad Flying Swords.
 
 ## 剑阵与战斗 / Formations & Combat
 
@@ -59,7 +59,7 @@ Six flying swords dock behind the player and transition smoothly between formati
 
 | 模式 / Mode | 操作与用途 / Controls and use |
 | --- | --- |
-| **准心锁定（默认）/ Crosshair Lock (default)** | 手持飞剑左键锁定准心目标，不自动吸附或计时换敌 / Left-click a target under the crosshair; no aim assist or timed switching |
+| **准心锁定（默认）/ Crosshair Lock (default)** | 手持飞剑左键锁定准心目标；标记持续到目标死亡或锁定新目标，同一次点击仍会正常近战 / Left-click a target under the crosshair; the marker remains until death or a new lock, and the same click still performs melee |
 | **自动索敌 / Auto Targeting** | 在服务端配置半径内自动选择可攻击目标 / Automatically selects a valid target within the server-defined radius |
 | **神识御剑 / Spirit Sword Guidance** | 左键放出当前就位飞剑，以视角引导；右键锁定准心目标 / Left-click to launch ready swords, steer by view, then right-click to lock a target |
 
@@ -103,11 +103,46 @@ Modules can be installed, replaced, and removed, returning their materials when 
 
 Hit effects share a per-target server cooldown to keep repeated piercing efficient. Installed modules add restrained sparks, arcs, mist, pulses, or wind streaks, while short flashes, impact rings, and layered audio make each strike readable.
 
+## 万象飞剑与淬灵 / Myriad Flying Swords & Spirit Tempering
+
+淬灵台允许本模组飞剑、原版剑以及其他模组的非堆叠武器承载或重铸御剑系统。将待淬灵武器放入上方槽位，将一柄本模组飞剑作为灵性核心放入下方槽位，先进入“塑形”调整模型与剑罡并确认，再进入试锋境。点击入境时会立即消耗经验和核心飞剑；每件武器最多淬灵两次。
+
+The Spirit Tempering Table accepts native Yujian swords, vanilla swords, and non-stackable weapons from other mods. Put the weapon above and one native flying sword below, open Shaping to calibrate both model and aura, confirm, then enter the Spirit Trial. Entry immediately consumes the required levels and the core sword. Each weapon can be tempered at most twice.
+
+- 自动假玩家试锋和主手属性兜底已移除。唯一数值来源是玩家亲自进入悬空试锋台，对试锋傀儡进行十秒 DPS 测试；首个有效命中开始计时，结束时结果立即写为本源穿刺伤害并自动返程。<br>
+  Fake-player probing and main-hand fallback have been removed. The only source is a player-driven ten-second DPS trial on the suspended platform. The first valid hit starts the timer; completion immediately writes intrinsic piercing damage and returns the player.
+- 试锋只接受本次武器、由其产生且可追溯的投射物，或单柄试锋飞剑的同一类伤害。切换背包武器、混合近战/投射物/剑阵以及模块持续效果不能叠加刷取数值。试锋平台八角灵灯会轮流降下无伤害雷光。<br>
+  The trial accepts one damage channel from the marked ritual weapon, its traceable projectiles, or one trial flying sword. Inventory swaps, mixed melee/projectile/formation output, and module damage cannot stack the result. Eight corner lamps cycle harmless atmospheric lightning.
+- “塑形”二级菜单使用实战实体管线预览模型，将轴向、发光、反转、`50%–200%` 模型缩放以及剑罡半径/长度集中在同一页；确认塑形后才可入境。<br>
+  The Shaping sub-page uses the combat renderer and combines axis, glow, flip, `50%–200%` model scale, aura radius, and aura length. Entry is locked until shaping is confirmed.
+- 完整剑体发光适合普通烘焙模型；“仅外部光效”和“保留原始模型”可兼容复杂动态模型。异常模型会被局部隔离并使用安全占位，不会让整个客户端退出。<br>
+  Full-body glow suits ordinary baked models; Aura Only and Original Model are safer for complex animated renderers. A failing model is quarantined locally and replaced by a safe placeholder instead of terminating the client.
+- 淬灵物品仍可在飞剑工作台安装和拆卸现有模块，也可用于索敌、持续穿刺、神识御剑与御剑飞行。按默认 `V` 键召出或收回剑阵，且不覆盖原物品的右键能力。<br>
+  Tempered items accept the existing reversible modules and work with targeting, relentless piercing, Spirit-Sense control, and sword riding. Press the default `V` key to summon or recall the formation without replacing the item's original right-click action.
+- 所有飞剑使用原版剑的 `1.6` 攻击速度并保留普通左键近战。基础穿刺值决定原版攻击属性；锋利、亡灵杀手等原版附魔又会反向作用于实际穿刺伤害，物品提示随附魔、药水、饰品与攻击属性实时更新。入境试锋保留并启用原版/第三方附魔；再次淬灵只令本模组装配核心散失，名称、附魔、耐久、阵型和其他 NBT 均保留。<br>
+  Every flying sword uses vanilla sword attack speed (`1.6`) and ordinary melee. Its base pierce value drives the vanilla attack attribute, while Sharpness, Smite and other vanilla enchantments feed back into actual piercing damage. The tooltip responds live to enchantments, potions, accessories and attack attributes. Trials retain and activate vanilla/third-party enchantments; re-tempering disperses only installed Yujian cores while preserving names, enchantments, durability, formation and other NBT.
+
+每个世界会在首次启动或首次淬灵后创建 `<世界目录>/serverconfig/yujiancraft-wanxiang-weapons.json`。其中每个按需登记的物品 ID 包含：
+
+The per-world server catalogue is created on startup or first tempering at `<world>/serverconfig/yujiancraft-wanxiang-weapons.json`. Each lazily registered item ID contains:
+
+| 字段 / Field | 含义 / Meaning |
+| --- | --- |
+| `enabled` | 是否允许该登记物品造成伤害和飞行 / Enables combat and flight for the registered item |
+| `damageOverride` | `null` 时使用该物品在试锋境重铸的穿刺伤害，否则使用指定基础伤害 / `null` uses per-stack trial damage; a number overrides it |
+| `damageMultiplier` | 基础伤害倍率 / Base damage multiplier |
+| `flightSpeedMultiplier` | 核心材质速度的倍率 / Multiplier applied to the core material's flight speed |
+| `durabilityCost` | 每次有效命中消耗的耐久 / Durability consumed per successful strike |
+
+修改后由管理员执行 `/yujiancraft reload` 即可热重载。此文件只由服务端读取；客户端本地副本不能改变多人游戏数值。
+
+After editing, an administrator can run `/yujiancraft reload`. The file is read only by the server; a client's local copy cannot alter multiplayer values.
+
 ## 飞剑与合成 / Swords & Crafting
 
-模组包含木、石、铁、金、钻石和下界合金六种基础飞剑，以及对应的灵铸系列。基础飞剑使用十字配方：原版剑位于中央，上、下、左、右各放一份对应锻材；八枚紫水晶碎片环绕基础飞剑可合成灵铸飞剑。
+模组会在主世界地下生成灵矿与深层灵矿，使用铁镐或更高等级工具开采可获得灵晶；精准采集会保留矿石方块，时运会提高灵晶产量。`0.12.0` 提高了矿脉大小与每区块尝试次数。每位玩家首次进入世界会获得一本可再次合成的《御剑要略》。模组包含木、石、铁、金、钻石和下界合金六种基础飞剑，以及对应的灵铸系列。基础飞剑配方中央为原版剑、边位为对应锻材、四角为灵晶；八枚灵晶环绕基础飞剑可合成灵铸飞剑。
 
-The mod includes wood, stone, iron, gold, diamond, and netherite flying swords, plus matching Spiritforged variants. A base sword uses a cross-shaped recipe: place the vanilla sword in the centre and one matching material on each cardinal side. Surround a base flying sword with eight amethyst shards to create its Spiritforged counterpart.
+Spirit Ore and Deepslate Spirit Ore generate underground in the Overworld. Mine them with an iron-tier tool or better for Spirit Crystals; Silk Touch preserves the ore and Fortune improves crystal yield. Version `0.12.0` increases vein size and placement attempts. Every player receives a craftable Yujian Guide on first join. Base flying swords place a vanilla sword in the centre, matching materials on the cardinal slots, and Spirit Crystals in all four corners. Eight more crystals create the matching Spiritforged sword.
 
 | 飞剑 / Sword | 四周锻材 / Four surrounding materials |
 | --- | --- |
@@ -118,9 +153,12 @@ The mod includes wood, stone, iron, gold, diamond, and netherite flying swords, 
 | 钻石 / Diamond | 钻石 ×4 / Diamonds ×4 |
 | 下界合金 / Netherite | 下界合金碎片 ×4 / Netherite Scraps ×4 |
 
-飞剑工作台：工作台置于中央，四个边位放铁锭，四角放紫水晶碎片。基础材料也用于铁砧修复飞剑。
+飞剑工作台：工作台置于中央，四个边位放铁锭，四角放灵晶。基础材料也用于铁砧修复飞剑。
 
-Flying Sword Workbench: place a crafting table in the centre, iron ingots on the four cardinal sides, and amethyst shards in the corners. Base materials also repair their matching flying swords in an anvil.
+Flying Sword Workbench: place a crafting table in the centre, iron ingots on the four cardinal sides, and Spirit Crystals in the corners. Base materials also repair their matching flying swords in an anvil.
+
+淬灵台：锻造台置于中央，四个边位放灵晶，四角放青金石。御剑要略：书与灵晶无序合成。<br>
+Spirit Tempering Table: place a smithing table in the centre, Spirit Crystals on the four cardinal sides, and lapis lazuli in the corners. Craft the Yujian Guide shapelessly from a book and a Spirit Crystal.
 
 ## 快速开始 / Quick Start
 
@@ -132,6 +170,8 @@ Flying Sword Workbench: place a crafting table in the centre, iron ingots on the
    Press `Ctrl+R` to change formation and `Ctrl+I` to open settings.
 4. 在设置中启用御剑飞行后，背包中有飞剑时双击空格起飞或落下。<br>
    Enable Sword Riding in settings, carry a flying sword, and double-tap Space to take off or land.
+5. 可选：在淬灵台中融合一个外部模组武器与一柄本模组飞剑，按 `V` 使用万象飞剑剑阵。<br>
+   Optional: temper a third-party weapon with one native flying sword, then press `V` to command its Myriad formation.
 
 以上均为默认按键，可在 Minecraft 的“选项 → 控制 → 按键绑定”中修改。All keys are rebindable under Minecraft **Options → Controls → Key Binds**.
 
@@ -154,9 +194,9 @@ This is not a client-only mod. Preview releases may change item data, configurat
 
 `Ctrl+I` exposes targeting, attack mode, over-the-shoulder camera, sword riding, visual effects, and brightness levels. Shader detection automatically selects a softer brightness profile, while players remain free to reduce or disable effects.
 
-首次启动会生成 `config/yujiancraft/client-options.json`。将 `showDeveloperOptions` 改为 `true` 后，拥有 OP 2 级权限的玩家可查看开发者选项。伤害、目标、效果和平衡参数由服务端执行或校验；相机、准心、亮度和本地视听实验属于客户端表现。
+首次启动会生成 `config/yujiancraft/client-options.json`。将 `showDeveloperOptions` 改为 `true` 后，拥有 OP 2 级权限的玩家可查看开发者选项。伤害、目标、效果、平衡参数与各世界的万象飞剑登记表均只由服务端执行或读取；相机、准心、亮度和本地视听实验属于客户端表现。
 
-On first launch, the mod creates `config/yujiancraft/client-options.json`. Setting `showDeveloperOptions` to `true` exposes developer options to players with OP level 2. Damage, targets, effects, and balance remain server-authoritative; camera, crosshair, brightness, and local audiovisual experiments are client-side presentation.
+On first launch, the mod creates `config/yujiancraft/client-options.json`. Setting `showDeveloperOptions` to `true` exposes developer options to players with OP level 2. Damage, targets, effects, balance, and the per-world Myriad catalogue remain server-authoritative; camera, crosshair, brightness, and local audiovisual experiments are client-side presentation.
 
 > 高亮、闪烁或光影叠加可能造成眼睛不适。光敏性癫痫风险者应关闭相关效果，如有不适立即停止使用。<br>
 > Bright flashes and shader combinations may cause discomfort. Players sensitive to flashing imagery should disable these effects and stop immediately if discomfort occurs.

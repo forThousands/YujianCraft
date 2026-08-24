@@ -15,7 +15,7 @@ class ControlPanelTests(unittest.TestCase):
         self.assertEqual(3, len(state["combat"]))
         self.assertEqual(4, len(state["riding"]))
         self.assertEqual(13, len(state["presentationDefaults"]))
-        self.assertEqual(13, len(state["recipes"]))
+        self.assertEqual(15, len(state["recipes"]))
         self.assertGreaterEqual(len(state["recipeCatalog"]), 13)
 
     def test_semantic_version_increment(self):

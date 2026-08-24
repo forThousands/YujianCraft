@@ -45,7 +45,7 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
         addSlot(new SlotItemHandler(handler, 0, 113, 32) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return stack.getItem() instanceof FlyingSwordItem;
+                return FlyingSwordItem.isUsableFlyingSword(stack);
             }
 
             @Override
@@ -107,7 +107,7 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
     private boolean install(Player player) {
         ItemStack sword = getSlot(0).getItem();
         ItemStack input = getSlot(1).getItem();
-        if (!(sword.getItem() instanceof FlyingSwordItem) || input.isEmpty()) return false;
+        if (!FlyingSwordItem.isUsableFlyingSword(sword) || input.isEmpty()) return false;
         FlyingSwordModule module = FlyingSwordModule.fromIngredient(input);
         if (module == null) return false;
         selectedModule = module.ordinal();
@@ -125,7 +125,7 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
 
     private boolean remove(Player player) {
         ItemStack sword = getSlot(0).getItem();
-        if (!(sword.getItem() instanceof FlyingSwordItem)) return false;
+        if (!FlyingSwordItem.isUsableFlyingSword(sword)) return false;
         FlyingSwordModule module = selectedModule();
         if (SwordModuleData.getLevel(sword, module) == 0) return false;
         refundInstalled(player, sword, module);
@@ -145,11 +145,11 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
     }
 
     private static void recallActiveFormation(Player player, ItemStack sword) {
-        if (!(sword.getItem() instanceof FlyingSwordItem swordItem)) return;
+        if (!FlyingSwordItem.isUsableFlyingSword(sword)) return;
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            java.util.UUID bindingId = dev.yujiancraft.wanxiang.WanxiangSwordData.binding(sword);
             FlyingSwordItem.getOwnedFormationSwords(serverPlayer).stream()
-                    .filter(entity -> entity.getMaterialType() == swordItem.getMaterialType()
-                            && entity.getSeriesType() == swordItem.getSeries())
+                    .filter(entity -> java.util.Objects.equals(entity.getSourceBindingId(), bindingId))
                     .forEach(net.minecraft.world.entity.Entity::discard);
         }
     }
@@ -163,7 +163,7 @@ public final class FlyingSwordWorkbenchMenu extends AbstractContainerMenu {
         result = source.copy();
         if (index < 2) {
             if (!moveItemStackTo(source, 2, slots.size(), true)) return ItemStack.EMPTY;
-        } else if (source.getItem() instanceof FlyingSwordItem) {
+        } else if (FlyingSwordItem.isUsableFlyingSword(source)) {
             if (!moveItemStackTo(source, 0, 1, false)) return ItemStack.EMPTY;
         } else if (FlyingSwordModule.fromIngredient(source) != null) {
             if (!moveItemStackTo(source, 1, 2, false)) return ItemStack.EMPTY;

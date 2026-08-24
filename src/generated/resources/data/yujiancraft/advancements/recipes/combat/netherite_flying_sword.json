@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_netherite_scrap": {
+    "has_spirit_crystal": {
       "conditions": {
         "items": [
           {
             "items": [
-              "minecraft:netherite_scrap"
+              "yujiancraft:spirit_crystal"
             ]
           }
         ]
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_netherite_scrap",
+      "has_spirit_crystal",
       "has_the_recipe"
     ]
   ],

@@ -1,10 +1,13 @@
 package dev.yujiancraft.upgrade;
 
+import dev.yujiancraft.combat.SwordEffectEngine;
+import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
 public final class SwordModuleData {
     public static final String ROOT_TAG = "SwordModules";
+    private static final String VIRTUAL_DURABILITY_TAG = "YujianCraftVirtualDurability";
     private static final FlyingSwordModule[] VISUAL_EFFECTS = {
             FlyingSwordModule.FLAME,
             FlyingSwordModule.LIGHTNING,
@@ -40,9 +43,24 @@ public final class SwordModuleData {
     }
 
     public static void setLevelPreservingDurability(ItemStack sword, FlyingSwordModule module, int level) {
+        int oldModuleLevel = getLevel(sword, module);
         int oldMaximum = sword.getMaxDamage();
         int oldDamage = sword.getDamageValue();
         setLevel(sword, module, level);
+        if (module == FlyingSwordModule.DURABILITY && WanxiangSwordData.isTempered(sword)) {
+            int oldBonus = SwordEffectEngine.durabilityBonus(oldModuleLevel);
+            int newBonus = SwordEffectEngine.durabilityBonus(getLevel(sword, module));
+            int oldRemaining = sword.hasTag() && sword.getTag().contains(VIRTUAL_DURABILITY_TAG)
+                    ? sword.getTag().getInt(VIRTUAL_DURABILITY_TAG) : oldBonus;
+            if (newBonus <= 0) sword.getOrCreateTag().remove(VIRTUAL_DURABILITY_TAG);
+            else {
+                int newRemaining = oldBonus <= 0 ? newBonus
+                        : (int) Math.round(oldRemaining * (double) newBonus / oldBonus);
+                sword.getOrCreateTag().putInt(VIRTUAL_DURABILITY_TAG,
+                        Math.max(0, Math.min(newBonus, newRemaining)));
+            }
+            return;
+        }
         if (module == FlyingSwordModule.DURABILITY && oldMaximum > 0) {
             int newMaximum = sword.getMaxDamage();
             int scaledDamage = (int) Math.round(oldDamage * (double) newMaximum / oldMaximum);
@@ -50,8 +68,49 @@ public final class SwordModuleData {
         }
     }
 
+    /** Returns the durability cost that still has to be applied to the underlying foreign item. */
+    public static int consumeVirtualDurability(ItemStack sword, int requestedCost) {
+        int cost = Math.max(0, requestedCost);
+        if (cost == 0 || !WanxiangSwordData.isTempered(sword)) return cost;
+        int maximum = SwordEffectEngine.durabilityBonus(getLevel(sword, FlyingSwordModule.DURABILITY));
+        if (maximum <= 0) return cost;
+        CompoundTag root = sword.getOrCreateTag();
+        int remaining = root.contains(VIRTUAL_DURABILITY_TAG)
+                ? Math.max(0, Math.min(maximum, root.getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
+        int absorbed = Math.min(remaining, cost);
+        remaining -= absorbed;
+        root.putInt(VIRTUAL_DURABILITY_TAG, remaining);
+        return cost - absorbed;
+    }
+
+    public static int virtualDurabilityRemaining(ItemStack sword) {
+        if (!WanxiangSwordData.isTempered(sword)) return 0;
+        int maximum = SwordEffectEngine.durabilityBonus(getLevel(sword, FlyingSwordModule.DURABILITY));
+        if (maximum <= 0) return 0;
+        return sword.hasTag() && sword.getTag().contains(VIRTUAL_DURABILITY_TAG)
+                ? Math.max(0, Math.min(maximum, sword.getTag().getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
+    }
+
     public static CompoundTag copyModules(ItemStack sword) {
         return sword.hasTag() ? sword.getTag().getCompound(ROOT_TAG).copy() : new CompoundTag();
+    }
+
+    /** Removes every installed Yujian core. Vanilla and third-party enchantments are untouched. */
+    public static void clearAll(ItemStack sword) {
+        if (!sword.hasTag()) return;
+        int oldMaximum = sword.getMaxDamage();
+        int oldDamage = sword.getDamageValue();
+        CompoundTag root = sword.getTag();
+        boolean moduleGrantedUnbreakable = getLevel(sword, FlyingSwordModule.UNBREAKABLE) > 0;
+        root.remove(ROOT_TAG);
+        root.remove(VIRTUAL_DURABILITY_TAG);
+        if (moduleGrantedUnbreakable) root.remove("Unbreakable");
+        if (root.isEmpty()) sword.setTag(null);
+        int newMaximum = sword.getMaxDamage();
+        if (oldMaximum > 0 && newMaximum > 0) {
+            int scaledDamage = (int) Math.round(oldDamage * (double) newMaximum / oldMaximum);
+            sword.setDamageValue(Math.max(0, Math.min(Math.max(0, newMaximum - 1), scaledDamage)));
+        }
     }
 
     public static boolean hasAnyEffect(CompoundTag modules) {

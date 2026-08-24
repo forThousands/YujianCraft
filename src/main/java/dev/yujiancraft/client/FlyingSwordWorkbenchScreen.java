@@ -181,7 +181,7 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
     private void renderSwordPreview(GuiGraphics graphics, float partialTick) {
         if (!ClientOptions.workbenchPreview() || minecraft == null || minecraft.level == null) return;
         ItemStack stack = previewStack();
-        if (!(stack.getItem() instanceof FlyingSwordItem)) return;
+        if (!FlyingSwordItem.isUsableFlyingSword(stack)) return;
         if (previewSword == null || previewSword.level() != minecraft.level) {
             previewSword = new FlyingSwordEntity(ModEntities.FLYING_SWORD.get(), minecraft.level);
         }

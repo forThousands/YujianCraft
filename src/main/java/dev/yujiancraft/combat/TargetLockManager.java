@@ -34,28 +34,10 @@ public final class TargetLockManager {
             return;
         }
 
-        ItemStack sword = FlyingSwordItem.findFlyingSword(player);
-        boolean hasActiveSwords = !player.level().getEntitiesOfClass(FlyingSwordEntity.class,
-                player.getBoundingBox().inflate(64.0D),
-                entity -> entity.isOwnedBy(player) && entity.isFormationSword()).isEmpty();
-        if (sword.isEmpty() || !hasActiveSwords) {
-            clear(player);
-            return;
-        }
-
-        SwordSettings settings = SwordSettings.read(sword);
         LockState state = STATES.get(player.getUUID());
-        if (settings.targetingMode() != TargetingMode.CROSSHAIR_LOCK) {
-            if (state == null || !state.manualOverride) {
-                clear(player);
-                return;
-            }
-            if (resolve(player, state.lockedId) == null) clear(player);
-            return;
-        }
-
         if (state == null) return;
-        state.manualOverride = false;
+        // A player lock is independent from the formation. Keep it until the target dies/becomes
+        // invalid or the player explicitly locks another target.
         if (resolve(player, state.lockedId) == null) clear(player);
     }
 
@@ -65,16 +47,21 @@ public final class TargetLockManager {
     }
 
     public static boolean lockCrosshairNow(ServerPlayer player, int requestedEntityId) {
-        if (!(player.getMainHandItem().getItem() instanceof FlyingSwordItem)) return false;
+        if (!FlyingSwordItem.isUsableFlyingSword(player.getMainHandItem())) return false;
         SwordSettings settings = SwordSettings.read(player.getMainHandItem());
         LivingEntity aimed = validatedClientTarget(player, requestedEntityId, settings.crosshairLockRadius());
         if (aimed == null) aimed = findAimedEntity(player, settings.crosshairLockRadius()).orElse(null);
         if (aimed == null) return false;
 
         LockState state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
-        state.manualOverride = settings.targetingMode() != TargetingMode.CROSSHAIR_LOCK;
         setLocked(player, state, aimed.getUUID());
         return true;
+    }
+
+    public static void lockTarget(ServerPlayer player, LivingEntity target) {
+        if (!SwordTargetingRules.canActivelyTarget(player, target)) return;
+        LockState state = STATES.computeIfAbsent(player.getUUID(), ignored -> new LockState());
+        setLocked(player, state, target.getUUID());
     }
 
     private static LivingEntity validatedClientTarget(ServerPlayer player, int entityId, double lockRange) {
@@ -140,6 +127,5 @@ public final class TargetLockManager {
 
     private static final class LockState {
         private UUID lockedId;
-        private boolean manualOverride;
     }
 }

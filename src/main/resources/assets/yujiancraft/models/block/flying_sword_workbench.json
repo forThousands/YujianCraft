@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:block/cube",
   "textures": {
-    "down": "minecraft:block/oak_planks",
+    "down": "yujiancraft:block/flying_sword_workbench_side",
     "up": "yujiancraft:block/flying_sword_workbench_top",
-    "north": "minecraft:block/crafting_table_front",
-    "south": "minecraft:block/crafting_table_side",
-    "west": "minecraft:block/crafting_table_side",
-    "east": "minecraft:block/crafting_table_side",
+    "north": "yujiancraft:block/flying_sword_workbench_front",
+    "south": "yujiancraft:block/flying_sword_workbench_side",
+    "west": "yujiancraft:block/flying_sword_workbench_side",
+    "east": "yujiancraft:block/flying_sword_workbench_side",
     "particle": "yujiancraft:block/flying_sword_workbench_top"
   }
 }

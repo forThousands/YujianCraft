@@ -27,7 +27,7 @@ public final class FlyingSwordWorkbenchBlockEntity extends BlockEntity implement
     private final ItemStackHandler inventory = new ItemStackHandler(2) {
         @Override
         public boolean isItemValid(int slot, @NotNull ItemStack stack) {
-            return slot == 0 ? stack.getItem() instanceof FlyingSwordItem
+            return slot == 0 ? FlyingSwordItem.isUsableFlyingSword(stack)
                     : FlyingSwordModule.fromIngredient(stack) != null;
         }
 

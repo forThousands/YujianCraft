@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "yujiancraft:block/spirit_tempering_table_bottom",
+    "top": "yujiancraft:block/spirit_tempering_table_top",
+    "side": "yujiancraft:block/spirit_tempering_table_side",
+    "particle": "yujiancraft:block/spirit_tempering_table_side"
+  }
+}

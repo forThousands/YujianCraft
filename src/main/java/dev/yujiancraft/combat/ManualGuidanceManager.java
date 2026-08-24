@@ -32,7 +32,7 @@ public final class ManualGuidanceManager {
     }
 
     public static void launchReadySalvo(ServerPlayer player, Vec3 requestedDirection) {
-        if (!(player.getMainHandItem().getItem() instanceof FlyingSwordItem)) return;
+        if (!FlyingSwordItem.isUsableFlyingSword(player.getMainHandItem())) return;
         ItemStack stack = player.getMainHandItem();
         if (SwordSettings.read(stack).targetingMode() != TargetingMode.MANUAL_GUIDANCE) return;
         if (STATES.containsKey(player.getUUID())) {
@@ -56,7 +56,6 @@ public final class ManualGuidanceManager {
 
         STATES.put(player.getUUID(), new GuidanceState(readySnapshot, aimDirection));
         ModNetwork.sendManualGuidanceState(player, true);
-        ModNetwork.sendLockedTarget(player, null);
         player.displayClientMessage(Component.translatable("message.yujiancraft.manual_launched",
                 readySnapshot.size()), true);
     }
@@ -88,7 +87,7 @@ public final class ManualGuidanceManager {
         state.guiding = false;
         state.targetId = target.getUUID();
         ModNetwork.sendManualGuidanceState(player, false);
-        ModNetwork.sendLockedTarget(player, target.getUUID());
+        TargetLockManager.lockTarget(player, target);
         player.displayClientMessage(Component.translatable("message.yujiancraft.manual_locked"), true);
     }
 
@@ -118,7 +117,6 @@ public final class ManualGuidanceManager {
             }
         }
         ModNetwork.sendManualGuidanceState(player, false);
-        ModNetwork.sendLockedTarget(player, null);
     }
 
     @SubscribeEvent
@@ -127,7 +125,7 @@ public final class ManualGuidanceManager {
                 || !(event.player instanceof ServerPlayer player)) return;
         GuidanceState state = STATES.get(player.getUUID());
         if (state == null) return;
-        if (!(player.getMainHandItem().getItem() instanceof FlyingSwordItem)
+        if (!FlyingSwordItem.isUsableFlyingSword(player.getMainHandItem())
                 || SwordSettings.read(player.getMainHandItem()).targetingMode()
                 != TargetingMode.MANUAL_GUIDANCE || !player.isAlive()) {
             cancel(player);
@@ -179,7 +177,6 @@ public final class ManualGuidanceManager {
             }
         }
         ModNetwork.sendManualGuidanceState(player, false);
-        ModNetwork.sendLockedTarget(player, null);
     }
 
     private static final class GuidanceState {
