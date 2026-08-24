@@ -310,5 +310,6 @@
   "message.yujiancraft.technique.cannot_mine": "此器物无法役使开采该方块",
   "message.yujiancraft.technique.need_water": "请瞄准可到达的水域",
   "title.yujiancraft.trial.countdown": "%s",
-  "entity.yujiancraft.sword_array": "剑阵剑气"
+  "entity.yujiancraft.sword_array": "剑阵剑气",
+  "entity.yujiancraft.sword_array_field": "天衍剑阵"
 }

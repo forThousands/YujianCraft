@@ -151,6 +151,7 @@ public final class ClientModEvents {
         event.registerEntityRenderer(ModEntities.FLYING_SWORD.get(), FlyingSwordRenderer::new);
         event.registerEntityRenderer(ModEntities.SPIRIT_TRIAL_DUMMY.get(), SpiritTrialDummyRenderer::new);
         event.registerEntityRenderer(ModEntities.SWORD_ARRAY.get(), SwordArrayQiRenderer::new);
+        event.registerEntityRenderer(ModEntities.SWORD_ARRAY_FIELD.get(), SwordArrayFieldRenderer::new);
     }
 
     @SubscribeEvent

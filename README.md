@@ -16,7 +16,7 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.3`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.4`（开发预览 / Development Preview）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
@@ -132,7 +132,7 @@ An implement's nature selects its art whenever the array deploys: blades default
 | --- | --- |
 | **穿刺 / Piercing** | 保留经典单次出击、持续穿刺与神识御剑 / Classic sorties, relentless piercing, and Spirit Sword Guidance |
 | **环斩 / Circling Sweep** | 六器高速环绕多周，按可见轨迹进行近身范围攻击 / Six implements complete several fast visible circuits for close-range area attacks |
-| **剑阵 / Sword Array** | 实剑同步俯冲，双层剑阵持续追随目标并降下环形剑气，最终以扩阵尾刀、无损地形爆发和分层冲击帧收束；目标提前死亡也不会中断 / Real implements plunge together while a two-layer seal follows its target and rains ring-shaped waves, then ends in an expanding non-griefing finisher with layered impact framing even after an early kill |
+| **剑阵 / Sword Array** | 实剑同步俯冲，巨大高空光带剑阵持续追随目标并降下环形剑气；尾刀以约 3 秒的“光柱蓄势—近黑暗闪—急剧扩张—全白峰值—白热复色”演出收束，目标提前死亡也不会中断 / Real implements plunge together while a huge elevated light-band array follows its target and rains ring-shaped waves; its ~3-second finisher charges a continuous pillar, drops the background near black, expands toward the seal, peaks at full white, and restores colour around the white-hot beam even after an early kill |
 | **万象护阵 / Myriad Guard** | 按来向格挡并反伤，耐久随承受伤害增加，装配核心会传递给攻击者 / Directional interception reflects scaled damage, pays scaled durability, and passes installed core effects to the attacker |
 | **役器 / Spirit Toolcraft** | 每次 `G` 派出下一件就绪御器，最多六件并发采掘，速度与掉落遵循原版工具规则 / Every `G` dispatches the next ready implement; up to six jobs follow vanilla tool rules |
 | **灵钓 / Spirit Fishing** | 可直接瞄准水面连续派出六件钓具，收获直接返回背包 / Aim at water and dispatch up to six concurrent fishing implements; loot returns to inventory |

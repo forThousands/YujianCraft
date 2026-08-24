@@ -39,7 +39,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "16";
+    private static final String PROTOCOL = "17";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -124,7 +124,7 @@ public final class ModNetwork {
                 TechniqueNoticePacket::encode, TechniqueNoticePacket::decode,
                 ModNetwork::handleTechniqueNotice, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(25, SwordArrayFinisherPacket.class,
-                (message, buffer) -> { }, buffer -> new SwordArrayFinisherPacket(),
+                SwordArrayFinisherPacket::encode, SwordArrayFinisherPacket::decode,
                 ModNetwork::handleSwordArrayFinisher, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
@@ -161,7 +161,9 @@ public final class ModNetwork {
                                                   Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> dev.yujiancraft.client.ClientTechniqueOverlayState::showFinisherFlash));
+                () -> () -> dev.yujiancraft.client.ClientTechniqueOverlayState.showFinisherFlash(
+                        message.bottom, message.top, message.maximumRadius,
+                        message.chargeTicks, message.holdTicks, message.expandTicks, message.sustainTicks)));
         context.setPacketHandled(true);
     }
 
@@ -445,8 +447,11 @@ public final class ModNetwork {
                 new TechniqueNoticePacket(technique.ordinal()));
     }
 
-    public static void sendSwordArrayFinisher(ServerPlayer player) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordArrayFinisherPacket());
+    public static void sendSwordArrayFinisher(ServerPlayer player, Vec3 bottom, Vec3 top,
+                                               float maximumRadius, int chargeTicks, int holdTicks,
+                                               int expandTicks, int sustainTicks) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordArrayFinisherPacket(
+                bottom, top, maximumRadius, chargeTicks, holdTicks, expandTicks, sustainTicks));
     }
 
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
@@ -512,7 +517,29 @@ public final class ModNetwork {
         }
     }
 
-    public record SwordArrayFinisherPacket() {
+    public record SwordArrayFinisherPacket(Vec3 bottom, Vec3 top, float maximumRadius,
+                                           int chargeTicks, int holdTicks,
+                                           int expandTicks, int sustainTicks) {
+        private static void encode(SwordArrayFinisherPacket message, FriendlyByteBuf buffer) {
+            buffer.writeDouble(message.bottom.x);
+            buffer.writeDouble(message.bottom.y);
+            buffer.writeDouble(message.bottom.z);
+            buffer.writeDouble(message.top.x);
+            buffer.writeDouble(message.top.y);
+            buffer.writeDouble(message.top.z);
+            buffer.writeFloat(message.maximumRadius);
+            buffer.writeVarInt(message.chargeTicks);
+            buffer.writeVarInt(message.holdTicks);
+            buffer.writeVarInt(message.expandTicks);
+            buffer.writeVarInt(message.sustainTicks);
+        }
+
+        private static SwordArrayFinisherPacket decode(FriendlyByteBuf buffer) {
+            Vec3 bottom = new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+            Vec3 top = new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+            return new SwordArrayFinisherPacket(bottom, top, buffer.readFloat(),
+                    buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
+        }
     }
 
     public record ArtifactActionPacket(boolean hasBlock, net.minecraft.core.BlockPos blockPos,

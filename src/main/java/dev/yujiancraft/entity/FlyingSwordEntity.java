@@ -29,7 +29,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -56,7 +55,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.joml.Vector3f;
 
 public final class FlyingSwordEntity extends Entity {
     private static final EntityDataAccessor<Integer> DATA_FORMATION_MODE =
@@ -598,17 +596,18 @@ public final class FlyingSwordEntity extends Entity {
         int gatherEnd = TechniqueConfig.swordArrayGatherTicks();
         int barrageStart = gatherEnd + TechniqueConfig.swordArrayHoldTicks();
         int barrageEnd = barrageStart + TechniqueConfig.swordArrayBarrageTicks();
-        int finisherEnd = barrageEnd + TechniqueConfig.swordArrayFinisherChargeTicks();
-        int finishLingerEnd = finisherEnd + Math.max(18, (int) Math.ceil(
-                TechniqueConfig.swordArrayRange() / (TechniqueConfig.swordArraySpeed() * 1.22D)) + 4);
+        int burstStart = barrageEnd + TechniqueConfig.swordArrayFinisherChargeTicks()
+                + TechniqueConfig.swordArrayFinisherHoldTicks();
+        int expansionEnd = burstStart + TechniqueConfig.swordArrayFinisherExpandTicks();
+        int finishLingerEnd = expansionEnd + TechniqueConfig.swordArrayFinisherSustainTicks();
         double baseRadius = Math.max(swordArrayTargetWidth * 0.5D
-                + TechniqueConfig.swordArrayRadiusPadding(), 3.25D);
+                + TechniqueConfig.swordArrayRadiusPadding(), 8.5D);
         double expansion = 1.0D;
-        if (techniqueTicks >= barrageEnd) {
-            double progress = Mth.clamp((techniqueTicks - barrageEnd)
-                    / (double) Math.max(1, TechniqueConfig.swordArrayFinisherChargeTicks()), 0.0D, 1.0D);
-            double lateBurst = Mth.clamp((progress - 0.38D) / 0.62D, 0.0D, 1.0D);
-            expansion = Mth.lerp(lateBurst * lateBurst, 1.0D,
+        if (techniqueTicks >= burstStart) {
+            double progress = Mth.clamp((techniqueTicks - burstStart)
+                    / (double) Math.max(1, TechniqueConfig.swordArrayFinisherExpandTicks()), 0.0D, 1.0D);
+            double explosive = 1.0D - Math.pow(1.0D - progress, 3.0D);
+            expansion = Mth.lerp(explosive, 1.0D,
                     TechniqueConfig.swordArrayFinisherExpansion());
         } else if (techniqueTicks >= barrageStart) {
             expansion += 0.035D * Math.sin(techniqueTicks * 0.42D);
@@ -619,8 +618,7 @@ public final class FlyingSwordEntity extends Entity {
         Vec3 ringPosition = circleCentre.add(Math.cos(angle) * radius, 0.0D, Math.sin(angle) * radius);
         Vec3 desired = ringPosition;
         // At the first release all real implements plunge through the centre and rebound into
-        // their slots. The particle seal stays visible, so the persistent barrage never loses
-        // its silhouette after the physical swords complete their shared strike.
+        // their slots. The field entity keeps the light-band seal continuous behind them.
         int plungeTicks = 16;
         boolean plunging = techniqueTicks >= barrageStart && techniqueTicks < barrageStart + plungeTicks;
         if (plunging) {
@@ -639,25 +637,9 @@ public final class FlyingSwordEntity extends Entity {
             }
         }
         techniqueTicks++;
-        if (techniqueTicks >= gatherEnd && isSwordArrayCoordinator(owner)) {
-            renderSwordArray(serverLevel, circleCentre, radius, baseRadius, barrageEnd, finisherEnd);
-            if (techniqueTicks >= barrageStart && techniqueTicks < barrageEnd
-                    && (techniqueTicks - barrageStart) % TechniqueConfig.swordArrayBarrageInterval() == 0) {
-                int volley = (techniqueTicks - barrageStart) / TechniqueConfig.swordArrayBarrageInterval();
-                double releaseAngle = Math.PI * 2.0D * volley / FlyingSwordItem.FORMATION_SIZE
-                        + techniqueTicks * 0.025D;
-                Vec3 origin = circleCentre.add(Math.cos(releaseAngle) * baseRadius * 0.72D,
-                        -0.18D, Math.sin(releaseAngle) * baseRadius * 0.72D);
-                SwordArrayQiEntity.spawn(serverLevel, owner, displayStack, origin,
-                        safeDirection(targetPoint.subtract(origin), new Vec3(0.0D, -1.0D, 0.0D)),
-                        sourceBindingId);
-            }
-            if (techniqueTicks == finisherEnd) {
-                Vec3 origin = circleCentre.add(0.0D, -0.22D, 0.0D);
-                SwordArrayQiEntity.spawnFinisher(serverLevel, owner, displayStack, origin,
-                        safeDirection(swordArrayAnchor.add(0.0D, 0.08D, 0.0D).subtract(origin),
-                                new Vec3(0.0D, -1.0D, 0.0D)), sourceBindingId);
-            }
+        if (techniqueTicks == gatherEnd && isSwordArrayCoordinator(owner)) {
+            SwordArrayFieldEntity.spawn(serverLevel, owner, displayStack, sourceBindingId,
+                    targetId, swordArrayAnchor, swordArrayTargetHeight, swordArrayTargetWidth);
         }
         if (techniqueTicks <= finishLingerEnd) return;
         postDockCooldown = TechniqueConfig.swordArrayCooldown();
@@ -669,32 +651,6 @@ public final class FlyingSwordEntity extends Entity {
                 .filter(sword -> sword.phase == FlightPhase.SWORD_ARRAY
                         && java.util.Objects.equals(sword.targetId, targetId))
                 .mapToInt(FlyingSwordEntity::getFormationSlot).min().orElse(formationSlot) == formationSlot;
-    }
-
-    private void renderSwordArray(ServerLevel level, Vec3 centre, double radius, double baseRadius,
-                                  int barrageEnd, int finisherEnd) {
-        if (techniqueTicks % 3 != 0) return;
-        int color = material.glowColor();
-        Vector3f rgb = new Vector3f(((color >> 16) & 0xFF) / 255.0F,
-                ((color >> 8) & 0xFF) / 255.0F, (color & 0xFF) / 255.0F);
-        DustParticleOptions dust = new DustParticleOptions(rgb, 1.0F);
-        int points = techniqueTicks >= barrageEnd ? 56 : 44;
-        for (int index = 0; index < points; index++) {
-            double angle = Math.PI * 2.0D * index / points + techniqueTicks * 0.022D;
-            level.sendParticles(dust, centre.x + Math.cos(angle) * radius, centre.y,
-                    centre.z + Math.sin(angle) * radius, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        }
-        // A counter-rotating inner seal gives the formation readable depth without another entity.
-        for (int index = 0; index < 24; index++) {
-            double angle = -Math.PI * 2.0D * index / 24.0D - techniqueTicks * 0.031D;
-            level.sendParticles(dust, centre.x + Math.cos(angle) * baseRadius * 0.55D,
-                    centre.y - 0.14D, centre.z + Math.sin(angle) * baseRadius * 0.55D,
-                    1, 0.0D, 0.0D, 0.0D, 0.0D);
-        }
-        if (techniqueTicks >= barrageEnd && techniqueTicks <= finisherEnd) {
-            level.sendParticles(ParticleTypes.END_ROD, centre.x, centre.y - 0.35D, centre.z,
-                    6, radius * 0.3D, 0.15D, radius * 0.3D, 0.03D);
-        }
     }
 
     private void tickToolApproach(ServerPlayer owner) {

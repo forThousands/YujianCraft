@@ -4,6 +4,7 @@ import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.entity.SpiritTrialDummyEntity;
 import dev.yujiancraft.entity.SwordArrayQiEntity;
+import dev.yujiancraft.entity.SwordArrayFieldEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -38,6 +39,14 @@ public final class ModEntities {
                     .clientTrackingRange(96)
                     .updateInterval(1)
                     .build(YujianCraft.MOD_ID + ":sword_array")
+    );
+    public static final RegistryObject<EntityType<SwordArrayFieldEntity>> SWORD_ARRAY_FIELD = ENTITIES.register(
+            "sword_array_field",
+            () -> EntityType.Builder.<SwordArrayFieldEntity>of(SwordArrayFieldEntity::new, MobCategory.MISC)
+                    .sized(1.0F, 1.0F)
+                    .clientTrackingRange(256)
+                    .updateInterval(1)
+                    .build(YujianCraft.MOD_ID + ":sword_array_field")
     );
 
     private ModEntities() {

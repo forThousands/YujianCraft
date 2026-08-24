@@ -28,7 +28,11 @@ public final class TechniqueConfig {
     private static final ForgeConfigSpec.IntValue SWORD_ARRAY_BARRAGE_TICKS;
     private static final ForgeConfigSpec.IntValue SWORD_ARRAY_BARRAGE_INTERVAL;
     private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_CHARGE_TICKS;
+    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_HOLD_TICKS;
+    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_EXPAND_TICKS;
+    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_SUSTAIN_TICKS;
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_EXPANSION;
+    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_BEAM_SCALE;
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_RADIUS;
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_DAMAGE_SCALE;
 
@@ -64,13 +68,19 @@ public final class TechniqueConfig {
         SWORD_ARRAY_COOLDOWN = BUILDER.defineInRange("cooldownTicks", 35, 0, 400);
         SWORD_ARRAY_GATHER_TICKS = BUILDER.defineInRange("gatherTicks", 12, 4, 80);
         SWORD_ARRAY_HOLD_TICKS = BUILDER.defineInRange("holdTicks", 12, 2, 80);
-        SWORD_ARRAY_HEIGHT = BUILDER.defineInRange("formationHeight", 6.0D, 1.5D, 16.0D);
-        SWORD_ARRAY_RADIUS_PADDING = BUILDER.defineInRange("radiusPadding", 3.0D, 0.5D, 8.0D);
+        // The array is a battlefield-scale art. These lower bounds also migrate old 0.13.3
+        // server configs whose smaller values would otherwise silently defeat the new staging.
+        SWORD_ARRAY_HEIGHT = BUILDER.defineInRange("formationHeight", 12.0D, 12.0D, 32.0D);
+        SWORD_ARRAY_RADIUS_PADDING = BUILDER.defineInRange("radiusPadding", 8.0D, 8.0D, 24.0D);
         SWORD_ARRAY_BARRAGE_TICKS = BUILDER.defineInRange("barrageTicks", 64, 16, 240);
         SWORD_ARRAY_BARRAGE_INTERVAL = BUILDER.defineInRange("barrageIntervalTicks", 8, 3, 40);
-        SWORD_ARRAY_FINISHER_CHARGE_TICKS = BUILDER.defineInRange("finisherChargeTicks", 14, 4, 60);
-        SWORD_ARRAY_FINISHER_EXPANSION = BUILDER.defineInRange("finisherExpansion", 1.65D, 1.0D, 3.0D);
-        SWORD_ARRAY_FINISHER_RADIUS = BUILDER.defineInRange("finisherExplosionRadius", 3.5D, 0.5D, 12.0D);
+        SWORD_ARRAY_FINISHER_CHARGE_TICKS = BUILDER.defineInRange("finisherChargeTicks", 10, 4, 80);
+        SWORD_ARRAY_FINISHER_HOLD_TICKS = BUILDER.defineInRange("finisherHoldTicks", 8, 2, 60);
+        SWORD_ARRAY_FINISHER_EXPAND_TICKS = BUILDER.defineInRange("finisherExpandTicks", 7, 2, 40);
+        SWORD_ARRAY_FINISHER_SUSTAIN_TICKS = BUILDER.defineInRange("finisherSustainTicks", 32, 8, 120);
+        SWORD_ARRAY_FINISHER_EXPANSION = BUILDER.defineInRange("finisherExpansion", 1.75D, 1.75D, 3.5D);
+        SWORD_ARRAY_FINISHER_BEAM_SCALE = BUILDER.defineInRange("finisherBeamRadiusScale", 0.88D, 0.2D, 1.2D);
+        SWORD_ARRAY_FINISHER_RADIUS = BUILDER.defineInRange("finisherExplosionRadius", 5.5D, 0.5D, 16.0D);
         SWORD_ARRAY_FINISHER_DAMAGE_SCALE = BUILDER.defineInRange("finisherDamageScale", 2.4D, 0.0D, 40.0D);
         BUILDER.pop();
 
@@ -121,7 +131,11 @@ public final class TechniqueConfig {
     public static int swordArrayBarrageTicks() { return SWORD_ARRAY_BARRAGE_TICKS.get(); }
     public static int swordArrayBarrageInterval() { return SWORD_ARRAY_BARRAGE_INTERVAL.get(); }
     public static int swordArrayFinisherChargeTicks() { return SWORD_ARRAY_FINISHER_CHARGE_TICKS.get(); }
+    public static int swordArrayFinisherHoldTicks() { return SWORD_ARRAY_FINISHER_HOLD_TICKS.get(); }
+    public static int swordArrayFinisherExpandTicks() { return SWORD_ARRAY_FINISHER_EXPAND_TICKS.get(); }
+    public static int swordArrayFinisherSustainTicks() { return SWORD_ARRAY_FINISHER_SUSTAIN_TICKS.get(); }
     public static double swordArrayFinisherExpansion() { return SWORD_ARRAY_FINISHER_EXPANSION.get(); }
+    public static double swordArrayFinisherBeamScale() { return SWORD_ARRAY_FINISHER_BEAM_SCALE.get(); }
     public static double swordArrayFinisherRadius() { return SWORD_ARRAY_FINISHER_RADIUS.get(); }
     public static double swordArrayFinisherDamageScale() { return SWORD_ARRAY_FINISHER_DAMAGE_SCALE.get(); }
     public static double guardReduction() { return GUARD_REDUCTION.get(); }

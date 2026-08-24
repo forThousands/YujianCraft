@@ -30,17 +30,15 @@ public final class SwordArrayQiRenderer extends EntityRenderer<SwordArrayQiEntit
         float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
         poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
-        if (entity.isFinisher()) poseStack.scale(2.15F, 2.15F, 2.15F);
         float[] color = color(WanxiangSwordData.material(entity.getDisplayStack()));
         VertexConsumer consumer = buffers.getBuffer(RenderType.lightning());
         Matrix4f matrix = poseStack.last().pose();
-        boolean finisher = entity.isFinisher();
         drawCrescent(consumer, matrix, color[0], color[1], color[2], -0.10F,
-                finisher ? 230 : 156, 1.08F, 1.82F);
+                156, 1.08F, 1.82F);
         drawCrescent(consumer, matrix, 0.26F, 0.96F, 1.0F, 0.0F,
-                finisher ? 238 : 196, 1.20F, 1.70F);
+                196, 1.20F, 1.70F);
         drawCrescent(consumer, matrix, 1.0F, 1.0F, 0.98F, 0.10F,
-                finisher ? 255 : 228, 1.34F, 1.57F);
+                228, 1.34F, 1.57F);
         poseStack.popPose();
         super.render(entity, entityYaw, partialTick, poseStack, buffers, packedLight);
     }

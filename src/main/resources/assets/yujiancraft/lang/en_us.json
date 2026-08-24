@@ -310,5 +310,6 @@
   "message.yujiancraft.technique.cannot_mine": "This implement cannot spirit-mine that block",
   "message.yujiancraft.technique.need_water": "Aim at a reachable water block",
   "title.yujiancraft.trial.countdown": "%s",
-  "entity.yujiancraft.sword_array": "Sword-Array Wave"
+  "entity.yujiancraft.sword_array": "Sword-Array Wave",
+  "entity.yujiancraft.sword_array_field": "Heavenfall Sword Array"
 }
