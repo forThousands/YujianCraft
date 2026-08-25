@@ -1,6 +1,7 @@
 package dev.yujiancraft.client;
 
 import dev.yujiancraft.combat.technique.TechniqueMode;
+import dev.yujiancraft.client.vfx.VfxTimelineDefinition;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -17,7 +18,7 @@ public final class ClientTechniqueOverlayState {
     private static final long NOTICE_DURATION_MS = 1900L;
     private static TechniqueMode technique;
     private static long noticeStartedAt;
-    private static long finisherStartedAt;
+    private static long finisherStartGameTick = Long.MIN_VALUE;
     private static Vec3 finisherBottom;
     private static Vec3 finisherTop;
     private static float finisherMaximumRadius;
@@ -25,6 +26,7 @@ public final class ClientTechniqueOverlayState {
     private static int finisherHoldTicks;
     private static int finisherExpandTicks;
     private static int finisherSustainTicks;
+    private static VfxTimelineDefinition finisherTimeline;
 
     private ClientTechniqueOverlayState() {
     }
@@ -34,12 +36,12 @@ public final class ClientTechniqueOverlayState {
         noticeStartedAt = Util.getMillis();
     }
 
-    public static void showFinisherFlash(Vec3 bottom, Vec3 top, float maximumRadius,
+    public static void showFinisherFlash(long startGameTick, Vec3 bottom, Vec3 top, float maximumRadius,
                                          int chargeTicks, int holdTicks,
                                          int expandTicks, int sustainTicks) {
         if (!ClientOptions.hitImpactVisual()) return;
-        long now = Util.getMillis();
-        if (finisherStartedAt > 0L && now - finisherStartedAt < 3500L
+        if (finisherStartGameTick != Long.MIN_VALUE
+                && Math.abs(startGameTick - finisherStartGameTick) <= 1L
                 && finisherBottom != null && finisherTop != null
                 && finisherBottom.distanceToSqr(bottom) < 1.0D
                 && finisherTop.distanceToSqr(top) < 4.0D) {
@@ -52,7 +54,9 @@ public final class ClientTechniqueOverlayState {
         finisherHoldTicks = Math.max(1, holdTicks);
         finisherExpandTicks = Math.max(1, expandTicks);
         finisherSustainTicks = Math.max(1, sustainTicks);
-        finisherStartedAt = now;
+        finisherTimeline = VfxTimelineDefinition.loadSwordArrayFinisher(
+                Minecraft.getInstance().getResourceManager());
+        finisherStartGameTick = startGameTick;
     }
 
     public static void render(ForgeGui gui, GuiGraphics graphics, float partialTick,
@@ -107,67 +111,40 @@ public final class ClientTechniqueOverlayState {
         return lines;
     }
 
-    public static FinisherFrame sampleFinisher(long now) {
-        if (finisherStartedAt <= 0L || !ClientOptions.hitImpactVisual()) {
+    public static FinisherFrame sampleFinisher(float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (finisherStartGameTick == Long.MIN_VALUE || finisherTimeline == null
+                || minecraft.level == null || !ClientOptions.hitImpactVisual()) {
             clearFinisher();
             return null;
         }
-        long age = now - finisherStartedAt;
-        long chargeEnd = finisherChargeTicks * 50L;
-        long burstStart = (finisherChargeTicks + finisherHoldTicks) * 50L;
-        long duration = (finisherChargeTicks + finisherHoldTicks
-                + finisherExpandTicks + finisherSustainTicks) * 50L;
-        if (age < 0L || age >= duration) {
+        float ageTicks = minecraft.level.getGameTime() + partialTick - finisherStartGameTick;
+        float durationTicks = finisherChargeTicks + finisherHoldTicks
+                + finisherExpandTicks + finisherSustainTicks;
+        if (ageTicks < -2.0F || ageTicks >= durationTicks) {
             clearFinisher();
             return null;
         }
-
-        float charge = clamp01(age / (float) Math.max(1L, chargeEnd));
-        float postBurst = clamp01((age - burstStart) / (float) Math.max(1L, duration - burstStart));
-
-        // The finisher deliberately spends most of its first post-impact beat in black.  The
-        // former millisecond milestones let the white frame arrive after roughly 0.26 seconds,
-        // so the eye perceived only a flash.  Proportional phases preserve the intended rhythm
-        // when a server changes the technique duration.
-        float dark = smoothstep(0.0F, 0.035F, postBurst);
-        float blackGrowth = smoothstep(0.04F, 0.31F, postBurst);
-        float partialExpansion = smoothstep(0.31F, 0.47F, postBurst);
-        float fullExpansion = smoothstep(0.47F, 0.59F, postBurst);
-        float expansion = age < burstStart ? 0.0F
-                : 0.12F + blackGrowth * 0.18F + partialExpansion * 0.55F + fullExpansion * 0.15F;
-
-        float whiteRise = smoothstep(0.31F, 0.47F, postBurst);
-        float whiteRelease = smoothstep(0.59F, 0.68F, postBurst);
-        float white = whiteRise * (1.0F - whiteRelease);
-        float ink = smoothstep(0.59F, 0.68F, postBurst)
-                * (1.0F - smoothstep(0.80F, 0.90F, postBurst));
-        float recovery = smoothstep(0.80F, 1.0F, postBurst);
-
-        float onsetShock = 1.0F - smoothstep(0.035F, 0.16F, postBurst);
-        float expansionPosition = clamp01((postBurst - 0.31F) / 0.16F);
-        float expansionShock = 1.0F - Math.abs(expansionPosition * 2.0F - 1.0F);
-        float distortion = clamp01(dark * (onsetShock * 0.66F + expansionShock * 0.88F)
-                + ink * 0.22F);
-        float chroma = clamp01(dark * (1.0F - smoothstep(0.34F, 0.51F, postBurst))
-                + recovery * (1.0F - recovery) * 0.32F);
+        ageTicks = Math.max(0.0F, ageTicks);
+        float authoredTick = finisherTimeline.mapRuntimeTick(ageTicks, finisherChargeTicks,
+                finisherHoldTicks, finisherExpandTicks, finisherSustainTicks);
         return new FinisherFrame(finisherBottom, finisherTop, finisherMaximumRadius,
-                age / 1000.0F, charge, dark, expansion, white, ink, recovery,
-                distortion, chroma);
-    }
-
-    private static float clamp01(float value) {
-        return Math.max(0.0F, Math.min(1.0F, value));
-    }
-
-    private static float smoothstep(float edge0, float edge1, float value) {
-        float position = clamp01((value - edge0) / Math.max(0.0001F, edge1 - edge0));
-        return position * position * (3.0F - 2.0F * position);
+                ageTicks / 20.0F,
+                finisherTimeline.sample("charge", authoredTick),
+                finisherTimeline.sample("dark", authoredTick),
+                finisherTimeline.sample("expansion", authoredTick),
+                finisherTimeline.sample("white", authoredTick),
+                finisherTimeline.sample("ink", authoredTick),
+                finisherTimeline.sample("recovery", authoredTick),
+                finisherTimeline.sample("distortion", authoredTick),
+                finisherTimeline.sample("chroma", authoredTick));
     }
 
     private static void clearFinisher() {
-        finisherStartedAt = 0L;
+        finisherStartGameTick = Long.MIN_VALUE;
         finisherBottom = null;
         finisherTop = null;
+        finisherTimeline = null;
     }
 
     public record FinisherFrame(Vec3 bottom, Vec3 top, float maximumRadius, float ageSeconds,

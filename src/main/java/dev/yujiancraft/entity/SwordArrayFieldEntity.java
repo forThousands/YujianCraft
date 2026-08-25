@@ -239,7 +239,8 @@ public final class SwordArrayFieldEntity extends Entity {
                 SoundSource.PLAYERS, 1.6F, 0.46F);
         level.playSound(null, blockPosition(), SoundEvents.WARDEN_SONIC_CHARGE,
                 SoundSource.PLAYERS, 1.15F, 0.62F);
-        ModNetwork.sendSwordArrayFinisher(owner, position(), top, maximumBeamRadius(),
+        ModNetwork.sendSwordArrayFinisher(owner, level.getGameTime(), position(), top,
+                maximumBeamRadius(),
                 chargeTicks(), holdTicks(), expandTicks(), sustainTicks());
     }
 

@@ -50,11 +50,12 @@ public final class ClientSwordArrayPostEffect {
                 && minecraft.player != null && now - debugLastTriggered >= 8000L) {
             debugLastTriggered = now;
             Vec3 bottom = minecraft.player.position().add(minecraft.player.getLookAngle().scale(8.0D));
-            ClientTechniqueOverlayState.showFinisherFlash(bottom, bottom.add(0.0D, 28.0D, 0.0D),
+            ClientTechniqueOverlayState.showFinisherFlash(minecraft.level.getGameTime(), bottom,
+                    bottom.add(0.0D, 28.0D, 0.0D),
                     37.0F, 10, 8, 7, 32);
         }
         ClientTechniqueOverlayState.FinisherFrame frame =
-                ClientTechniqueOverlayState.sampleFinisher(now);
+                ClientTechniqueOverlayState.sampleFinisher(event.getPartialTick());
         if (frame == null) {
             closeChain();
             return;

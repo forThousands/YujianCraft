@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "phases": {
+    "charge": 10,
+    "hold": 8,
+    "expand": 7,
+    "sustain": 32
+  },
+  "curves": {
+    "charge": [
+      { "tick": 0, "value": 0 },
+      { "tick": 10, "value": 1, "easing": "smoothstep" }
+    ],
+    "dark": [
+      { "tick": 0, "value": 0 },
+      { "tick": 18, "value": 0 },
+      { "tick": 19.2, "value": 1, "easing": "smoothstep" },
+      { "tick": 46, "value": 1 },
+      { "tick": 57, "value": 0, "easing": "smoothstep" }
+    ],
+    "expansion": [
+      { "tick": 0, "value": 0 },
+      { "tick": 18, "value": 0 },
+      { "tick": 19, "value": 0.12 },
+      { "tick": 22, "value": 0.30, "easing": "smoothstep" },
+      { "tick": 25.5, "value": 0.85, "easing": "easeIn" },
+      { "tick": 29, "value": 1, "easing": "smoothstep" }
+    ],
+    "white": [
+      { "tick": 0, "value": 0 },
+      { "tick": 25, "value": 0 },
+      { "tick": 27.3, "value": 1, "easing": "easeIn" },
+      { "tick": 29, "value": 1 },
+      { "tick": 31, "value": 0, "easing": "smoothstep" }
+    ],
+    "ink": [
+      { "tick": 0, "value": 0 },
+      { "tick": 29, "value": 0 },
+      { "tick": 31, "value": 1, "easing": "smoothstep" },
+      { "tick": 43, "value": 1 },
+      { "tick": 50, "value": 0, "easing": "smoothstep" }
+    ],
+    "recovery": [
+      { "tick": 0, "value": 0 },
+      { "tick": 42, "value": 0 },
+      { "tick": 57, "value": 1, "easing": "smoothstep" }
+    ],
+    "distortion": [
+      { "tick": 0, "value": 0 },
+      { "tick": 18, "value": 0 },
+      { "tick": 19, "value": 0.72, "easing": "easeOut" },
+      { "tick": 22, "value": 0.18, "easing": "smoothstep" },
+      { "tick": 25, "value": 0.95, "easing": "easeInOut" },
+      { "tick": 31, "value": 0.28, "easing": "smoothstep" },
+      { "tick": 50, "value": 0 }
+    ],
+    "chroma": [
+      { "tick": 0, "value": 0 },
+      { "tick": 18, "value": 0 },
+      { "tick": 19.5, "value": 0.86, "easing": "easeOut" },
+      { "tick": 26, "value": 0.18, "easing": "smoothstep" },
+      { "tick": 44, "value": 0.08 },
+      { "tick": 57, "value": 0 }
+    ]
+  }
+}

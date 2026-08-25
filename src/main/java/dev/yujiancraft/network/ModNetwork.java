@@ -39,7 +39,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "17";
+    private static final String PROTOCOL = "18";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -162,7 +162,7 @@ public final class ModNetwork {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> () -> dev.yujiancraft.client.ClientTechniqueOverlayState.showFinisherFlash(
-                        message.bottom, message.top, message.maximumRadius,
+                        message.startGameTick, message.bottom, message.top, message.maximumRadius,
                         message.chargeTicks, message.holdTicks, message.expandTicks, message.sustainTicks)));
         context.setPacketHandled(true);
     }
@@ -447,11 +447,13 @@ public final class ModNetwork {
                 new TechniqueNoticePacket(technique.ordinal()));
     }
 
-    public static void sendSwordArrayFinisher(ServerPlayer player, Vec3 bottom, Vec3 top,
+    public static void sendSwordArrayFinisher(ServerPlayer player, long startGameTick,
+                                               Vec3 bottom, Vec3 top,
                                                float maximumRadius, int chargeTicks, int holdTicks,
                                                int expandTicks, int sustainTicks) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordArrayFinisherPacket(
-                bottom, top, maximumRadius, chargeTicks, holdTicks, expandTicks, sustainTicks));
+                startGameTick, bottom, top, maximumRadius, chargeTicks, holdTicks, expandTicks,
+                sustainTicks));
     }
 
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
@@ -517,10 +519,12 @@ public final class ModNetwork {
         }
     }
 
-    public record SwordArrayFinisherPacket(Vec3 bottom, Vec3 top, float maximumRadius,
+    public record SwordArrayFinisherPacket(long startGameTick, Vec3 bottom, Vec3 top,
+                                           float maximumRadius,
                                            int chargeTicks, int holdTicks,
                                            int expandTicks, int sustainTicks) {
         private static void encode(SwordArrayFinisherPacket message, FriendlyByteBuf buffer) {
+            buffer.writeLong(message.startGameTick);
             buffer.writeDouble(message.bottom.x);
             buffer.writeDouble(message.bottom.y);
             buffer.writeDouble(message.bottom.z);
@@ -535,9 +539,10 @@ public final class ModNetwork {
         }
 
         private static SwordArrayFinisherPacket decode(FriendlyByteBuf buffer) {
+            long startGameTick = buffer.readLong();
             Vec3 bottom = new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
             Vec3 top = new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
-            return new SwordArrayFinisherPacket(bottom, top, buffer.readFloat(),
+            return new SwordArrayFinisherPacket(startGameTick, bottom, top, buffer.readFloat(),
                     buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt());
         }
     }
