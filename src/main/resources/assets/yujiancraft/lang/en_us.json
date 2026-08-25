@@ -134,6 +134,7 @@
   "screen.yujiancraft.balance.explosion_module_visual": "Explosion pulse: %s",
   "screen.yujiancraft.balance.arrow_rain_module_visual": "Arrow-rain wind lines: %s",
   "screen.yujiancraft.balance.hit_impact_visual": "Hit flash and impact ring: %s",
+  "screen.yujiancraft.balance.sword_array_post_effect": "Sword Array full-screen post effect: %s",
   "screen.yujiancraft.balance.workbench_preview": "Live workbench preview: %s",
   "screen.yujiancraft.balance.minimum_dock": "Minimum dock (ticks)",
   "screen.yujiancraft.balance.automatic_radius": "Automatic targeting radius",

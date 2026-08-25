@@ -70,16 +70,16 @@ public final class TechniqueConfig {
         SWORD_ARRAY_HOLD_TICKS = BUILDER.defineInRange("holdTicks", 12, 2, 80);
         // The array is a battlefield-scale art. These lower bounds also migrate old 0.13.3
         // server configs whose smaller values would otherwise silently defeat the new staging.
-        SWORD_ARRAY_HEIGHT = BUILDER.defineInRange("formationHeight", 12.0D, 12.0D, 32.0D);
-        SWORD_ARRAY_RADIUS_PADDING = BUILDER.defineInRange("radiusPadding", 8.0D, 8.0D, 24.0D);
+        SWORD_ARRAY_HEIGHT = BUILDER.defineInRange("formationHeight", 28.0D, 28.0D, 64.0D);
+        SWORD_ARRAY_RADIUS_PADDING = BUILDER.defineInRange("radiusPadding", 18.0D, 18.0D, 48.0D);
         SWORD_ARRAY_BARRAGE_TICKS = BUILDER.defineInRange("barrageTicks", 64, 16, 240);
         SWORD_ARRAY_BARRAGE_INTERVAL = BUILDER.defineInRange("barrageIntervalTicks", 8, 3, 40);
         SWORD_ARRAY_FINISHER_CHARGE_TICKS = BUILDER.defineInRange("finisherChargeTicks", 10, 4, 80);
         SWORD_ARRAY_FINISHER_HOLD_TICKS = BUILDER.defineInRange("finisherHoldTicks", 8, 2, 60);
         SWORD_ARRAY_FINISHER_EXPAND_TICKS = BUILDER.defineInRange("finisherExpandTicks", 7, 2, 40);
         SWORD_ARRAY_FINISHER_SUSTAIN_TICKS = BUILDER.defineInRange("finisherSustainTicks", 32, 8, 120);
-        SWORD_ARRAY_FINISHER_EXPANSION = BUILDER.defineInRange("finisherExpansion", 1.75D, 1.75D, 3.5D);
-        SWORD_ARRAY_FINISHER_BEAM_SCALE = BUILDER.defineInRange("finisherBeamRadiusScale", 0.88D, 0.2D, 1.2D);
+        SWORD_ARRAY_FINISHER_EXPANSION = BUILDER.defineInRange("finisherExpansion", 2.25D, 2.25D, 4.0D);
+        SWORD_ARRAY_FINISHER_BEAM_SCALE = BUILDER.defineInRange("finisherBeamRadiusScale", 0.92D, 0.92D, 1.2D);
         SWORD_ARRAY_FINISHER_RADIUS = BUILDER.defineInRange("finisherExplosionRadius", 5.5D, 0.5D, 16.0D);
         SWORD_ARRAY_FINISHER_DAMAGE_SCALE = BUILDER.defineInRange("finisherDamageScale", 2.4D, 0.0D, 40.0D);
         BUILDER.pop();

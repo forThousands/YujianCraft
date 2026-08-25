@@ -201,6 +201,10 @@ public final class AdminBalanceScreen extends Screen {
             addToggleRow(controlsLeft, top + 50, controlsWidth, "screen.yujiancraft.balance.workbench_preview",
                     ClientOptions::workbenchPreview, ClientOptions::setWorkbenchPreview,
                     ClientOptions.DEFAULT_WORKBENCH_PREVIEW);
+            addToggleRow(controlsLeft, top + 75, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_post_effect",
+                    ClientOptions::swordArrayPostEffect, ClientOptions::setSwordArrayPostEffect,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_POST_EFFECT);
         }
     }
 

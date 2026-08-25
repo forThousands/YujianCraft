@@ -28,6 +28,7 @@ public final class ClientOptions {
     public static final boolean DEFAULT_EXPLOSION_MODULE_VISUAL = true;
     public static final boolean DEFAULT_ARROW_RAIN_MODULE_VISUAL = true;
     public static final boolean DEFAULT_HIT_IMPACT_VISUAL = true;
+    public static final boolean DEFAULT_SWORD_ARRAY_POST_EFFECT = true;
     public static final boolean DEFAULT_WORKBENCH_PREVIEW = true;
     public static final boolean DEFAULT_OPTIMIZED_THIRD_PERSON = true;
     public static final SwordGlowBrightness DEFAULT_GLOW_BRIGHTNESS = SwordGlowBrightness.DEFAULT;
@@ -52,6 +53,7 @@ public final class ClientOptions {
     private static boolean explosionModuleVisual;
     private static boolean arrowRainModuleVisual;
     private static boolean hitImpactVisual;
+    private static boolean swordArrayPostEffect;
     private static boolean workbenchPreview;
     private static SwordGlowBrightness glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
 
@@ -84,6 +86,7 @@ public final class ClientOptions {
             explosionModuleVisual = booleanValue("explosionModuleVisual", DEFAULT_EXPLOSION_MODULE_VISUAL);
             arrowRainModuleVisual = booleanValue("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
             hitImpactVisual = booleanValue("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
+            swordArrayPostEffect = booleanValue("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
             workbenchPreview = booleanValue("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
             glowBrightness = SwordGlowBrightness.fromName(stringValue("glowBrightness",
                     DEFAULT_GLOW_BRIGHTNESS.serializedName()));
@@ -103,6 +106,7 @@ public final class ClientOptions {
             explosionModuleVisual = DEFAULT_EXPLOSION_MODULE_VISUAL;
             arrowRainModuleVisual = DEFAULT_ARROW_RAIN_MODULE_VISUAL;
             hitImpactVisual = DEFAULT_HIT_IMPACT_VISUAL;
+            swordArrayPostEffect = DEFAULT_SWORD_ARRAY_POST_EFFECT;
             workbenchPreview = DEFAULT_WORKBENCH_PREVIEW;
             glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
             LOGGER.error("Could not load YujianCraft client options from {}", path, exception);
@@ -131,6 +135,7 @@ public final class ClientOptions {
     public static boolean explosionModuleVisual() { return explosionModuleVisual; }
     public static boolean arrowRainModuleVisual() { return arrowRainModuleVisual; }
     public static boolean hitImpactVisual() { return hitImpactVisual; }
+    public static boolean swordArrayPostEffect() { return swordArrayPostEffect; }
     public static boolean workbenchPreview() { return workbenchPreview; }
     public static SwordGlowBrightness glowBrightness() { return glowBrightness; }
 
@@ -204,6 +209,11 @@ public final class ClientOptions {
         setBoolean("hitImpactVisual", enabled);
     }
 
+    public static synchronized void setSwordArrayPostEffect(boolean enabled) {
+        swordArrayPostEffect = enabled;
+        setBoolean("swordArrayPostEffect", enabled);
+    }
+
     public static synchronized void setWorkbenchPreview(boolean enabled) {
         workbenchPreview = enabled;
         setBoolean("workbenchPreview", enabled);
@@ -249,7 +259,7 @@ public final class ClientOptions {
 
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 13);
+        root.addProperty("schemaVersion", 14);
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         root.addProperty("swordRidingEnabled", true);
@@ -265,6 +275,7 @@ public final class ClientOptions {
         root.addProperty("explosionModuleVisual", DEFAULT_EXPLOSION_MODULE_VISUAL);
         root.addProperty("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
         root.addProperty("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
+        root.addProperty("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
         root.addProperty("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
         root.addProperty("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         root.addProperty("developerOptionsHint",
@@ -313,6 +324,10 @@ public final class ClientOptions {
             document.addProperty("schemaVersion", 13);
             changed = true;
         }
+        if (schemaVersion < 14) {
+            document.addProperty("schemaVersion", 14);
+            changed = true;
+        }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
@@ -328,6 +343,7 @@ public final class ClientOptions {
         changed |= addBooleanIfMissing("explosionModuleVisual", DEFAULT_EXPLOSION_MODULE_VISUAL);
         changed |= addBooleanIfMissing("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
         changed |= addBooleanIfMissing("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
+        changed |= addBooleanIfMissing("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
         changed |= addBooleanIfMissing("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
         changed |= addStringIfMissing("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         return changed;

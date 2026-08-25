@@ -601,7 +601,7 @@ public final class FlyingSwordEntity extends Entity {
         int expansionEnd = burstStart + TechniqueConfig.swordArrayFinisherExpandTicks();
         int finishLingerEnd = expansionEnd + TechniqueConfig.swordArrayFinisherSustainTicks();
         double baseRadius = Math.max(swordArrayTargetWidth * 0.5D
-                + TechniqueConfig.swordArrayRadiusPadding(), 8.5D);
+                + TechniqueConfig.swordArrayRadiusPadding(), 18.0D);
         double expansion = 1.0D;
         if (techniqueTicks >= burstStart) {
             double progress = Mth.clamp((techniqueTicks - burstStart)

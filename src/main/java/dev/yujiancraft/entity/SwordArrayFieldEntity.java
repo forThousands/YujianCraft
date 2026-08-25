@@ -19,6 +19,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -36,9 +37,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * One server-authoritative sword-array performance. A single entity replaces hundreds of ring
@@ -46,6 +49,8 @@ import java.util.UUID;
  * performs the sustained heaven-to-ground finisher.
  */
 public final class SwordArrayFieldEntity extends Entity {
+    /** Server-side ownership lock: one target may carry only one living sword-array field. */
+    private static final Map<TargetKey, UUID> ACTIVE_BY_TARGET = new ConcurrentHashMap<>();
     private static final EntityDataAccessor<ItemStack> DATA_DISPLAY_STACK =
             SynchedEntityData.defineId(SwordArrayFieldEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER =
@@ -90,6 +95,21 @@ public final class SwordArrayFieldEntity extends Entity {
 
     public static void spawn(ServerLevel level, ServerPlayer owner, ItemStack source, UUID bindingId,
                              UUID targetId, Vec3 targetAnchor, double targetHeight, double targetWidth) {
+        if (targetId == null) return;
+        TargetKey key = new TargetKey(level.dimension(), targetId);
+        UUID activeId = ACTIVE_BY_TARGET.get(key);
+        if (activeId != null) {
+            Entity active = level.getEntity(activeId);
+            if (active instanceof SwordArrayFieldEntity && active.isAlive()) return;
+            ACTIVE_BY_TARGET.remove(key, activeId);
+        }
+        // Rebuild the lock after chunk/server reloads, where the in-memory map is intentionally empty.
+        AABB nearby = new AABB(targetAnchor, targetAnchor).inflate(96.0D, 96.0D, 96.0D);
+        for (SwordArrayFieldEntity existing : level.getEntitiesOfClass(SwordArrayFieldEntity.class, nearby,
+                field -> targetId.equals(field.targetId) && field.isAlive())) {
+            ACTIVE_BY_TARGET.put(key, existing.getUUID());
+            return;
+        }
         SwordArrayFieldEntity field = ModEntities.SWORD_ARRAY_FIELD.get().create(level);
         if (field == null) return;
         field.ownerId = owner.getUUID();
@@ -102,22 +122,22 @@ public final class SwordArrayFieldEntity extends Entity {
         field.targetWidth = targetWidth;
         field.syncStaticData();
         field.updateAnchor(level, targetAnchor, targetHeight, targetWidth);
-        level.addFreshEntity(field);
+        if (level.addFreshEntity(field)) ACTIVE_BY_TARGET.put(key, field.getUUID());
     }
 
     @Override
     protected void defineSynchedData() {
         entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
         entityData.define(DATA_OWNER, Optional.empty());
-        entityData.define(DATA_BASE_RADIUS, 8.5F);
-        entityData.define(DATA_BEAM_HEIGHT, 12.0F);
+        entityData.define(DATA_BASE_RADIUS, 18.0F);
+        entityData.define(DATA_BEAM_HEIGHT, 28.0F);
         entityData.define(DATA_FINISHER_START, 72);
         entityData.define(DATA_CHARGE_TICKS, 10);
         entityData.define(DATA_HOLD_TICKS, 8);
         entityData.define(DATA_EXPAND_TICKS, 7);
         entityData.define(DATA_SUSTAIN_TICKS, 32);
-        entityData.define(DATA_EXPANSION, 1.75F);
-        entityData.define(DATA_BEAM_SCALE, 0.88F);
+        entityData.define(DATA_EXPANSION, 2.25F);
+        entityData.define(DATA_BEAM_SCALE, 0.92F);
     }
 
     private void syncStaticData() {
@@ -139,6 +159,10 @@ public final class SwordArrayFieldEntity extends Entity {
         setNoGravity(true);
         noPhysics = true;
         if (!(level() instanceof ServerLevel serverLevel)) return;
+        if (!claimTarget(serverLevel)) {
+            discard();
+            return;
+        }
         ServerPlayer owner = ownerId == null ? null : serverLevel.getServer().getPlayerList().getPlayer(ownerId);
         if (owner == null || !owner.isAlive() || owner.level() != level()) {
             discard();
@@ -183,7 +207,7 @@ public final class SwordArrayFieldEntity extends Entity {
         double topY = targetAnchor.y + height + TechniqueConfig.swordArrayHeight();
         entityData.set(DATA_BEAM_HEIGHT, (float) Math.max(2.0D, topY - getY()));
         entityData.set(DATA_BASE_RADIUS, (float) Math.max(width * 0.5D
-                + TechniqueConfig.swordArrayRadiusPadding(), 8.5D));
+                + TechniqueConfig.swordArrayRadiusPadding(), 18.0D));
     }
 
     private static Vec3 groundBelow(ServerLevel level, Vec3 targetAnchor) {
@@ -312,6 +336,24 @@ public final class SwordArrayFieldEntity extends Entity {
         return direction.lengthSqr() < 1.0E-6D ? new Vec3(0.0D, -1.0D, 0.0D) : direction.normalize();
     }
 
+    private boolean claimTarget(ServerLevel level) {
+        if (targetId == null) return false;
+        TargetKey key = new TargetKey(level.dimension(), targetId);
+        UUID current = ACTIVE_BY_TARGET.putIfAbsent(key, getUUID());
+        if (current == null || current.equals(getUUID())) return true;
+        Entity active = level.getEntity(current);
+        if (active instanceof SwordArrayFieldEntity && active.isAlive()) return false;
+        return ACTIVE_BY_TARGET.replace(key, current, getUUID());
+    }
+
+    @Override
+    public void remove(RemovalReason reason) {
+        if (!level().isClientSide && targetId != null) {
+            ACTIVE_BY_TARGET.remove(new TargetKey(level().dimension(), targetId), getUUID());
+        }
+        super.remove(reason);
+    }
+
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
@@ -371,4 +413,6 @@ public final class SwordArrayFieldEntity extends Entity {
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
     }
+
+    private record TargetKey(ResourceKey<Level> dimension, UUID targetId) { }
 }

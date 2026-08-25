@@ -1,0 +1,33 @@
+{
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero"
+  },
+  "vertex": "minecraft:blit",
+  "fragment": "yujiancraft:sword_array_impact",
+  "attributes": [ "Position" ],
+  "samplers": [
+    { "name": "DiffuseSampler" },
+    { "name": "NoiseSampler" },
+    { "name": "FractureSampler" },
+    { "name": "InkSampler" }
+  ],
+  "uniforms": [
+    { "name": "ProjMat",       "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+    { "name": "InSize",        "type": "float",     "count": 2,  "values": [ 1.0, 1.0 ] },
+    { "name": "OutSize",       "type": "float",     "count": 2,  "values": [ 1.0, 1.0 ] },
+    { "name": "BeamBottom",    "type": "float",     "count": 2,  "values": [ 0.5, 0.85 ] },
+    { "name": "BeamTop",       "type": "float",     "count": 2,  "values": [ 0.5, 0.15 ] },
+    { "name": "BeamRadius",    "type": "float",     "count": 1,  "values": [ 0.01 ] },
+    { "name": "Charge",        "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "DarkAmount",    "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "Expansion",     "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "WhiteAmount",   "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "InkAmount",     "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "Recovery",      "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "Distortion",    "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "ChromaAmount",  "type": "float",     "count": 1,  "values": [ 0.0 ] },
+    { "name": "Time",          "type": "float",     "count": 1,  "values": [ 0.0 ] }
+  ]
+}
