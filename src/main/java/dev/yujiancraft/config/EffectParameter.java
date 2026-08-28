@@ -36,7 +36,12 @@ public enum EffectParameter {
     DAMAGE_BONUS_III(EffectConfigGroup.REFINEMENT, "damage_bonus_iii", 7.0, 0, 50, 0.5, false),
     DURABILITY_BONUS_I(EffectConfigGroup.REFINEMENT, "durability_bonus_i", 500, 0, 50000, 100, true),
     DURABILITY_BONUS_II(EffectConfigGroup.REFINEMENT, "durability_bonus_ii", 2000, 0, 50000, 100, true),
-    DURABILITY_BONUS_III(EffectConfigGroup.REFINEMENT, "durability_bonus_iii", 8000, 0, 50000, 100, true);
+    DURABILITY_BONUS_III(EffectConfigGroup.REFINEMENT, "durability_bonus_iii", 8000, 0, 50000, 100, true),
+
+    SWORD_ARRAY_FINISHER_DAMAGE_SCALE(EffectConfigGroup.FINISHERS,
+            "sword_array_finisher_damage_scale", 12.0, 0, 500, 1.0, false),
+    COMBO_FINISHER_DAMAGE_SCALE(EffectConfigGroup.FINISHERS,
+            "combo_finisher_damage_scale", 32.0, 0, 500, 1.0, false);
 
     private final EffectConfigGroup group;
     private final String serializedName;

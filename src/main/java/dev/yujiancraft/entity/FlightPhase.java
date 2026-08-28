@@ -17,5 +17,7 @@ public enum FlightPhase {
     TOOL_APPROACH,
     TOOL_WORK,
     FISHING_APPROACH,
-    FISHING_WAIT
+    FISHING_WAIT,
+    /** Temporarily driven by the player-level Yujian combo coordinator. */
+    COMBO
 }

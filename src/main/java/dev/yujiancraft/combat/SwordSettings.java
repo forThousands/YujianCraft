@@ -18,6 +18,10 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
     public static final double MAXIMUM_LOCK_RADIUS = 64.0D;
     private static final String ROOT_TAG = "SwordSettings";
 
+    public static boolean hasStoredSettings(ItemStack stack) {
+        return stack.hasTag() && stack.getTag().contains(ROOT_TAG);
+    }
+
     public SwordSettings {
         minimumDockTicks = Mth.clamp(minimumDockTicks, MINIMUM_DOCK_TICKS, MAXIMUM_DOCK_TICKS);
         automaticTargetRadius = Mth.clamp(automaticTargetRadius, MINIMUM_AUTOMATIC_RADIUS, MAXIMUM_AUTOMATIC_RADIUS);

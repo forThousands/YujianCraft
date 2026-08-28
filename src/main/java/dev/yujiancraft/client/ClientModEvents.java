@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.FlyingSwordEntity;
+import dev.yujiancraft.client.vfx.VfxLivePreviewBridge;
 import dev.yujiancraft.formation.FormationGeometry;
 import dev.yujiancraft.registry.ModEntities;
 import dev.yujiancraft.material.FlyingSwordMaterial;
@@ -63,6 +64,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 @Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ClientModEvents {
     private static ShaderInstance whiteHotEnergyShader;
+    private static ShaderInstance spiritCurtainShader;
 
     public static final KeyMapping SWITCH_FORMATION = new KeyMapping(
             "key.yujiancraft.switch_formation",
@@ -104,6 +106,38 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_J,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping ACTIVATE_SWORD_ARRAY = new KeyMapping(
+            "key.yujiancraft.activate_sword_array",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            "key.categories.yujiancraft"
+    );
+    public static final KeyMapping SWITCH_SWORD_ARRAY_STYLE = new KeyMapping(
+            "key.yujiancraft.switch_sword_array_style",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_K,
+            "key.categories.yujiancraft"
+    );
+    public static final KeyMapping TOGGLE_COMBO = new KeyMapping(
+            "key.yujiancraft.toggle_combo",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_X,
+            "key.categories.yujiancraft"
+    );
+    public static final KeyMapping RELEASE_VFX_CURSOR = new KeyMapping(
+            "key.yujiancraft.release_vfx_cursor",
+            KeyConflictContext.UNIVERSAL,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_F8,
+            "key.categories.yujiancraft"
+    );
 
     private ClientModEvents() {
     }
@@ -115,6 +149,15 @@ public final class ClientModEvents {
                         ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID, "rendertype_white_hot_energy"),
                         DefaultVertexFormat.NEW_ENTITY),
                 shader -> whiteHotEnergyShader = shader);
+        event.registerShader(new ShaderInstance(
+                        event.getResourceProvider(),
+                        ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID, "rendertype_spirit_curtain"),
+                        DefaultVertexFormat.NEW_ENTITY),
+                shader -> spiritCurtainShader = shader);
+    }
+
+    static ShaderInstance spiritCurtainShader() {
+        return spiritCurtainShader;
     }
 
     /**
@@ -167,6 +210,10 @@ public final class ClientModEvents {
         event.register(TOGGLE_SWORDS);
         event.register(ARTIFACT_ACTION);
         event.register(SWITCH_TECHNIQUE);
+        event.register(ACTIVATE_SWORD_ARRAY);
+        event.register(SWITCH_SWORD_ARRAY_STYLE);
+        event.register(TOGGLE_COMBO);
+        if (VfxLivePreviewBridge.isAvailable()) event.register(RELEASE_VFX_CURSOR);
     }
 
     @SubscribeEvent
@@ -210,12 +257,19 @@ public final class ClientModEvents {
                            MultiBufferSource buffers, int packedLight) {
             poseStack.pushPose();
 
-            Vec3 renderedSwordPosition = new Vec3(
+            Vec3 entityRenderedPosition = new Vec3(
                     Mth.lerp(partialTick, sword.xo, sword.getX()),
                     Mth.lerp(partialTick, sword.yo, sword.getY()),
                     Mth.lerp(partialTick, sword.zo, sword.getZ())
             );
-            if (!sword.isVisuallyDocked()) {
+            Vec3 renderedSwordPosition = entityRenderedPosition;
+            Vec3 comboPosition = ClientComboState.visualSwordPosition(sword, partialTick);
+            if (comboPosition != null) {
+                renderedSwordPosition = comboPosition;
+                Vec3 correction = comboPosition.subtract(entityRenderedPosition);
+                poseStack.translate(correction.x, correction.y, correction.z);
+            }
+            if (!sword.isVisuallyDocked() && !sword.isVisualPreview()) {
                 renderTrail(sword, renderedSwordPosition, poseStack, buffers);
             }
 
@@ -311,7 +365,7 @@ public final class ClientModEvents {
                     if (brightness.usesLegacyRenderer()) {
                         // This is deliberately the untouched 0.9.6 body path. DEFAULT must never
                         // travel through brightness arithmetic, even when that arithmetic is nominally 1.0.
-                        renderLegacyEnergySword(sword, partialTick, poseStack, buffers);
+                        renderLegacyEnergySword(sword, partialTick, poseStack, buffers, packedLight);
                     } else {
                         renderLayeredEnergySword(sword, partialTick, poseStack, buffers, packedLight, brightness);
                     }
@@ -396,8 +450,14 @@ public final class ClientModEvents {
         }
 
         private void renderLegacyEnergySword(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
-                                             MultiBufferSource buffers) {
+                                             MultiBufferSource buffers, int packedLight) {
             ItemStack stack = sword.getDisplayItem();
+            // The legacy glow path used to submit the actual sword only to a translucent queue.
+            // Vanilla translucent blocks (notably ice) can then be sorted in front of it and make
+            // the blade appear transparent. An opaque full-bright anchor writes colour and depth;
+            // the following layers are now glow overlays rather than the sword body itself.
+            itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, LightTexture.FULL_BRIGHT,
+                    OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
             try {

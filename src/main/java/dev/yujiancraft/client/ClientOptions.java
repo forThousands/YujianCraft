@@ -29,9 +29,19 @@ public final class ClientOptions {
     public static final boolean DEFAULT_ARROW_RAIN_MODULE_VISUAL = true;
     public static final boolean DEFAULT_HIT_IMPACT_VISUAL = true;
     public static final boolean DEFAULT_SWORD_ARRAY_POST_EFFECT = true;
+    public static final boolean DEFAULT_SWORD_ARRAY_TEXTURE_GLOW = false;
+    public static final boolean DEFAULT_SWORD_ARRAY_FLOW = false;
+    public static final boolean DEFAULT_SWORD_ARRAY_SPIRIT_WISPS = true;
+    public static final boolean DEFAULT_SWORD_ARRAY_VOLUME_MIST = true;
+    public static final boolean DEFAULT_SWORD_ARRAY_EXPANSION = true;
+    public static final boolean DEFAULT_SPIRIT_CURTAIN = false;
+    public static final boolean DEFAULT_SPIRIT_CURTAIN_FLOW = true;
+    public static final boolean DEFAULT_SPIRIT_CURTAIN_MIST = true;
     public static final boolean DEFAULT_WORKBENCH_PREVIEW = true;
     public static final boolean DEFAULT_OPTIMIZED_THIRD_PERSON = true;
     public static final SwordGlowBrightness DEFAULT_GLOW_BRIGHTNESS = SwordGlowBrightness.DEFAULT;
+    public static final SwordArrayBrightness DEFAULT_SWORD_ARRAY_BRIGHTNESS = SwordArrayBrightness.DEFAULT;
+    public static final SpiritCurtainDensity DEFAULT_SPIRIT_CURTAIN_DENSITY = SpiritCurtainDensity.STANDARD;
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -54,8 +64,18 @@ public final class ClientOptions {
     private static boolean arrowRainModuleVisual;
     private static boolean hitImpactVisual;
     private static boolean swordArrayPostEffect;
+    private static boolean swordArrayTextureGlow;
+    private static boolean swordArrayFlow;
+    private static boolean swordArraySpiritWisps;
+    private static boolean swordArrayVolumeMist;
+    private static boolean swordArrayExpansion;
+    private static boolean spiritCurtain;
+    private static boolean spiritCurtainFlow;
+    private static boolean spiritCurtainMist;
     private static boolean workbenchPreview;
     private static SwordGlowBrightness glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
+    private static SwordArrayBrightness swordArrayBrightness = DEFAULT_SWORD_ARRAY_BRIGHTNESS;
+    private static SpiritCurtainDensity spiritCurtainDensity = DEFAULT_SPIRIT_CURTAIN_DENSITY;
 
     private ClientOptions() {
     }
@@ -87,9 +107,21 @@ public final class ClientOptions {
             arrowRainModuleVisual = booleanValue("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
             hitImpactVisual = booleanValue("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
             swordArrayPostEffect = booleanValue("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
+            swordArrayTextureGlow = booleanValue("swordArrayTextureGlow", DEFAULT_SWORD_ARRAY_TEXTURE_GLOW);
+            swordArrayFlow = booleanValue("swordArrayFlow", DEFAULT_SWORD_ARRAY_FLOW);
+            swordArraySpiritWisps = booleanValue("swordArraySpiritWisps", DEFAULT_SWORD_ARRAY_SPIRIT_WISPS);
+            swordArrayVolumeMist = booleanValue("swordArrayVolumeMist", DEFAULT_SWORD_ARRAY_VOLUME_MIST);
+            swordArrayExpansion = booleanValue("swordArrayExpansion", DEFAULT_SWORD_ARRAY_EXPANSION);
+            spiritCurtain = booleanValue("spiritCurtain", DEFAULT_SPIRIT_CURTAIN);
+            spiritCurtainFlow = booleanValue("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
+            spiritCurtainMist = booleanValue("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
             workbenchPreview = booleanValue("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
             glowBrightness = SwordGlowBrightness.fromName(stringValue("glowBrightness",
                     DEFAULT_GLOW_BRIGHTNESS.serializedName()));
+            swordArrayBrightness = SwordArrayBrightness.fromName(stringValue("swordArrayBrightness",
+                    DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName()));
+            spiritCurtainDensity = SpiritCurtainDensity.fromName(stringValue("spiritCurtainDensity",
+                    DEFAULT_SPIRIT_CURTAIN_DENSITY.serializedName()));
         } catch (Exception exception) {
             showDeveloperOptions = false;
             optimizedThirdPerson = DEFAULT_OPTIMIZED_THIRD_PERSON;
@@ -107,8 +139,18 @@ public final class ClientOptions {
             arrowRainModuleVisual = DEFAULT_ARROW_RAIN_MODULE_VISUAL;
             hitImpactVisual = DEFAULT_HIT_IMPACT_VISUAL;
             swordArrayPostEffect = DEFAULT_SWORD_ARRAY_POST_EFFECT;
+            swordArrayTextureGlow = DEFAULT_SWORD_ARRAY_TEXTURE_GLOW;
+            swordArrayFlow = DEFAULT_SWORD_ARRAY_FLOW;
+            swordArraySpiritWisps = DEFAULT_SWORD_ARRAY_SPIRIT_WISPS;
+            swordArrayVolumeMist = DEFAULT_SWORD_ARRAY_VOLUME_MIST;
+            swordArrayExpansion = DEFAULT_SWORD_ARRAY_EXPANSION;
+            spiritCurtain = DEFAULT_SPIRIT_CURTAIN;
+            spiritCurtainFlow = DEFAULT_SPIRIT_CURTAIN_FLOW;
+            spiritCurtainMist = DEFAULT_SPIRIT_CURTAIN_MIST;
             workbenchPreview = DEFAULT_WORKBENCH_PREVIEW;
             glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
+            swordArrayBrightness = DEFAULT_SWORD_ARRAY_BRIGHTNESS;
+            spiritCurtainDensity = DEFAULT_SPIRIT_CURTAIN_DENSITY;
             LOGGER.error("Could not load YujianCraft client options from {}", path, exception);
         }
     }
@@ -136,8 +178,18 @@ public final class ClientOptions {
     public static boolean arrowRainModuleVisual() { return arrowRainModuleVisual; }
     public static boolean hitImpactVisual() { return hitImpactVisual; }
     public static boolean swordArrayPostEffect() { return swordArrayPostEffect; }
+    public static boolean swordArrayTextureGlow() { return swordArrayTextureGlow; }
+    public static boolean swordArrayFlow() { return swordArrayFlow; }
+    public static boolean swordArraySpiritWisps() { return swordArraySpiritWisps; }
+    public static boolean swordArrayVolumeMist() { return swordArrayVolumeMist; }
+    public static boolean swordArrayExpansion() { return swordArrayExpansion; }
+    public static boolean spiritCurtain() { return spiritCurtain; }
+    public static boolean spiritCurtainFlow() { return spiritCurtainFlow; }
+    public static boolean spiritCurtainMist() { return spiritCurtainMist; }
     public static boolean workbenchPreview() { return workbenchPreview; }
     public static SwordGlowBrightness glowBrightness() { return glowBrightness; }
+    public static SwordArrayBrightness swordArrayBrightness() { return swordArrayBrightness; }
+    public static SpiritCurtainDensity spiritCurtainDensity() { return spiritCurtainDensity; }
 
     public static synchronized void setOptimizedThirdPerson(boolean enabled) {
         optimizedThirdPerson = enabled;
@@ -214,6 +266,46 @@ public final class ClientOptions {
         setBoolean("swordArrayPostEffect", enabled);
     }
 
+    public static synchronized void setSwordArrayTextureGlow(boolean enabled) {
+        swordArrayTextureGlow = enabled;
+        setBoolean("swordArrayTextureGlow", enabled);
+    }
+
+    public static synchronized void setSwordArrayFlow(boolean enabled) {
+        swordArrayFlow = enabled;
+        setBoolean("swordArrayFlow", enabled);
+    }
+
+    public static synchronized void setSwordArraySpiritWisps(boolean enabled) {
+        swordArraySpiritWisps = enabled;
+        setBoolean("swordArraySpiritWisps", enabled);
+    }
+
+    public static synchronized void setSwordArrayVolumeMist(boolean enabled) {
+        swordArrayVolumeMist = enabled;
+        setBoolean("swordArrayVolumeMist", enabled);
+    }
+
+    public static synchronized void setSwordArrayExpansion(boolean enabled) {
+        swordArrayExpansion = enabled;
+        setBoolean("swordArrayExpansion", enabled);
+    }
+
+    public static synchronized void setSpiritCurtain(boolean enabled) {
+        spiritCurtain = enabled;
+        setBoolean("spiritCurtain", enabled);
+    }
+
+    public static synchronized void setSpiritCurtainFlow(boolean enabled) {
+        spiritCurtainFlow = enabled;
+        setBoolean("spiritCurtainFlow", enabled);
+    }
+
+    public static synchronized void setSpiritCurtainMist(boolean enabled) {
+        spiritCurtainMist = enabled;
+        setBoolean("spiritCurtainMist", enabled);
+    }
+
     public static synchronized void setWorkbenchPreview(boolean enabled) {
         workbenchPreview = enabled;
         setBoolean("workbenchPreview", enabled);
@@ -222,6 +314,16 @@ public final class ClientOptions {
     public static synchronized void setGlowBrightness(SwordGlowBrightness brightness) {
         glowBrightness = brightness == null ? DEFAULT_GLOW_BRIGHTNESS : brightness;
         setString("glowBrightness", glowBrightness.serializedName());
+    }
+
+    public static synchronized void setSwordArrayBrightness(SwordArrayBrightness brightness) {
+        swordArrayBrightness = brightness == null ? DEFAULT_SWORD_ARRAY_BRIGHTNESS : brightness;
+        setString("swordArrayBrightness", swordArrayBrightness.serializedName());
+    }
+
+    public static synchronized void setSpiritCurtainDensity(SpiritCurtainDensity density) {
+        spiritCurtainDensity = density == null ? DEFAULT_SPIRIT_CURTAIN_DENSITY : density;
+        setString("spiritCurtainDensity", spiritCurtainDensity.serializedName());
     }
 
     private static void setBoolean(String key, boolean enabled) {
@@ -259,7 +361,7 @@ public final class ClientOptions {
 
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 14);
+        root.addProperty("schemaVersion", 18);
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         root.addProperty("swordRidingEnabled", true);
@@ -276,8 +378,18 @@ public final class ClientOptions {
         root.addProperty("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
         root.addProperty("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
         root.addProperty("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
+        root.addProperty("swordArrayTextureGlow", DEFAULT_SWORD_ARRAY_TEXTURE_GLOW);
+        root.addProperty("swordArrayFlow", DEFAULT_SWORD_ARRAY_FLOW);
+        root.addProperty("swordArraySpiritWisps", DEFAULT_SWORD_ARRAY_SPIRIT_WISPS);
+        root.addProperty("swordArrayVolumeMist", DEFAULT_SWORD_ARRAY_VOLUME_MIST);
+        root.addProperty("swordArrayExpansion", DEFAULT_SWORD_ARRAY_EXPANSION);
+        root.addProperty("spiritCurtain", DEFAULT_SPIRIT_CURTAIN);
+        root.addProperty("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
+        root.addProperty("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
         root.addProperty("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
         root.addProperty("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
+        root.addProperty("swordArrayBrightness", DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName());
+        root.addProperty("spiritCurtainDensity", DEFAULT_SPIRIT_CURTAIN_DENSITY.serializedName());
         root.addProperty("developerOptionsHint",
                 "Set showDeveloperOptions to true and reopen the in-game config screen. OP permission is still required.");
         return root;
@@ -328,6 +440,30 @@ public final class ClientOptions {
             document.addProperty("schemaVersion", 14);
             changed = true;
         }
+        if (schemaVersion < 15) {
+            document.addProperty("schemaVersion", 15);
+            changed = true;
+        }
+        if (schemaVersion < 16) {
+            // The first textured-array preview shipped both experimental passes enabled. Their
+            // current quality does not justify making existing players manually disable them.
+            document.addProperty("swordArrayTextureGlow", DEFAULT_SWORD_ARRAY_TEXTURE_GLOW);
+            document.addProperty("swordArrayFlow", DEFAULT_SWORD_ARRAY_FLOW);
+            document.addProperty("swordArrayBrightness", DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName());
+            document.addProperty("schemaVersion", 16);
+            changed = true;
+        }
+        if (schemaVersion < 17) {
+            document.addProperty("schemaVersion", 17);
+            changed = true;
+        }
+        if (schemaVersion < 18) {
+            // Spatial script curtains remain available for comparison, but are not sufficiently
+            // shader-pack portable to be part of the packaged presentation.
+            document.addProperty("spiritCurtain", false);
+            document.addProperty("schemaVersion", 18);
+            changed = true;
+        }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
@@ -344,8 +480,20 @@ public final class ClientOptions {
         changed |= addBooleanIfMissing("arrowRainModuleVisual", DEFAULT_ARROW_RAIN_MODULE_VISUAL);
         changed |= addBooleanIfMissing("hitImpactVisual", DEFAULT_HIT_IMPACT_VISUAL);
         changed |= addBooleanIfMissing("swordArrayPostEffect", DEFAULT_SWORD_ARRAY_POST_EFFECT);
+        changed |= addBooleanIfMissing("swordArrayTextureGlow", DEFAULT_SWORD_ARRAY_TEXTURE_GLOW);
+        changed |= addBooleanIfMissing("swordArrayFlow", DEFAULT_SWORD_ARRAY_FLOW);
+        changed |= addBooleanIfMissing("swordArraySpiritWisps", DEFAULT_SWORD_ARRAY_SPIRIT_WISPS);
+        changed |= addBooleanIfMissing("swordArrayVolumeMist", DEFAULT_SWORD_ARRAY_VOLUME_MIST);
+        changed |= addBooleanIfMissing("swordArrayExpansion", DEFAULT_SWORD_ARRAY_EXPANSION);
+        changed |= addBooleanIfMissing("spiritCurtain", DEFAULT_SPIRIT_CURTAIN);
+        changed |= addBooleanIfMissing("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
+        changed |= addBooleanIfMissing("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
         changed |= addBooleanIfMissing("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
         changed |= addStringIfMissing("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
+        changed |= addStringIfMissing("swordArrayBrightness",
+                DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName());
+        changed |= addStringIfMissing("spiritCurtainDensity",
+                DEFAULT_SPIRIT_CURTAIN_DENSITY.serializedName());
         return changed;
     }
 

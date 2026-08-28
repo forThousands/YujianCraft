@@ -2,6 +2,7 @@ package dev.yujiancraft.client;
 
 import dev.yujiancraft.combat.technique.TechniqueMode;
 import dev.yujiancraft.client.vfx.VfxTimelineDefinition;
+import dev.yujiancraft.client.vfx.VfxLivePreviewBridge;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -15,7 +16,8 @@ import java.util.List;
 
 /** Client-only calligraphy notice and the staged sword-array finisher presentation. */
 public final class ClientTechniqueOverlayState {
-    private static final long NOTICE_DURATION_MS = 1900L;
+    private static final long NOTICE_DURATION_MS = 2400L;
+    private static final float NOTICE_SCALE = 1.48F;
     private static TechniqueMode technique;
     private static long noticeStartedAt;
     private static long finisherStartGameTick = Long.MIN_VALUE;
@@ -76,8 +78,8 @@ public final class ClientTechniqueOverlayState {
         Font font = minecraft.font;
         String localized = Component.translatable(technique.translationKey()).getString();
         List<String> lines = verticalLines(localized);
-        int lineStep = font.lineHeight + 3;
-        int totalHeight = lines.size() * lineStep - 3;
+        int sourceLineStep = font.lineHeight + 3;
+        int totalHeight = Math.round((lines.size() * sourceLineStep - 3) * NOTICE_SCALE);
         int x = Math.round(width * 0.79F);
         int y = Math.max(18, (height - totalHeight) / 2);
         float fade = age < 240L ? age / 240.0F
@@ -90,13 +92,17 @@ public final class ClientTechniqueOverlayState {
                 ruleAlpha << 24 | 0xA8F4EF);
         graphics.fill(x + 13, y + 4, x + 14, y + totalHeight - 4,
                 Math.round(ruleAlpha * 0.55F) << 24 | 0x60D6E6);
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0.0F);
+        graphics.pose().scale(NOTICE_SCALE, NOTICE_SCALE, 1.0F);
         for (int index = 0; index < lines.size(); index++) {
             String line = lines.get(index);
-            int drawX = x - font.width(line) / 2;
-            int drawY = y + index * lineStep;
+            int drawX = -font.width(line) / 2;
+            int drawY = index * sourceLineStep;
             graphics.drawString(font, line, drawX + 1, drawY + 1, spirit, false);
             graphics.drawString(font, line, drawX, drawY, main, true);
         }
+        graphics.pose().popPose();
     }
 
     private static List<String> verticalLines(String text) {
@@ -113,6 +119,8 @@ public final class ClientTechniqueOverlayState {
 
     public static FinisherFrame sampleFinisher(float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
+        FinisherFrame livePreview = VfxLivePreviewBridge.sample(partialTick);
+        if (livePreview != null) return livePreview;
         if (finisherStartGameTick == Long.MIN_VALUE || finisherTimeline == null
                 || minecraft.level == null || !ClientOptions.hitImpactVisual()) {
             clearFinisher();
@@ -129,15 +137,7 @@ public final class ClientTechniqueOverlayState {
         float authoredTick = finisherTimeline.mapRuntimeTick(ageTicks, finisherChargeTicks,
                 finisherHoldTicks, finisherExpandTicks, finisherSustainTicks);
         return new FinisherFrame(finisherBottom, finisherTop, finisherMaximumRadius,
-                ageTicks / 20.0F,
-                finisherTimeline.sample("charge", authoredTick),
-                finisherTimeline.sample("dark", authoredTick),
-                finisherTimeline.sample("expansion", authoredTick),
-                finisherTimeline.sample("white", authoredTick),
-                finisherTimeline.sample("ink", authoredTick),
-                finisherTimeline.sample("recovery", authoredTick),
-                finisherTimeline.sample("distortion", authoredTick),
-                finisherTimeline.sample("chroma", authoredTick));
+                ageTicks / 20.0F, authoredTick, finisherTimeline);
     }
 
     private static void clearFinisher() {
@@ -148,7 +148,21 @@ public final class ClientTechniqueOverlayState {
     }
 
     public record FinisherFrame(Vec3 bottom, Vec3 top, float maximumRadius, float ageSeconds,
-                                float charge, float darkAmount, float expansion,
-                                float whiteAmount, float inkAmount, float recovery,
-                                float distortion, float chromaAmount) { }
+                                float authoredTick, VfxTimelineDefinition timeline) {
+        public float value(String track, float fallback) {
+            return timeline.sample(track, authoredTick, fallback);
+        }
+
+        public boolean enabled(String module) {
+            return timeline.moduleEnabled(module);
+        }
+
+        public VfxTimelineDefinition.Center center(String module, float x, float y) {
+            return timeline.moduleCenter(module, x, y);
+        }
+
+        public String anchor(String module) {
+            return timeline.moduleAnchor(module);
+        }
+    }
 }

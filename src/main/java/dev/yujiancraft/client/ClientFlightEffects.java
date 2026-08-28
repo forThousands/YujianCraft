@@ -69,7 +69,8 @@ public final class ClientFlightEffects {
 
     private static void recordTrail(FlyingSwordEntity sword) {
         ArrayDeque<Vec3> points = TRAILS.computeIfAbsent(sword.getId(), ignored -> new ArrayDeque<>());
-        Vec3 position = sword.position();
+        Vec3 reconstructed = ClientComboState.visualSwordPosition(sword, 1.0F);
+        Vec3 position = reconstructed == null ? sword.position() : reconstructed;
         Vec3 newest = points.peekFirst();
         if (newest == null || newest.distanceToSqr(position) >= 0.0025D) {
             points.addFirst(position);

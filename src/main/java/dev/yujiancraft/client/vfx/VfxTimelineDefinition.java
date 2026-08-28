@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import dev.yujiancraft.YujianCraft;
+import dev.yujiancraft.visual.SwordArrayVisualStyle;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.slf4j.Logger;
@@ -18,43 +19,81 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Authored, resource-pack replaceable VFX timing data. Values are sampled in authored ticks;
- * {@link #mapRuntimeTick(float, int, int, int, int)} keeps each dramatic phase intact when a
- * server changes its configured phase lengths.
+ * Resource-pack replaceable VFX project exported by the standalone Yujian Craft VFX Studio.
+ * Only the stable schema is consumed at runtime; editor labels and layout metadata are ignored.
  */
 public final class VfxTimelineDefinition {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation SWORD_ARRAY_FINISHER = ResourceLocation.fromNamespaceAndPath(
-            YujianCraft.MOD_ID, "effects/sword_array/finisher.json");
+            YujianCraft.MOD_ID, "effects/sword_array/finisher.vfx.json");
     private static final VfxTimelineDefinition FALLBACK = fallback();
 
+    private final float durationTicks;
     private final float[] phaseEnds;
-    private final Map<String, Curve> curves;
+    private final Map<String, Curve> tracks;
+    private final Map<String, Module> modules;
+    private final Map<String, Boolean> parameterEnabled;
+    private final SwordArrayVisualStyle worldStyle;
 
-    private VfxTimelineDefinition(float[] phaseEnds, Map<String, Curve> curves) {
+    private VfxTimelineDefinition(float durationTicks, float[] phaseEnds,
+                                  Map<String, Curve> tracks, Map<String, Module> modules,
+                                  Map<String, Boolean> parameterEnabled, SwordArrayVisualStyle worldStyle) {
+        this.durationTicks = durationTicks;
         this.phaseEnds = phaseEnds;
-        this.curves = curves;
+        this.tracks = tracks;
+        this.modules = modules;
+        this.parameterEnabled = parameterEnabled;
+        this.worldStyle = worldStyle;
     }
 
     public static VfxTimelineDefinition loadSwordArrayFinisher(ResourceManager resources) {
         try (Reader reader = resources.getResourceOrThrow(SWORD_ARRAY_FINISHER).openAsReader()) {
             return parse(JsonParser.parseReader(reader).getAsJsonObject());
         } catch (Exception exception) {
-            LOGGER.error("Unable to load {}; using the built-in safe timeline", SWORD_ARRAY_FINISHER,
-                    exception);
+            LOGGER.error("Unable to load {}; using the built-in safe VFX project",
+                    SWORD_ARRAY_FINISHER, exception);
             return FALLBACK;
         }
     }
 
-    public float sample(String name, float authoredTick) {
-        Curve curve = curves.get(name);
-        return curve == null ? 0.0F : curve.sample(authoredTick);
+    /** Used by the opt-in local studio bridge; never accepts data from a game server. */
+    public static VfxTimelineDefinition parseProject(JsonObject root) {
+        return parse(root);
+    }
+
+    public float sample(String track, float authoredTick, float fallback) {
+        if (Boolean.FALSE.equals(parameterEnabled.get(track))) return fallback;
+        Curve curve = tracks.get(track);
+        return curve == null ? fallback : curve.sample(authoredTick);
+    }
+
+    public boolean moduleEnabled(String id) {
+        Module module = modules.get(id);
+        return module == null || module.enabled;
+    }
+
+    public String moduleAnchor(String id) {
+        Module module = modules.get(id);
+        return module == null ? "screen" : module.anchor;
+    }
+
+    public Center moduleCenter(String id, float fallbackX, float fallbackY) {
+        Module module = modules.get(id);
+        return module == null || module.center == null ? new Center(fallbackX, fallbackY) : module.center;
     }
 
     public float durationTicks() {
-        return phaseEnds[3];
+        return durationTicks;
     }
 
+    public SwordArrayVisualStyle worldStyle() { return worldStyle; }
+
+    public String moduleSetting(String id, String setting, String fallback) {
+        Module module = modules.get(id);
+        return module == null ? fallback : module.settings.getOrDefault(setting, fallback);
+    }
+
+    /** Maps server-configurable phase lengths onto the authored four-phase composition. */
     public float mapRuntimeTick(float runtimeTick, int chargeTicks, int holdTicks,
                                 int expandTicks, int sustainTicks) {
         float[] runtimeEnds = {
@@ -67,52 +106,96 @@ public final class VfxTimelineDefinition {
         float runtimeStart = 0.0F;
         float authoredStart = 0.0F;
         for (int phase = 0; phase < runtimeEnds.length; phase++) {
+            float authoredEnd = phaseEnds[Math.min(phase, phaseEnds.length - 1)];
             if (runtimeTick <= runtimeEnds[phase] || phase == runtimeEnds.length - 1) {
-                float phaseProgress = clamp01((runtimeTick - runtimeStart)
+                float progress = clamp01((runtimeTick - runtimeStart)
                         / Math.max(0.0001F, runtimeEnds[phase] - runtimeStart));
-                return lerp(authoredStart, phaseEnds[phase], phaseProgress);
+                return lerp(authoredStart, authoredEnd, progress);
             }
             runtimeStart = runtimeEnds[phase];
-            authoredStart = phaseEnds[phase];
+            authoredStart = authoredEnd;
         }
-        return phaseEnds[3];
+        return durationTicks;
     }
 
     private static VfxTimelineDefinition parse(JsonObject root) {
         int schemaVersion = root.get("schemaVersion").getAsInt();
-        if (schemaVersion != 1) throw new IllegalArgumentException("Unsupported schemaVersion " + schemaVersion);
-        JsonObject phases = root.getAsJsonObject("phases");
-        float charge = positive(phases, "charge");
-        float hold = positive(phases, "hold");
-        float expand = positive(phases, "expand");
-        float sustain = positive(phases, "sustain");
-        float[] phaseEnds = {charge, charge + hold, charge + hold + expand,
-                charge + hold + expand + sustain};
+        if (schemaVersion != 2) throw new IllegalArgumentException(
+                "Unsupported VFX schemaVersion " + schemaVersion);
+        float duration = positive(root, "durationTicks");
+        JsonArray phaseArray = root.getAsJsonArray("phases");
+        if (phaseArray == null || phaseArray.size() < 4) {
+            throw new IllegalArgumentException("At least four authored phases are required");
+        }
+        float[] phaseEnds = new float[phaseArray.size()];
+        float previousEnd = 0.0F;
+        for (int index = 0; index < phaseArray.size(); index++) {
+            JsonObject phase = phaseArray.get(index).getAsJsonObject();
+            float start = phase.get("startTick").getAsFloat();
+            float end = phase.get("endTick").getAsFloat();
+            if (end <= start || start + 0.001F < previousEnd) {
+                throw new IllegalArgumentException("Invalid or overlapping phase at index " + index);
+            }
+            phaseEnds[index] = end;
+            previousEnd = end;
+        }
+        if (Math.abs(previousEnd - duration) > 0.01F) {
+            throw new IllegalArgumentException("Last phase must end at durationTicks");
+        }
 
-        Map<String, Curve> curves = new HashMap<>();
-        for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject("curves").entrySet()) {
-            JsonArray array = entry.getValue().getAsJsonArray();
+        Map<String, Module> modules = new HashMap<>();
+        Map<String, Boolean> parameterEnabled = new HashMap<>();
+        JsonObject moduleRoot = root.getAsJsonObject("modules");
+        if (moduleRoot != null) {
+            for (Map.Entry<String, JsonElement> entry : moduleRoot.entrySet()) {
+                JsonObject source = entry.getValue().getAsJsonObject();
+                boolean enabled = !source.has("enabled") || source.get("enabled").getAsBoolean();
+                String anchor = source.has("anchor") ? source.get("anchor").getAsString() : "screen";
+                Center center = null;
+                if (source.has("center")) {
+                    JsonArray values = source.getAsJsonArray("center");
+                    if (values.size() == 2) {
+                        center = new Center(values.get(0).getAsFloat(), values.get(1).getAsFloat());
+                    }
+                }
+                Map<String, String> settings = new HashMap<>();
+                JsonObject settingRoot = source.getAsJsonObject("settings");
+                if (settingRoot != null) settingRoot.entrySet().forEach(setting ->
+                        settings.put(setting.getKey(), setting.getValue().getAsString()));
+                JsonObject parameters = source.getAsJsonObject("parameters");
+                if (parameters != null) for (Map.Entry<String, JsonElement> parameter : parameters.entrySet()) {
+                    JsonObject definition = parameter.getValue().getAsJsonObject();
+                    if (!definition.has("track")) continue;
+                    boolean required = definition.has("required") && definition.get("required").getAsBoolean();
+                    boolean parameterOn = required || !definition.has("enabled") || definition.get("enabled").getAsBoolean();
+                    parameterEnabled.put(definition.get("track").getAsString(), parameterOn);
+                }
+                modules.put(entry.getKey(), new Module(enabled, anchor, center, Map.copyOf(settings)));
+            }
+        }
+
+        Map<String, Curve> tracks = new HashMap<>();
+        JsonObject trackRoot = root.getAsJsonObject("tracks");
+        if (trackRoot == null) throw new IllegalArgumentException("Missing tracks object");
+        for (Map.Entry<String, JsonElement> entry : trackRoot.entrySet()) {
             List<Keyframe> keys = new ArrayList<>();
-            for (JsonElement element : array) {
+            for (JsonElement element : entry.getValue().getAsJsonArray()) {
                 JsonObject key = element.getAsJsonObject();
-                float tick = key.get("tick").getAsFloat();
-                float value = key.get("value").getAsFloat();
                 Easing easing = key.has("easing")
                         ? Easing.fromName(key.get("easing").getAsString()) : Easing.LINEAR;
-                keys.add(new Keyframe(tick, value, easing));
+                keys.add(new Keyframe(key.get("tick").getAsFloat(),
+                        key.get("value").getAsFloat(), easing));
             }
             keys.sort(Comparator.comparingDouble(Keyframe::tick));
-            if (keys.size() < 2) throw new IllegalArgumentException(
-                    "Curve " + entry.getKey() + " requires at least two keyframes");
-            curves.put(entry.getKey(), new Curve(List.copyOf(keys)));
+            if (keys.isEmpty()) throw new IllegalArgumentException("Track " + entry.getKey() + " is empty");
+            tracks.put(entry.getKey(), new Curve(List.copyOf(keys)));
         }
-        for (String required : List.of("charge", "dark", "expansion", "white", "ink",
-                "recovery", "distortion", "chroma")) {
-            if (!curves.containsKey(required)) {
-                throw new IllegalArgumentException("Missing required curve " + required);
-            }
+        for (String required : List.of("world.charge", "world.beamExpansion")) {
+            if (!tracks.containsKey(required)) throw new IllegalArgumentException("Missing required track " + required);
         }
-        return new VfxTimelineDefinition(phaseEnds, Map.copyOf(curves));
+        SwordArrayVisualStyle worldStyle = SwordArrayVisualStyle.parse(root.getAsJsonObject("worldStyle"));
+        return new VfxTimelineDefinition(duration, phaseEnds, Map.copyOf(tracks), Map.copyOf(modules),
+                Map.copyOf(parameterEnabled), worldStyle);
     }
 
     private static float positive(JsonObject object, String name) {
@@ -123,28 +206,30 @@ public final class VfxTimelineDefinition {
 
     private static VfxTimelineDefinition fallback() {
         String json = """
-                {"schemaVersion":1,"phases":{"charge":10,"hold":8,"expand":7,"sustain":32},
-                "curves":{
-                "charge":[{"tick":0,"value":0},{"tick":10,"value":1,"easing":"smoothstep"}],
-                "dark":[{"tick":0,"value":0},{"tick":18,"value":0},{"tick":19.2,"value":1,"easing":"smoothstep"},{"tick":46,"value":1},{"tick":57,"value":0,"easing":"smoothstep"}],
-                "expansion":[{"tick":0,"value":0},{"tick":18,"value":0},{"tick":19,"value":0.12},{"tick":22,"value":0.30,"easing":"smoothstep"},{"tick":25.5,"value":0.85,"easing":"easeIn"},{"tick":29,"value":1,"easing":"smoothstep"}],
-                "white":[{"tick":0,"value":0},{"tick":25,"value":0},{"tick":27.3,"value":1,"easing":"easeIn"},{"tick":29,"value":1},{"tick":31,"value":0,"easing":"smoothstep"}],
-                "ink":[{"tick":0,"value":0},{"tick":29,"value":0},{"tick":31,"value":1,"easing":"smoothstep"},{"tick":43,"value":1},{"tick":50,"value":0,"easing":"smoothstep"}],
-                "recovery":[{"tick":0,"value":0},{"tick":42,"value":0},{"tick":57,"value":1,"easing":"smoothstep"}],
-                "distortion":[{"tick":0,"value":0},{"tick":18,"value":0},{"tick":19,"value":0.72,"easing":"easeOut"},{"tick":22,"value":0.18,"easing":"smoothstep"},{"tick":25,"value":0.95,"easing":"easeInOut"},{"tick":31,"value":0.28,"easing":"smoothstep"},{"tick":50,"value":0}],
-                "chroma":[{"tick":0,"value":0},{"tick":18,"value":0},{"tick":19.5,"value":0.86,"easing":"easeOut"},{"tick":26,"value":0.18,"easing":"smoothstep"},{"tick":44,"value":0.08},{"tick":57,"value":0}]
+                {"schemaVersion":2,"durationTicks":57,
+                "phases":[
+                  {"startTick":0,"endTick":10},{"startTick":10,"endTick":18},
+                  {"startTick":18,"endTick":25},{"startTick":25,"endTick":57}],
+                "modules":{},"tracks":{
+                  "world.charge":[{"tick":0,"value":0},{"tick":10,"value":1,"easing":"smoothstep"}],
+                  "world.beamExpansion":[{"tick":0,"value":0},{"tick":18,"value":0},{"tick":29,"value":1,"easing":"easeIn"}],
+                  "post.distortion.strength":[{"tick":0,"value":0},{"tick":19,"value":0.7},{"tick":50,"value":0}],
+                  "post.threshold.amount":[{"tick":0,"value":0},{"tick":20,"value":1},{"tick":53,"value":0}],
+                  "post.threshold.level":[{"tick":0,"value":0.55},{"tick":57,"value":0.55}],
+                  "post.threshold.softness":[{"tick":0,"value":0.04},{"tick":57,"value":0.04}],
+                  "post.color.contrast":[{"tick":0,"value":1},{"tick":20,"value":1.7},{"tick":57,"value":1}],
+                  "post.color.saturation":[{"tick":0,"value":1},{"tick":20,"value":0},{"tick":44,"value":0},{"tick":57,"value":1}]
                 }}
                 """;
         return parse(JsonParser.parseString(json).getAsJsonObject());
     }
 
-    private static float clamp01(float value) {
-        return Math.max(0.0F, Math.min(1.0F, value));
-    }
+    private static float clamp01(float value) { return Math.max(0.0F, Math.min(1.0F, value)); }
+    private static float lerp(float from, float to, float amount) { return from + (to - from) * amount; }
 
-    private static float lerp(float from, float to, float amount) {
-        return from + (to - from) * amount;
-    }
+    public record Center(float x, float y) { }
+    private record Module(boolean enabled, String anchor, Center center, Map<String, String> settings) { }
+    private record Keyframe(float tick, float value, Easing easing) { }
 
     private record Curve(List<Keyframe> keys) {
         float sample(float tick) {
@@ -153,8 +238,8 @@ public final class VfxTimelineDefinition {
                 Keyframe right = keys.get(index);
                 if (tick <= right.tick) {
                     Keyframe left = keys.get(index - 1);
-                    float position = clamp01((tick - left.tick) / Math.max(0.0001F,
-                            right.tick - left.tick));
+                    float position = clamp01((tick - left.tick)
+                            / Math.max(0.0001F, right.tick - left.tick));
                     return lerp(left.value, right.value, right.easing.apply(position));
                 }
             }
@@ -162,16 +247,8 @@ public final class VfxTimelineDefinition {
         }
     }
 
-    private record Keyframe(float tick, float value, Easing easing) {
-    }
-
     private enum Easing {
-        LINEAR,
-        HOLD,
-        SMOOTHSTEP,
-        EASE_IN,
-        EASE_OUT,
-        EASE_IN_OUT;
+        LINEAR, HOLD, SMOOTHSTEP, EASE_IN, EASE_OUT, EASE_IN_OUT;
 
         static Easing fromName(String name) {
             return switch (name) {

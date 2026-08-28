@@ -6,30 +6,7 @@
     {
       "name": "yujiancraft:sword_array_impact",
       "intarget": "minecraft:main",
-      "outtarget": "swap",
-      "auxtargets": [
-        {
-          "name": "NoiseSampler",
-          "id": "yujiancraft:impact_noise",
-          "width": 512,
-          "height": 512,
-          "bilinear": true
-        },
-        {
-          "name": "FractureSampler",
-          "id": "yujiancraft:impact_fracture",
-          "width": 512,
-          "height": 512,
-          "bilinear": true
-        },
-        {
-          "name": "InkSampler",
-          "id": "yujiancraft:impact_ink",
-          "width": 512,
-          "height": 512,
-          "bilinear": true
-        }
-      ]
+      "outtarget": "swap"
     },
     {
       "name": "minecraft:blit",

@@ -63,6 +63,13 @@ minecraft {
         configureEach {
             workingDirectory project.file('run')
 
+            if ('true'.equalsIgnoreCase(System.getenv('YUJIANCRAFT_VFX_SHADER_TEST'))) {
+                // Production Oculus mixin refmaps use SRG names. Translate them at runtime when
+                // the optional shader stack is loaded inside the named ForgeGradle workspace.
+                property 'mixin.env.remapRefMap', 'true'
+                property 'mixin.env.refMapRemappingFile', file("${buildDir}/createSrgToMcp/output.srg").absolutePath
+            }
+
             // Recommended logging data for a userdev environment
             // The markers can be added/remove as needed separated by commas.
             // "SCAN": For mods scan.
@@ -121,6 +128,9 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+    if ('true'.equalsIgnoreCase(System.getenv('YUJIANCRAFT_VFX_SHADER_TEST'))) {
+        flatDir { dirs 'run/vfx-mods' }
+    }
 }
 
 dependencies {
@@ -130,6 +140,14 @@ dependencies {
     // If the group id is "net.minecraft" and the artifact id is one of ["client", "server", "joined"],
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    // VFX Studio may place optional local shader mods here. ForgeGradle must deobfuscate their
+    // production mappings before a development client can load them. Normal builds and public
+    // users never see this path or gain an Oculus/Embeddium dependency.
+    if ('true'.equalsIgnoreCase(System.getenv('YUJIANCRAFT_VFX_SHADER_TEST'))) {
+        runtimeOnly fg.deobf('dev.yujiancraft.vfxtest:oculus-dev:1')
+        runtimeOnly fg.deobf('dev.yujiancraft.vfxtest:embeddium-dev:1')
+    }
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

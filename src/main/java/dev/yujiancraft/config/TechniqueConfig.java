@@ -34,7 +34,8 @@ public final class TechniqueConfig {
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_EXPANSION;
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_BEAM_SCALE;
     private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_RADIUS;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_DAMAGE_SCALE;
+    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_TARGET_LIMIT;
+    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_LINGER_TICKS;
 
     private static final ForgeConfigSpec.DoubleValue GUARD_REDUCTION;
     private static final ForgeConfigSpec.IntValue GUARD_DURABILITY;
@@ -63,7 +64,7 @@ public final class TechniqueConfig {
         SWORD_ARRAY_RANGE = BUILDER.defineInRange("range", 16.0D, 2.0D, 128.0D);
         SWORD_ARRAY_WIDTH = BUILDER.defineInRange("width", 1.5D, 0.25D, 8.0D);
         SWORD_ARRAY_SPEED = BUILDER.defineInRange("speedPerTick", 1.2D, 0.1D, 6.0D);
-        SWORD_ARRAY_TARGET_LIMIT = BUILDER.defineInRange("targetLimit", 8, 1, 64);
+        SWORD_ARRAY_TARGET_LIMIT = BUILDER.defineInRange("targetLimit", 32, 1, 128);
         SWORD_ARRAY_DAMAGE_SCALE = BUILDER.defineInRange("damageScale", 0.8D, 0.0D, 20.0D);
         SWORD_ARRAY_COOLDOWN = BUILDER.defineInRange("cooldownTicks", 35, 0, 400);
         SWORD_ARRAY_GATHER_TICKS = BUILDER.defineInRange("gatherTicks", 12, 4, 80);
@@ -80,8 +81,15 @@ public final class TechniqueConfig {
         SWORD_ARRAY_FINISHER_SUSTAIN_TICKS = BUILDER.defineInRange("finisherSustainTicks", 32, 8, 120);
         SWORD_ARRAY_FINISHER_EXPANSION = BUILDER.defineInRange("finisherExpansion", 2.25D, 2.25D, 4.0D);
         SWORD_ARRAY_FINISHER_BEAM_SCALE = BUILDER.defineInRange("finisherBeamRadiusScale", 0.92D, 0.92D, 1.2D);
-        SWORD_ARRAY_FINISHER_RADIUS = BUILDER.defineInRange("finisherExplosionRadius", 5.5D, 0.5D, 16.0D);
-        SWORD_ARRAY_FINISHER_DAMAGE_SCALE = BUILDER.defineInRange("finisherDamageScale", 2.4D, 0.0D, 40.0D);
+        SWORD_ARRAY_FINISHER_RADIUS = BUILDER.comment(
+                "Radius of the terrain-safe, explosion-like giant-sword impact.")
+                .defineInRange("finisherImpactRadius", 12.0D, 0.5D, 64.0D);
+        SWORD_ARRAY_FINISHER_TARGET_LIMIT = BUILDER.comment(
+                "Maximum number of entities affected by one giant-sword impact.")
+                .defineInRange("finisherImpactTargetLimit", 64, 1, 256);
+        SWORD_ARRAY_FINISHER_LINGER_TICKS = BUILDER.comment(
+                "How long the landed giant sword remains after the full-screen post effect has ended.")
+                .defineInRange("finisherLingerTicks", 60, 0, 400);
         BUILDER.pop();
 
         BUILDER.push("guard");
@@ -137,7 +145,8 @@ public final class TechniqueConfig {
     public static double swordArrayFinisherExpansion() { return SWORD_ARRAY_FINISHER_EXPANSION.get(); }
     public static double swordArrayFinisherBeamScale() { return SWORD_ARRAY_FINISHER_BEAM_SCALE.get(); }
     public static double swordArrayFinisherRadius() { return SWORD_ARRAY_FINISHER_RADIUS.get(); }
-    public static double swordArrayFinisherDamageScale() { return SWORD_ARRAY_FINISHER_DAMAGE_SCALE.get(); }
+    public static int swordArrayFinisherTargetLimit() { return SWORD_ARRAY_FINISHER_TARGET_LIMIT.get(); }
+    public static int swordArrayFinisherLingerTicks() { return SWORD_ARRAY_FINISHER_LINGER_TICKS.get(); }
     public static double guardReduction() { return GUARD_REDUCTION.get(); }
     public static int guardDurability() { return GUARD_DURABILITY.get(); }
     public static double guardDurabilityPerDamage() { return GUARD_DURABILITY_PER_DAMAGE.get(); }

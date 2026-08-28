@@ -7,7 +7,8 @@ public enum EffectConfigGroup {
     POISON("poison"),
     EXPLOSION("explosion"),
     ARROW_RAIN("arrow_rain"),
-    REFINEMENT("refinement");
+    REFINEMENT("refinement"),
+    FINISHERS("finishers");
 
     private final String serializedName;
 

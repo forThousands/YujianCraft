@@ -14,6 +14,7 @@ import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.combat.TargetLockManager;
 import dev.yujiancraft.combat.ManualGuidanceManager;
 import dev.yujiancraft.combat.technique.ArtifactActionManager;
+import dev.yujiancraft.combat.combo.SwordComboManager;
 import dev.yujiancraft.flight.SwordRidingManager;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.entity.FlyingSwordEntity;
@@ -23,6 +24,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -39,7 +41,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "18";
+    private static final String PROTOCOL = "23";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -126,6 +128,49 @@ public final class ModNetwork {
         CHANNEL.registerMessage(25, SwordArrayFinisherPacket.class,
                 SwordArrayFinisherPacket::encode, SwordArrayFinisherPacket::decode,
                 ModNetwork::handleSwordArrayFinisher, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(26, ActivateSwordArrayPacket.class,
+                ActivateSwordArrayPacket::encode, ActivateSwordArrayPacket::decode,
+                ModNetwork::handleActivateSwordArray, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(27, ToggleSwordArrayStylePacket.class,
+                (message, buffer) -> { }, buffer -> new ToggleSwordArrayStylePacket(),
+                ModNetwork::handleToggleSwordArrayStyle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(28, ToggleComboPacket.class,
+                (message, buffer) -> { }, buffer -> new ToggleComboPacket(),
+                ModNetwork::handleToggleCombo, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(29, ComboAttackPacket.class,
+                ComboAttackPacket::encode, ComboAttackPacket::decode,
+                ModNetwork::handleComboAttack, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(30, ComboStatePacket.class,
+                ComboStatePacket::encode, ComboStatePacket::decode,
+                ModNetwork::handleComboState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    }
+
+    private static void handleToggleCombo(ToggleComboPacket message,
+                                          Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) SwordComboManager.toggle(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleComboAttack(ComboAttackPacket message,
+                                          Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) SwordComboManager.attack(sender, message.targetId(), message.look());
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleComboState(ComboStatePacket message,
+                                         Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ClientComboState.accept(message)));
+        context.setPacketHandled(true);
     }
 
     private static void handleCycleTechnique(CycleTechniquePacket message,
@@ -137,6 +182,47 @@ public final class ModNetwork {
                 SwordSettings settings = FlyingSwordItem.cycleTechnique(sender);
                 sendSettings(sender, settings);
             }
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleActivateSwordArray(ActivateSwordArrayPacket message,
+                                                  Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender == null) return;
+            if (FlyingSwordItem.getSettings(sender).techniqueMode()
+                    != dev.yujiancraft.combat.technique.TechniqueMode.SWORD_ARRAY) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.sword_array.wrong_technique"), true);
+                return;
+            }
+            Entity rawTarget = sender.level().getEntity(message.targetId());
+            LivingEntity target = rawTarget instanceof LivingEntity living ? living : null;
+            double range = FlyingSwordItem.getSettings(sender).crosshairLockRadius();
+            boolean inRange = target != null && sender.distanceToSqr(target)
+                    <= Math.pow(range + target.getBbWidth(), 2.0D);
+            if (!inRange || !FlyingSwordEntity.activateCompleteSwordArray(sender, target)) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.sword_array.not_ready"), true);
+            }
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleToggleSwordArrayStyle(ToggleSwordArrayStylePacket message,
+                                                     Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender == null) return;
+            String key = "YujianCraftSwordArrayStyle";
+            int next = sender.getPersistentData().getInt(key) == 0 ? 1 : 0;
+            sender.getPersistentData().putInt(key, next);
+            sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    next == 0 ? "message.yujiancraft.sword_array.style.tricolor"
+                            : "message.yujiancraft.sword_array.style.gold"), true);
         });
         context.setPacketHandled(true);
     }
@@ -456,6 +542,14 @@ public final class ModNetwork {
                 sustainTicks));
     }
 
+    public static void sendComboState(ServerPlayer player, boolean active, int stage,
+                                      long startGameTick, int durationTicks, int targetId,
+                                      Vec3 playerAnchor, Vec3 targetAnchor) {
+        CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+                new ComboStatePacket(player.getId(), active, stage, startGameTick, durationTicks,
+                        targetId, playerAnchor, targetAnchor));
+    }
+
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
         Vec3 safeDirection = direction.lengthSqr() < 1.0E-6D
                 ? new Vec3(0.0D, 1.0D, 0.0D) : direction.normalize();
@@ -497,6 +591,70 @@ public final class ModNetwork {
     }
 
     public record CycleTechniquePacket() {
+    }
+
+    public record ActivateSwordArrayPacket(int targetId) {
+        private static void encode(ActivateSwordArrayPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.targetId);
+        }
+
+        private static ActivateSwordArrayPacket decode(FriendlyByteBuf buffer) {
+            return new ActivateSwordArrayPacket(buffer.readVarInt());
+        }
+    }
+
+    public record ToggleSwordArrayStylePacket() {
+    }
+
+    public record ToggleComboPacket() { }
+
+    public record ComboAttackPacket(int targetId, float lookX, float lookY, float lookZ) {
+        public ComboAttackPacket(int targetId, Vec3 look) {
+            this(targetId, (float) look.x, (float) look.y, (float) look.z);
+        }
+
+        public Vec3 look() { return new Vec3(lookX, lookY, lookZ); }
+
+        private static void encode(ComboAttackPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.targetId);
+            buffer.writeFloat(message.lookX);
+            buffer.writeFloat(message.lookY);
+            buffer.writeFloat(message.lookZ);
+        }
+
+        private static ComboAttackPacket decode(FriendlyByteBuf buffer) {
+            return new ComboAttackPacket(buffer.readVarInt(), buffer.readFloat(), buffer.readFloat(),
+                    buffer.readFloat());
+        }
+    }
+
+    public record ComboStatePacket(int playerId, boolean active, int stage, long startGameTick,
+                                   int durationTicks, int targetId, Vec3 playerAnchor,
+                                   Vec3 targetAnchor) {
+        private static void encode(ComboStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.playerId);
+            buffer.writeBoolean(message.active);
+            buffer.writeVarInt(message.stage);
+            buffer.writeLong(message.startGameTick);
+            buffer.writeVarInt(message.durationTicks);
+            buffer.writeVarInt(message.targetId);
+            writeVec(buffer, message.playerAnchor);
+            writeVec(buffer, message.targetAnchor);
+        }
+
+        private static ComboStatePacket decode(FriendlyByteBuf buffer) {
+            return new ComboStatePacket(buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(),
+                    buffer.readLong(), buffer.readVarInt(), buffer.readVarInt(), readVec(buffer),
+                    readVec(buffer));
+        }
+
+        private static void writeVec(FriendlyByteBuf buffer, Vec3 value) {
+            buffer.writeDouble(value.x); buffer.writeDouble(value.y); buffer.writeDouble(value.z);
+        }
+
+        private static Vec3 readVec(FriendlyByteBuf buffer) {
+            return new Vec3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+        }
     }
 
     public record TrialCountdownPacket(int seconds) {

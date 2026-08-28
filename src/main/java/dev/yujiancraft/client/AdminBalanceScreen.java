@@ -146,7 +146,7 @@ public final class AdminBalanceScreen extends Screen {
     }
 
     private void buildPresentationControls(int left, int top, int panelWidth) {
-        int pageCount = 4;
+        int pageCount = 7;
         Button category = addRenderableWidget(Button.builder(
                         Component.translatable("screen.yujiancraft.balance.presentation_group_page",
                                 presentationPage + 1, pageCount), button -> { })
@@ -191,7 +191,7 @@ public final class AdminBalanceScreen extends Screen {
             addToggleRow(controlsLeft, top + 75, controlsWidth, "screen.yujiancraft.balance.explosion_module_visual",
                     ClientOptions::explosionModuleVisual, ClientOptions::setExplosionModuleVisual,
                     ClientOptions.DEFAULT_EXPLOSION_MODULE_VISUAL);
-        } else {
+        } else if (presentationPage == 3) {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.yujiancraft.balance.arrow_rain_module_visual",
                     ClientOptions::arrowRainModuleVisual, ClientOptions::setArrowRainModuleVisual,
                     ClientOptions.DEFAULT_ARROW_RAIN_MODULE_VISUAL);
@@ -205,7 +205,78 @@ public final class AdminBalanceScreen extends Screen {
                     "screen.yujiancraft.balance.sword_array_post_effect",
                     ClientOptions::swordArrayPostEffect, ClientOptions::setSwordArrayPostEffect,
                     ClientOptions.DEFAULT_SWORD_ARRAY_POST_EFFECT);
+        } else if (presentationPage == 4) {
+            addToggleRow(controlsLeft, top, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_texture_glow",
+                    ClientOptions::swordArrayTextureGlow, ClientOptions::setSwordArrayTextureGlow,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_TEXTURE_GLOW);
+            addToggleRow(controlsLeft, top + 25, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_flow",
+                    ClientOptions::swordArrayFlow, ClientOptions::setSwordArrayFlow,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_FLOW);
+            addToggleRow(controlsLeft, top + 50, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_spirit_wisps",
+                    ClientOptions::swordArraySpiritWisps, ClientOptions::setSwordArraySpiritWisps,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_SPIRIT_WISPS);
+            addToggleRow(controlsLeft, top + 75, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_volume_mist",
+                    ClientOptions::swordArrayVolumeMist, ClientOptions::setSwordArrayVolumeMist,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_VOLUME_MIST);
+        } else if (presentationPage == 5) {
+            addToggleRow(controlsLeft, top, controlsWidth,
+                    "screen.yujiancraft.balance.sword_array_expansion",
+                    ClientOptions::swordArrayExpansion, ClientOptions::setSwordArrayExpansion,
+                    ClientOptions.DEFAULT_SWORD_ARRAY_EXPANSION);
+            addSwordArrayBrightnessRow(controlsLeft, top + 25, controlsWidth);
+        } else {
+            addToggleRow(controlsLeft, top, controlsWidth,
+                    "screen.yujiancraft.balance.spirit_curtain",
+                    ClientOptions::spiritCurtain, ClientOptions::setSpiritCurtain,
+                    ClientOptions.DEFAULT_SPIRIT_CURTAIN);
+            addToggleRow(controlsLeft, top + 25, controlsWidth,
+                    "screen.yujiancraft.balance.spirit_curtain_flow",
+                    ClientOptions::spiritCurtainFlow, ClientOptions::setSpiritCurtainFlow,
+                    ClientOptions.DEFAULT_SPIRIT_CURTAIN_FLOW);
+            addToggleRow(controlsLeft, top + 50, controlsWidth,
+                    "screen.yujiancraft.balance.spirit_curtain_mist",
+                    ClientOptions::spiritCurtainMist, ClientOptions::setSpiritCurtainMist,
+                    ClientOptions.DEFAULT_SPIRIT_CURTAIN_MIST);
+            addSpiritCurtainDensityRow(controlsLeft, top + 75, controlsWidth);
         }
+    }
+
+    private void addSpiritCurtainDensityRow(int left, int y, int width) {
+        int resetWidth = 46;
+        SpiritCurtainDensity current = ClientOptions.spiritCurtainDensity();
+        Button cycle = addRenderableWidget(Button.builder(Component.translatable(
+                        "screen.yujiancraft.balance.spirit_curtain_density",
+                        Component.translatable(current.translationKey())),
+                        button -> { ClientOptions.setSpiritCurtainDensity(current.next()); buildWidgets(); })
+                .bounds(left, y, width - resetWidth - 3, 20).build());
+        Button reset = addRenderableWidget(Button.builder(
+                        Component.translatable("screen.yujiancraft.config.reset_short"),
+                        button -> { ClientOptions.setSpiritCurtainDensity(
+                                ClientOptions.DEFAULT_SPIRIT_CURTAIN_DENSITY); buildWidgets(); })
+                .bounds(left + width - resetWidth, y, resetWidth, 20).build());
+        editingButtons.add(cycle);
+        editingButtons.add(reset);
+    }
+
+    private void addSwordArrayBrightnessRow(int left, int y, int width) {
+        int resetWidth = 46;
+        SwordArrayBrightness current = ClientOptions.swordArrayBrightness();
+        Button cycle = addRenderableWidget(Button.builder(Component.translatable(
+                        "screen.yujiancraft.balance.sword_array_brightness",
+                        Component.translatable(current.translationKey())),
+                        button -> { ClientOptions.setSwordArrayBrightness(current.next()); buildWidgets(); })
+                .bounds(left, y, width - resetWidth - 3, 20).build());
+        Button reset = addRenderableWidget(Button.builder(
+                        Component.translatable("screen.yujiancraft.config.reset_short"),
+                        button -> { ClientOptions.setSwordArrayBrightness(
+                                ClientOptions.DEFAULT_SWORD_ARRAY_BRIGHTNESS); buildWidgets(); })
+                .bounds(left + width - resetWidth, y, resetWidth, 20).build());
+        editingButtons.add(cycle);
+        editingButtons.add(reset);
     }
 
     private void addToggleRow(int left, int y, int width, String translationKey,

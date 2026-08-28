@@ -16,15 +16,15 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.5`（开发预览 / Development Preview）<br>
+> **当前版本 / Current version:** `0.13.17`（Release）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
 ## 模组简介 / About
 
-御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以灵矿资源和原版锻造语言为基础，加入六柄御器组成的动态阵列、三种索敌方式、六类御器术式、御剑飞行、可逆飞剑模块，以及将其他模组武器、盾牌、工具与钓具炼成“万象御器”的淬灵系统。
+御剑工艺是一个原创的 Minecraft Forge 御剑战斗与制作模组。它以灵矿资源和原版锻造语言为基础，加入六柄御器组成的动态阵列、三种索敌方式、六类御器术式、中近距离五段连势、御剑飞行、可逆飞剑模块，以及将其他模组武器、盾牌、工具与钓具炼成“万象御器”的淬灵系统。
 
-Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around Spirit Ore and vanilla-style progression, it adds six-implement formations, three targeting styles, six Yujian arts, sword riding, reversible modules, and spirit tempering that turns third-party weapons, shields, tools, and fishing implements into Myriad artifacts.
+Yujian Craft is an original flying-sword combat and crafting mod for Minecraft Forge. Built around Spirit Ore and vanilla-style progression, it adds six-implement formations, three targeting styles, six Yujian arts, a five-stage close-range combo stance, sword riding, reversible modules, and spirit tempering that turns third-party weapons, shields, tools, and fishing implements into Myriad artifacts.
 
 ## 剑阵与战斗 / Formations & Combat
 
@@ -76,6 +76,16 @@ When friendly fire and server rules allow it, manual lock can target other playe
 启用御剑飞行后，只要背包中有飞剑，双击空格即可踏剑起飞或落下。承载玩家的飞剑独立于六柄战斗剑阵，不会占用已召唤的战斗飞剑；升降、转向与狭窄空间处理均围绕第三人称操作设计。
 
 Once sword riding is enabled, carrying any flying sword in the inventory is enough to take off or land with a double-tap of Space. The riding sword is separate from the six combat swords, with ascent, descent, steering, and confined-space behaviour designed for third-person play.
+
+## 剑阵终结与御剑连势 / Celestial Sword Array & Combo Stance
+
+`0.13.17` 将剑阵术式重构为完整的高空演出：六柄就绪飞剑升至目标上空，鎏金或三华阵盘持续旋转、追踪并降下环形剑气，最终召下一柄继承当前飞剑模型、剑罡和核心外观的巨大飞剑。落地伤害与范围由服务端配置，后处理使用专用识别信号区分剑阵、天空和太阳；亮度、扩张、粒子雾等可在开发者选项中比较。按 `H` 可直接对准索敌范围内目标发动，无需先建立持久锁定；`Ctrl+K` 切换剑阵形态。
+
+Version `0.13.17` rebuilds Sword Array as a complete celestial performance. Six ready swords occupy stations over the target while a Gilded or Tricolour seal rotates, tracks and rains ring-shaped sword-qi, ending with a colossal sword that inherits the active item model, aura and installed-core visuals. Impact damage and radius are server-configurable. A dedicated signal channel separates the array from sky and sun during post-processing, while brightness, expansion and atmosphere remain optional developer comparisons. Aim at a valid target and press `H` without establishing a persistent lock; `Ctrl+K` switches the seal style.
+
+按 `X` 可在六器展开时进入御剑连势。五段普攻依次完成左右交叉穿刺、近身环斩、后撤蓄势六剑齐发与加速巨剑终结；输入缓冲允许玩家提前点击下一段，软目标选择优先准心附近敌人。连势渲染使用客户端同帧轨迹重建以消除移动拖行，伤害和终结倍率仍只由服务端裁决。
+
+Press `X` with all six implements deployed to enter Yujian Combo Stance. Five attacks chain left/right cross-piercing, a close circular sweep, a retreat-and-charge six-sword release, and an accelerated giant-sword finisher. Input buffering accepts the next click before the current animation ends, while soft targeting favours enemies near the crosshair. Client-side same-frame path reconstruction keeps the formation attached cleanly during movement; damage and finisher multipliers remain server-authoritative.
 
 ## 飞剑工作台与模块 / Flying Sword Workbench & Modules
 
@@ -132,7 +142,7 @@ An implement's nature selects its art whenever the array deploys: blades default
 | --- | --- |
 | **穿刺 / Piercing** | 保留经典单次出击、持续穿刺与神识御剑 / Classic sorties, relentless piercing, and Spirit Sword Guidance |
 | **环斩 / Circling Sweep** | 六器高速环绕多周，按可见轨迹进行近身范围攻击 / Six implements complete several fast visible circuits for close-range area attacks |
-| **剑阵 / Sword Array** | 实剑同步俯冲，巨大高空光带剑阵持续追随目标并降下环形剑气；尾刀以约 3 秒的“白热蓄势—纯黑断柱—局部扩张—全白峰值—水墨残留—不规则复色”演出收束，目标提前死亡也不会中断 / Real implements plunge together while a huge elevated light-band array follows its target and rains ring-shaped waves; its ~3-second finisher moves through white-hot charge, a sustained pure-black broken-pillar frame, partial expansion, full white, ink-wash residue, and an irregular colour return even after an early kill |
+| **剑阵 / Sword Array** | 六器全部就绪后展开鎏金或三华高空阵盘，持续降下环形剑气并以继承当前飞剑外观的巨剑镇落；目标提前死亡也会完成演出 / Requires all six implements, forms a Gilded or Tricolour celestial seal, rains ring-shaped sword-qi and ends with a colossal copy of the current flying sword even after an early kill |
 | **万象护阵 / Myriad Guard** | 按来向格挡并反伤，耐久随承受伤害增加，装配核心会传递给攻击者 / Directional interception reflects scaled damage, pays scaled durability, and passes installed core effects to the attacker |
 | **役器 / Spirit Toolcraft** | 每次 `G` 派出下一件就绪御器，最多六件并发采掘，速度与掉落遵循原版工具规则 / Every `G` dispatches the next ready implement; up to six jobs follow vanilla tool rules |
 | **灵钓 / Spirit Fishing** | 可直接瞄准水面连续派出六件钓具，收获直接返回背包 / Aim at water and dispatch up to six concurrent fishing implements; loot returns to inventory |
@@ -188,18 +198,21 @@ Spirit Tempering Table: place a smithing table in the centre, Spirit Crystals on
 
 ## 快速开始 / Quick Start
 
-1. 合成任意基础飞剑，主手持有并右键召唤六柄飞剑；再次右键收回。<br>
-   Craft any base flying sword, hold it in the main hand, and right-click to summon six swords; right-click again to recall them.
+1. 合成任意基础飞剑，主手持有后按 `V` 展开或收回六柄飞剑。<br>
+   Craft any base flying sword, hold it in the main hand, then press `V` to deploy or recall six swords.
 2. 默认准心锁定模式下，将准心指向生物并左键锁定。<br>
    In the default Crosshair Lock mode, aim at a creature and left-click to lock it.
-3. 按 `Ctrl+R` 切换阵型；按 `Ctrl+I` 打开设置并选择御器术式。役器或灵钓术式下，准心指向方块或水域后按 `G`。<br>
-   Press `Ctrl+R` to change formation and `Ctrl+I` to select a Yujian art. In Toolcraft or Spirit Fishing, aim at a block or water and press `G`.
-4. 在设置中启用御剑飞行后，背包中有飞剑时双击空格起飞或落下。<br>
+3. 按 `Ctrl+R` 切换阵型，按 `Ctrl+J` 切换术式；剑阵术式对准目标按 `H`，役器或灵钓对准方块/水域按 `G`。<br>
+   Press `Ctrl+R` to change formation and `Ctrl+J` to cycle arts. Aim and press `H` for Sword Array or `G` for Toolcraft/Spirit Fishing.
+4. 六器展开时按 `X` 进入御剑连势，连续左键衔接五段攻击。<br>
+   With all six implements deployed, press `X` for Combo Stance and chain five attacks with left click.
+5. 在设置中启用御剑飞行后，背包中有飞剑时双击空格起飞或落下。<br>
    Enable Sword Riding in settings, carry a flying sword, and double-tap Space to take off or land.
-5. 可选：在淬灵台中融合一个外部模组武器与一柄本模组飞剑，按 `V` 使用万象飞剑剑阵。<br>
+6. 可选：在淬灵台中融合一个外部模组器物与一柄本模组飞剑，完成试锋后按 `V` 使用万象飞剑。<br>
    Optional: temper a third-party weapon with one native flying sword, then press `V` to command its Myriad formation.
 
-以上均为默认按键，可在 Minecraft 的“选项 → 控制 → 按键绑定”中修改。All keys are rebindable under Minecraft **Options → Controls → Key Binds**.
+完整默认键位：`V` 展开/收回、`Ctrl+R` 阵型、`Ctrl+I` 设置、`Ctrl+J` 术式、`H` 剑阵、`Ctrl+K` 剑阵形态、`X` 连势、`G` 役器/灵钓。以上均可在 Minecraft 的“选项 → 控制 → 按键绑定”中修改。<br>
+Default bindings: `V` deploy/recall, `Ctrl+R` formation, `Ctrl+I` settings, `Ctrl+J` art, `H` Sword Array, `Ctrl+K` array style, `X` Combo Stance, and `G` Toolcraft/Fishing. All are rebindable under Minecraft **Options → Controls → Key Binds**.
 
 ## 安装与兼容 / Installation & Compatibility
 

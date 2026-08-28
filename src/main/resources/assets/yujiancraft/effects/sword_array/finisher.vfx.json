@@ -1,0 +1,1138 @@
+{
+  "schemaVersion": 2,
+  "id": "yujiancraft:sword_array_finisher",
+  "displayName": "剑阵术式·终式",
+  "ticksPerSecond": 20,
+  "durationTicks": 57,
+  "phases": [
+    {
+      "id": "charge",
+      "label": "蓄势",
+      "startTick": 0,
+      "endTick": 10,
+      "color": "#28788a"
+    },
+    {
+      "id": "hold",
+      "label": "凝滞",
+      "startTick": 10,
+      "endTick": 18,
+      "color": "#576281"
+    },
+    {
+      "id": "expand",
+      "label": "迸发",
+      "startTick": 18,
+      "endTick": 25,
+      "color": "#946351"
+    },
+    {
+      "id": "sustain",
+      "label": "镇落与回色",
+      "startTick": 25,
+      "endTick": 57,
+      "color": "#535b73"
+    }
+  ],
+  "worldStyle": {
+    "preset": "custom",
+    "brightness": 0.72,
+    "upperLayers": 3,
+    "upperRadiusStep": 0.14,
+    "upperHeightStep": 2.8,
+    "upperThickness": 0.1,
+    "haloStrength": 0.68,
+    "fragmentStrength": 0.58,
+    "orbitSwordScale": 4.8,
+    "groundLayers": 2,
+    "groundRadiusStep": 0.18,
+    "groundThickness": 0.06,
+    "shellEnabled": false,
+    "shellLayers": 2,
+    "shellSpacing": 0.12,
+    "shellOpacityFalloff": 0.48,
+    "shellBrightnessFalloff": 0.78,
+    "expandedScale": 1,
+    "beamShape": "column",
+    "beamWidth": 0.72,
+    "giantSwordScale": 22.5,
+    "giantSwordDescentTicks": 7,
+    "innerTint": "#e7b008",
+    "middleTint": "#bcefc9",
+    "outerTint": "#54e2c8",
+    "groundTint": "#72cfc9",
+    "shellTint": "#b8e7ee"
+  },
+  "modules": {
+    "camera": {
+      "label": "镜头冲击",
+      "enabled": true,
+      "order": 0,
+      "parameters": {
+        "yaw": {
+          "label": "水平震幅",
+          "track": "camera.yaw",
+          "min": 0,
+          "max": 4,
+          "step": 0.01,
+          "unit": "°",
+          "enabled": true,
+          "required": false
+        },
+        "pitch": {
+          "label": "垂直震幅",
+          "track": "camera.pitch",
+          "min": 0,
+          "max": 4,
+          "step": 0.01,
+          "unit": "°",
+          "enabled": true,
+          "required": false
+        },
+        "roll": {
+          "label": "翻滚震幅",
+          "track": "camera.roll",
+          "min": 0,
+          "max": 5,
+          "step": 0.01,
+          "unit": "°",
+          "enabled": true,
+          "required": false
+        },
+        "fov": {
+          "label": "FOV 冲击",
+          "track": "camera.fov",
+          "min": -20,
+          "max": 20,
+          "step": 0.1,
+          "unit": "°",
+          "enabled": true,
+          "required": false
+        },
+        "frequency": {
+          "label": "震动频率",
+          "track": "camera.frequency",
+          "min": 0,
+          "max": 40,
+          "step": 0.1,
+          "unit": "Hz",
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "distortion": {
+      "label": "空间扭曲",
+      "enabled": true,
+      "order": 10,
+      "anchor": "beamImpact",
+      "center": [
+        0.5,
+        0.58
+      ],
+      "parameters": {
+        "strength": {
+          "label": "扭曲强度",
+          "track": "post.distortion.strength",
+          "min": 0,
+          "max": 1,
+          "step": 0.001,
+          "enabled": true,
+          "required": false
+        },
+        "radius": {
+          "label": "冲击半径",
+          "track": "post.distortion.radius",
+          "min": 0,
+          "max": 1.5,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "width": {
+          "label": "波带宽度",
+          "track": "post.distortion.width",
+          "min": 0.01,
+          "max": 0.5,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "radialBlur": {
+      "label": "径向模糊",
+      "enabled": true,
+      "order": 20,
+      "anchor": "beamImpact",
+      "center": [
+        0.5,
+        0.58
+      ],
+      "parameters": {
+        "strength": {
+          "label": "拖影强度",
+          "track": "post.radialBlur.strength",
+          "min": 0,
+          "max": 0.12,
+          "step": 0.0005,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "chromatic": {
+      "label": "色散",
+      "enabled": true,
+      "order": 30,
+      "anchor": "beamImpact",
+      "center": [
+        0.5,
+        0.58
+      ],
+      "parameters": {
+        "strength": {
+          "label": "RGB 分离",
+          "track": "post.chromatic.strength",
+          "min": 0,
+          "max": 0.04,
+          "step": 0.0002,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "blur": {
+      "label": "镜像边缘模糊",
+      "enabled": true,
+      "order": 40,
+      "parameters": {
+        "strength": {
+          "label": "模糊半径",
+          "track": "post.blur.strength",
+          "min": 0,
+          "max": 8,
+          "step": 0.05,
+          "unit": "px",
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "colorGrade": {
+      "label": "色调与曝光",
+      "enabled": true,
+      "order": 50,
+      "parameters": {
+        "exposure": {
+          "label": "曝光",
+          "track": "post.color.exposure",
+          "min": -4,
+          "max": 4,
+          "step": 0.01,
+          "unit": "EV",
+          "enabled": true,
+          "required": false
+        },
+        "contrast": {
+          "label": "对比度",
+          "track": "post.color.contrast",
+          "min": 0,
+          "max": 3,
+          "step": 0.01,
+          "enabled": true,
+          "required": false
+        },
+        "saturation": {
+          "label": "饱和度",
+          "track": "post.color.saturation",
+          "min": 0,
+          "max": 2,
+          "step": 0.01,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "thresholdFlash": {
+      "label": "黑白阈值闪",
+      "enabled": true,
+      "order": 60,
+      "parameters": {
+        "amount": {
+          "label": "混合量",
+          "track": "post.threshold.amount",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "threshold": {
+          "label": "亮度阈值",
+          "track": "post.threshold.level",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "softness": {
+          "label": "灰阶过渡",
+          "track": "post.threshold.softness",
+          "min": 0,
+          "max": 0.3,
+          "step": 0.002,
+          "enabled": true,
+          "required": false
+        },
+        "invert": {
+          "label": "负片量",
+          "track": "post.threshold.invert",
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "enabled": true,
+          "required": false
+        },
+        "whiteout": {
+          "label": "全白反闪",
+          "track": "post.threshold.whiteout",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "isolation": {
+          "label": "剑阵识别隔离",
+          "track": "post.threshold.isolation",
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "enabled": true,
+          "required": false
+        },
+        "signalFeather": {
+          "label": "识别边缘宽容度",
+          "track": "post.threshold.signalFeather",
+          "min": 0.005,
+          "max": 0.35,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "flowFlash": {
+      "label": "流光反相闪",
+      "enabled": false,
+      "order": 65,
+      "anchor": "beamImpact",
+      "center": [
+        0.5,
+        0.58
+      ],
+      "settings": {
+        "highlightColor": "#000000",
+        "shadowColor": "#ffffff"
+      },
+      "parameters": {
+        "amount": {
+          "label": "效果混合量",
+          "track": "post.flowFlash.amount",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "required": true,
+          "enabled": true
+        },
+        "invertIntensity": {
+          "label": "反相效果强度",
+          "track": "post.flowFlash.invertIntensity",
+          "min": 0,
+          "max": 2,
+          "step": 0.01,
+          "enabled": true,
+          "required": false
+        },
+        "transitionStart": {
+          "label": "过渡起始亮度",
+          "track": "post.flowFlash.transitionStart",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "transitionRange": {
+          "label": "亮度过渡范围",
+          "track": "post.flowFlash.transitionRange",
+          "min": 0.001,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "invertAmount": {
+          "label": "明暗反转量",
+          "track": "post.flowFlash.invertAmount",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "flowStrength": {
+          "label": "径向流纹强度",
+          "track": "post.flowFlash.flowStrength",
+          "min": 0,
+          "max": 0.8,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "flowScale": {
+          "label": "流纹密度",
+          "track": "post.flowFlash.flowScale",
+          "min": 1,
+          "max": 24,
+          "step": 0.1,
+          "enabled": true,
+          "required": false
+        },
+        "flowSpeed": {
+          "label": "向外流速",
+          "track": "post.flowFlash.flowSpeed",
+          "min": -5,
+          "max": 5,
+          "step": 0.05,
+          "enabled": true,
+          "required": false
+        },
+        "flowSharpness": {
+          "label": "流纹边缘柔度",
+          "track": "post.flowFlash.flowSharpness",
+          "min": 0,
+          "max": 0.8,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "flowEnabled": {
+          "label": "放射流纹开关",
+          "track": "post.flowFlash.flowEnabled",
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "grain": {
+      "label": "肌理与颗粒",
+      "enabled": true,
+      "order": 70,
+      "parameters": {
+        "strength": {
+          "label": "颗粒强度",
+          "track": "post.grain.strength",
+          "min": 0,
+          "max": 0.5,
+          "step": 0.002,
+          "enabled": true,
+          "required": false
+        },
+        "scale": {
+          "label": "颗粒尺度",
+          "track": "post.grain.scale",
+          "min": 0.25,
+          "max": 8,
+          "step": 0.05,
+          "enabled": true,
+          "required": false
+        }
+      }
+    },
+    "vignette": {
+      "label": "暗角",
+      "enabled": true,
+      "order": 80,
+      "anchor": "screen",
+      "center": [
+        0.5,
+        0.5
+      ],
+      "parameters": {
+        "strength": {
+          "label": "暗角强度",
+          "track": "post.vignette.strength",
+          "min": 0,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "radius": {
+          "label": "明区半径",
+          "track": "post.vignette.radius",
+          "min": 0.1,
+          "max": 1.2,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        },
+        "softness": {
+          "label": "边缘柔度",
+          "track": "post.vignette.softness",
+          "min": 0.01,
+          "max": 1,
+          "step": 0.005,
+          "enabled": true,
+          "required": false
+        }
+      }
+    }
+  },
+  "tracks": {
+    "world.charge": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 10,
+        "value": 1,
+        "easing": "smoothstep"
+      }
+    ],
+    "world.beamExpansion": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 25,
+        "value": 0.3,
+        "easing": "smoothstep"
+      },
+      {
+        "tick": 29,
+        "value": 1,
+        "easing": "easeIn"
+      }
+    ],
+    "camera.yaw": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 1.4,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 26,
+        "value": 0.25
+      },
+      {
+        "tick": 38,
+        "value": 0
+      }
+    ],
+    "camera.pitch": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 1.8,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 27,
+        "value": 0.3
+      },
+      {
+        "tick": 38,
+        "value": 0
+      }
+    ],
+    "camera.roll": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 1.1,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 27,
+        "value": 0.15
+      },
+      {
+        "tick": 38,
+        "value": 0
+      }
+    ],
+    "camera.fov": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": -6,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 21,
+        "value": 4,
+        "easing": "easeInOut"
+      },
+      {
+        "tick": 28,
+        "value": 0
+      }
+    ],
+    "camera.frequency": [
+      {
+        "tick": 0,
+        "value": 18
+      },
+      {
+        "tick": 57,
+        "value": 18
+      }
+    ],
+    "post.distortion.strength": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 0.9,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 23,
+        "value": 0.18
+      },
+      {
+        "tick": 25,
+        "value": 0.75,
+        "easing": "easeInOut"
+      },
+      {
+        "tick": 34,
+        "value": 0.12
+      },
+      {
+        "tick": 38,
+        "value": 0
+      }
+    ],
+    "post.distortion.radius": [
+      {
+        "tick": 0,
+        "value": 0.08
+      },
+      {
+        "tick": 18,
+        "value": 0.08
+      },
+      {
+        "tick": 28,
+        "value": 1.15,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 57,
+        "value": 1.15
+      }
+    ],
+    "post.distortion.width": [
+      {
+        "tick": 0,
+        "value": 0.07
+      },
+      {
+        "tick": 57,
+        "value": 0.12
+      }
+    ],
+    "post.radialBlur.strength": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 0.055,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 27,
+        "value": 0.018
+      },
+      {
+        "tick": 45,
+        "value": 0
+      }
+    ],
+    "post.chromatic.strength": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 19,
+        "value": 0.018,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 27,
+        "value": 0.006
+      },
+      {
+        "tick": 48,
+        "value": 0
+      }
+    ],
+    "post.blur.strength": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0
+      },
+      {
+        "tick": 20,
+        "value": 2.6,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 28,
+        "value": 1.1
+      },
+      {
+        "tick": 47,
+        "value": 0
+      }
+    ],
+    "post.color.exposure": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 18,
+        "value": 0.8,
+        "easing": "easeIn"
+      },
+      {
+        "tick": 25,
+        "value": -1.1,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 28,
+        "value": 0.65
+      },
+      {
+        "tick": 34,
+        "value": 0
+      }
+    ],
+    "post.color.contrast": [
+      {
+        "tick": 0,
+        "value": 1
+      },
+      {
+        "tick": 18,
+        "value": 1
+      },
+      {
+        "tick": 25,
+        "value": 1.8,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 29,
+        "value": 1.35
+      },
+      {
+        "tick": 34,
+        "value": 1
+      }
+    ],
+    "post.color.saturation": [
+      {
+        "tick": 0,
+        "value": 1
+      },
+      {
+        "tick": 18,
+        "value": 1
+      },
+      {
+        "tick": 25,
+        "value": 0,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 29,
+        "value": 0
+      },
+      {
+        "tick": 34,
+        "value": 1,
+        "easing": "smoothstep"
+      }
+    ],
+    "post.threshold.amount": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 24.5,
+        "value": 0
+      },
+      {
+        "tick": 25,
+        "value": 1,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 29,
+        "value": 1
+      },
+      {
+        "tick": 34,
+        "value": 0,
+        "easing": "smoothstep"
+      }
+    ],
+    "post.threshold.level": [
+      {
+        "tick": 0,
+        "value": 0.55
+      },
+      {
+        "tick": 20,
+        "value": 0.72
+      },
+      {
+        "tick": 32,
+        "value": 0.42
+      },
+      {
+        "tick": 57,
+        "value": 0.55
+      }
+    ],
+    "post.threshold.softness": [
+      {
+        "tick": 0,
+        "value": 0.08
+      },
+      {
+        "tick": 20,
+        "value": 0.015
+      },
+      {
+        "tick": 42,
+        "value": 0.11
+      },
+      {
+        "tick": 57,
+        "value": 0.08
+      }
+    ],
+    "post.threshold.invert": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 24.5,
+        "value": 0
+      },
+      {
+        "tick": 25.1,
+        "value": 1,
+        "easing": "hold"
+      },
+      {
+        "tick": 25.8,
+        "value": 0,
+        "easing": "hold"
+      },
+      {
+        "tick": 57,
+        "value": 0
+      }
+    ],
+    "post.threshold.whiteout": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 27,
+        "value": 0
+      },
+      {
+        "tick": 29,
+        "value": 1,
+        "easing": "easeIn"
+      },
+      {
+        "tick": 31,
+        "value": 0,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 57,
+        "value": 0
+      }
+    ],
+    "post.flowFlash.amount": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 57,
+        "value": 0
+      }
+    ],
+    "post.flowFlash.invertIntensity": [
+      {
+        "tick": 0,
+        "value": 1
+      },
+      {
+        "tick": 57,
+        "value": 1
+      }
+    ],
+    "post.flowFlash.transitionStart": [
+      {
+        "tick": 0,
+        "value": 0.25
+      },
+      {
+        "tick": 57,
+        "value": 0.25
+      }
+    ],
+    "post.flowFlash.transitionRange": [
+      {
+        "tick": 0,
+        "value": 0.5
+      },
+      {
+        "tick": 57,
+        "value": 0.5
+      }
+    ],
+    "post.flowFlash.invertAmount": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 57,
+        "value": 0
+      }
+    ],
+    "post.flowFlash.flowStrength": [
+      {
+        "tick": 0,
+        "value": 0.18
+      },
+      {
+        "tick": 57,
+        "value": 0.18
+      }
+    ],
+    "post.flowFlash.flowScale": [
+      {
+        "tick": 0,
+        "value": 9
+      },
+      {
+        "tick": 57,
+        "value": 9
+      }
+    ],
+    "post.flowFlash.flowSpeed": [
+      {
+        "tick": 0,
+        "value": 1.4
+      },
+      {
+        "tick": 57,
+        "value": 1.4
+      }
+    ],
+    "post.threshold.isolation": [
+      {
+        "tick": 0,
+        "value": 0.92
+      },
+      {
+        "tick": 57,
+        "value": 0.92
+      }
+    ],
+    "post.threshold.signalFeather": [
+      {
+        "tick": 0,
+        "value": 0.08
+      },
+      {
+        "tick": 57,
+        "value": 0.08
+      }
+    ],
+    "post.flowFlash.flowSharpness": [
+      {
+        "tick": 0,
+        "value": 0.22
+      },
+      {
+        "tick": 57,
+        "value": 0.22
+      }
+    ],
+    "post.flowFlash.flowEnabled": [
+      {
+        "tick": 0,
+        "value": 0
+      },
+      {
+        "tick": 57,
+        "value": 0
+      }
+    ],
+    "post.grain.strength": [
+      {
+        "tick": 0,
+        "value": 0.015
+      },
+      {
+        "tick": 18,
+        "value": 0.03
+      },
+      {
+        "tick": 20,
+        "value": 0.14
+      },
+      {
+        "tick": 43,
+        "value": 0.08
+      },
+      {
+        "tick": 57,
+        "value": 0.015
+      }
+    ],
+    "post.grain.scale": [
+      {
+        "tick": 0,
+        "value": 1.5
+      },
+      {
+        "tick": 57,
+        "value": 1.5
+      }
+    ],
+    "post.vignette.strength": [
+      {
+        "tick": 0,
+        "value": 0.08
+      },
+      {
+        "tick": 18,
+        "value": 0.18
+      },
+      {
+        "tick": 20,
+        "value": 0.82,
+        "easing": "easeOut"
+      },
+      {
+        "tick": 43,
+        "value": 0.5
+      },
+      {
+        "tick": 57,
+        "value": 0.08
+      }
+    ],
+    "post.vignette.radius": [
+      {
+        "tick": 0,
+        "value": 0.74
+      },
+      {
+        "tick": 57,
+        "value": 0.74
+      }
+    ],
+    "post.vignette.softness": [
+      {
+        "tick": 0,
+        "value": 0.38
+      },
+      {
+        "tick": 57,
+        "value": 0.38
+      }
+    ]
+  }
+}

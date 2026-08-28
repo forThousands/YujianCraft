@@ -52,6 +52,7 @@ import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -79,6 +80,8 @@ public final class FlyingSwordEntity extends Entity {
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DATA_TECHNIQUE =
             SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_COMBO_CONTROLLED =
+            SynchedEntityData.defineId(FlyingSwordEntity.class, EntityDataSerializers.BOOLEAN);
 
     private UUID ownerId;
     private UUID targetId;
@@ -289,6 +292,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.define(DATA_RIDE_SUPPORT, false);
         entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
         entityData.define(DATA_TECHNIQUE, TechniqueMode.PIERCE.ordinal());
+        entityData.define(DATA_COMBO_CONTROLLED, false);
     }
 
     @Override
@@ -348,6 +352,7 @@ public final class FlyingSwordEntity extends Entity {
             case TOOL_WORK -> tickToolWork(owner, serverLevel);
             case FISHING_APPROACH -> tickFishingApproach(owner);
             case FISHING_WAIT -> tickFishingWait(owner, serverLevel);
+            case COMBO -> tickComboControl();
         }
         entityData.set(DATA_DOCKED, phase == FlightPhase.DOCKED);
     }
@@ -368,9 +373,29 @@ public final class FlyingSwordEntity extends Entity {
         setDeltaMovement(Vec3.ZERO);
         faceDirection(FormationGeometry.dockDirection(owner, dock, formationMode), 0.34D);
 
+        if (techniqueMode == TechniqueMode.SWORD_ARRAY) {
+            // Sword Array is a deliberate formation command. Readiness is checked when the player
+            // presses its activation key; a cooled formation must never auto-fire by itself.
+            return;
+        }
         if (attackCooldown <= 0 && !techniqueMode.isPassive()) {
             findTarget(owner).ifPresent(target -> beginAttack(owner, target));
         }
+    }
+
+    /** Sword-array is one formation action, not six independent attacks. The lowest-slot sword
+     * coordinates an atomic release only after all six implements are docked and cooled down. */
+    public static boolean activateCompleteSwordArray(ServerPlayer owner, LivingEntity target) {
+        if (target == null || !target.isAlive() || !SwordTargetingRules.canActivelyTarget(owner, target)) return false;
+        List<FlyingSwordEntity> formation = FlyingSwordItem.getOwnedFormationSwords(owner).stream()
+                .filter(sword -> !sword.rideSupport && sword.techniqueMode == TechniqueMode.SWORD_ARRAY)
+                .sorted(Comparator.comparingInt(FlyingSwordEntity::getFormationSlot))
+                .toList();
+        if (formation.size() != FlyingSwordItem.FORMATION_SIZE) return false;
+        if (formation.stream().anyMatch(sword -> sword.phase != FlightPhase.DOCKED
+                || sword.attackCooldown > 0)) return false;
+        formation.forEach(sword -> sword.beginAttack(owner, target));
+        return true;
     }
 
     private void tickRideSupport(ServerPlayer owner) {
@@ -781,6 +806,63 @@ public final class FlyingSwordEntity extends Entity {
         return successfulHit;
     }
 
+    /** Gives the player-level combo coordinator exclusive, server-authoritative control. */
+    public void enterComboControl() {
+        if (rideSupport) return;
+        targetId = null;
+        fixedWaypoint = null;
+        swordArrayAnchor = null;
+        techniqueHits.clear();
+        setDeltaMovement(Vec3.ZERO);
+        phase = FlightPhase.COMBO;
+        entityData.set(DATA_COMBO_CONTROLLED, true);
+    }
+
+    /** Applies an authored combo pose without the inertia used by ordinary long-range flight. */
+    public void applyComboPose(Vec3 desiredPosition, Vec3 facingDirection) {
+        if (rideSupport || desiredPosition == null) return;
+        if (phase != FlightPhase.COMBO) enterComboControl();
+        Vec3 previous = position();
+        setPos(desiredPosition);
+        setDeltaMovement(desiredPosition.subtract(previous));
+        faceDirection(safeDirection(facingDirection, getDeltaMovement().lengthSqr() > 1.0E-6D
+                ? getDeltaMovement() : new Vec3(0.0D, 0.0D, 1.0D)), 1.0D);
+    }
+
+    /** Performs one logical combo hit while preserving this sword's modules and durability rules. */
+    public boolean applyComboHit(ServerPlayer owner, LivingEntity target, double damageScale,
+                                 boolean consumeDurability) {
+        return target != null && target.isAlive()
+                && damageLivingTarget(owner, target, damageScale, consumeDurability);
+    }
+
+    /** Returns to formation after combo ownership ends. */
+    public void leaveComboControl(int cooldownTicks) {
+        if (phase != FlightPhase.COMBO) return;
+        entityData.set(DATA_COMBO_CONTROLLED, false);
+        postDockCooldown = Math.max(0, cooldownTicks);
+        beginReturn();
+    }
+
+    private void tickComboControl() {
+        // Position and orientation are written by SwordComboManager once per server tick.
+        // Deliberately do not integrate velocity here; this keeps six fast implements frame-tight.
+        setDeltaMovement(Vec3.ZERO);
+    }
+
+    /**
+     * Vanilla remote-entity interpolation chases each position packet for several ticks. That is
+     * appropriate for mobs, but makes a sword authored relative to a moving owner look tethered.
+     * Combo poses already arrive every tick, so one network step plus normal frame interpolation
+     * keeps them attached without sacrificing sub-tick smoothness.
+     */
+    @Override
+    public void lerpTo(double x, double y, double z, float yaw, float pitch,
+                       int increments, boolean teleport) {
+        super.lerpTo(x, y, z, yaw, pitch,
+                entityData.get(DATA_COMBO_CONTROLLED) ? 1 : increments, teleport);
+    }
+
     public void consumeSourceDurability(ServerPlayer owner, int requestedCost) {
         ItemStack stack = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
         if (stack.isEmpty()) stack = FlyingSwordItem.findFlyingSword(owner, material, series);
@@ -957,8 +1039,31 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
     }
 
+    /** Client-only presentation form used by the VFX field renderer. It deliberately carries the
+     * complete item, glow mode and module mask so colossal copies use the exact flying-sword
+     * rendering pipeline rather than an approximate item plus a generic shell. */
+    public void configureTechniqueVisualPreview(ItemStack stack, int slot, float pitch, float yaw,
+                                                int visualTick) {
+        configureVisualPreview(stack);
+        visualPreview = true;
+        phase = FlightPhase.SWORD_ARRAY;
+        formationSlot = Math.floorMod(slot, FlyingSwordItem.FORMATION_SIZE);
+        tickCount = Math.max(0, visualTick);
+        setXRot(pitch);
+        xRotO = pitch;
+        setYRot(yaw);
+        yRotO = yaw;
+        entityData.set(DATA_DOCKED, false);
+        entityData.set(DATA_FORMATION_SLOT, formationSlot);
+        entityData.set(DATA_TECHNIQUE, TechniqueMode.SWORD_ARRAY.ordinal());
+    }
+
     public boolean isVisualRideSupport() {
         return entityData.get(DATA_RIDE_SUPPORT);
+    }
+
+    public boolean isVisualComboControlled() {
+        return entityData.get(DATA_COMBO_CONTROLLED);
     }
 
     public UUID getSourceBindingId() {
@@ -993,6 +1098,9 @@ public final class FlyingSwordEntity extends Entity {
         displayStack = tag.contains("DisplayItem") ? ItemStack.of(tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
         int phaseIndex = Mth.clamp(tag.getInt("FlightPhase"), 0, FlightPhase.values().length - 1);
         phase = FlightPhase.values()[phaseIndex];
+        // Combo sessions intentionally are not persisted; after a restart each implement safely
+        // resumes its ordinary return path instead of waiting for an absent player coordinator.
+        if (phase == FlightPhase.COMBO) phase = FlightPhase.RETURN_RALLY;
         entityData.set(DATA_FORMATION_SLOT, formationSlot);
         entityData.set(DATA_FORMATION_MODE, formationMode.ordinal());
         entityData.set(DATA_DOCKED, phase == FlightPhase.DOCKED);
@@ -1005,6 +1113,7 @@ public final class FlyingSwordEntity extends Entity {
         entityData.set(DATA_RIDE_SUPPORT, rideSupport);
         entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
         entityData.set(DATA_TECHNIQUE, techniqueMode.ordinal());
+        entityData.set(DATA_COMBO_CONTROLLED, false);
         if (tag.contains("ManualLaunchX")) {
             manualLaunchDirection = new Vec3(tag.getDouble("ManualLaunchX"), tag.getDouble("ManualLaunchY"),
                     tag.getDouble("ManualLaunchZ"));

@@ -2,6 +2,7 @@ package dev.yujiancraft.client;
 
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.network.ModNetwork;
+import dev.yujiancraft.client.vfx.VfxLivePreviewBridge;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
@@ -9,6 +10,9 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import dev.yujiancraft.item.FlyingSwordItem;
+import dev.yujiancraft.entity.FlyingSwordEntity;
+import dev.yujiancraft.combat.technique.TechniqueMode;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -29,11 +33,20 @@ public final class ClientInputEvents {
     private static int manualAimSyncCountdown;
     private static boolean blockAttackHandledThisTick;
     private static long lastJumpPressMillis = -1L;
+    private static boolean heldFlyingSwordLastTick;
+    private static boolean formationPresentLastTick;
+    private static TechniqueMode techniqueLastTick;
+    private static int pendingSwordArrayHintTicks = -1;
     private ClientInputEvents() {
     }
 
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
+        if (VfxLivePreviewBridge.isAvailable()) {
+            while (ClientModEvents.RELEASE_VFX_CURSOR.consumeClick()) {
+                VfxLivePreviewBridge.toggleCursorCapture();
+            }
+        }
         while (ClientModEvents.SWITCH_FORMATION.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleFormationPacket());
         }
@@ -51,6 +64,16 @@ public final class ClientInputEvents {
         }
         while (ClientModEvents.SWITCH_TECHNIQUE.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.CycleTechniquePacket());
+        }
+        while (ClientModEvents.ACTIVATE_SWORD_ARRAY.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ActivateSwordArrayPacket(
+                    findSwordArrayTargetId(Minecraft.getInstance())));
+        }
+        while (ClientModEvents.SWITCH_SWORD_ARRAY_STYLE.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordArrayStylePacket());
+        }
+        while (ClientModEvents.TOGGLE_COMBO.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleComboPacket());
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
@@ -91,6 +114,14 @@ public final class ClientInputEvents {
     public static void onInteractionInput(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
         boolean optimizedAim = OptimizedThirdPersonController.refreshScreenCenterHit();
+        if (event.isAttack() && minecraft.player != null && ClientComboState.isLocalActive()) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+            int targetId = findSwordArrayTargetId(minecraft);
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ComboAttackPacket(targetId,
+                    minecraft.player.getViewVector(1.0F)));
+            return;
+        }
         if (event.isAttack() && minecraft.player != null
                 && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
             boolean directLivingAttack = minecraft.hitResult instanceof EntityHitResult entityHit
@@ -165,6 +196,7 @@ public final class ClientInputEvents {
         } else {
             manualAimSyncCountdown = 0;
         }
+        updateContextualGuidance(minecraft);
     }
 
     private static void handleOptimizedBlockAttack(Minecraft minecraft, BlockHitResult hit) {
@@ -217,6 +249,73 @@ public final class ClientInputEvents {
         return entityHit == null ? -1 : entityHit.getEntity().getId();
     }
 
+    /** H is a direct aim-and-cast gesture: it never mutates the persistent target lock. */
+    private static int findSwordArrayTargetId(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null) return -1;
+        double range = Math.max(2.0D, ClientSettingsState.get().crosshairLockRadius());
+        if (ClientOptions.optimizedThirdPerson()
+                && minecraft.options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK) {
+            OptimizedThirdPersonController.refreshScreenCenterHit();
+            int targetId = OptimizedThirdPersonController.getAimedLivingEntityId();
+            Entity aimed = minecraft.level.getEntity(targetId);
+            if (aimed != null && isPotentialSwordTarget(minecraft.player, aimed)
+                    && minecraft.player.distanceToSqr(aimed) <= Math.pow(range + aimed.getBbWidth(), 2.0D)) {
+                return targetId;
+            }
+        }
+        Vec3 start = minecraft.gameRenderer.getMainCamera().getPosition();
+        Vec3 direction = minecraft.player.getViewVector(1.0F).normalize();
+        Vec3 end = start.add(direction.scale(range));
+        BlockHitResult blockHit = minecraft.level.clip(new ClipContext(start, end,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player));
+        double maximumDistance = blockHit.getType() == HitResult.Type.MISS
+                ? start.distanceToSqr(end) : start.distanceToSqr(blockHit.getLocation());
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(minecraft.player, start, end,
+                new AABB(start, end).inflate(1.0D),
+                entity -> isPotentialSwordTarget(minecraft.player, entity), maximumDistance);
+        return entityHit == null ? -1 : entityHit.getEntity().getId();
+    }
+
+    private static void updateContextualGuidance(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
+        boolean holding = FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem());
+        boolean formation = false;
+        for (Entity entity : minecraft.level.entitiesForRendering()) {
+            if (entity instanceof FlyingSwordEntity sword && sword.isOwnedBy(minecraft.player)
+                    && sword.isFormationSword()) {
+                formation = true;
+                break;
+            }
+        }
+        TechniqueMode technique = ClientSettingsState.get().techniqueMode();
+        if (holding && !heldFlyingSwordLastTick) {
+            minecraft.player.displayClientMessage(Component.translatable(
+                    "message.yujiancraft.guide.toggle_formation",
+                    ClientModEvents.TOGGLE_SWORDS.getTranslatedKeyMessage()), true);
+        } else if (formation && !formationPresentLastTick) {
+            minecraft.player.displayClientMessage(Component.translatable(
+                    "message.yujiancraft.combo.guide",
+                    ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage()), true);
+            pendingSwordArrayHintTicks = technique == TechniqueMode.SWORD_ARRAY ? 50 : -1;
+        } else if (formation && technique == TechniqueMode.SWORD_ARRAY
+                && techniqueLastTick != TechniqueMode.SWORD_ARRAY) {
+            minecraft.player.displayClientMessage(Component.translatable(
+                    "message.yujiancraft.guide.sword_array_cast",
+                    ClientModEvents.ACTIVATE_SWORD_ARRAY.getTranslatedKeyMessage()), true);
+            pendingSwordArrayHintTicks = -1;
+        } else if (formation && technique == TechniqueMode.SWORD_ARRAY
+                && pendingSwordArrayHintTicks > 0 && --pendingSwordArrayHintTicks == 0) {
+            minecraft.player.displayClientMessage(Component.translatable(
+                    "message.yujiancraft.guide.sword_array_cast",
+                    ClientModEvents.ACTIVATE_SWORD_ARRAY.getTranslatedKeyMessage()), true);
+            pendingSwordArrayHintTicks = -1;
+        }
+        if (!formation) pendingSwordArrayHintTicks = -1;
+        heldFlyingSwordLastTick = holding;
+        formationPresentLastTick = formation;
+        techniqueLastTick = technique;
+    }
+
     private static boolean isPotentialSwordTarget(Player owner, Entity entity) {
         if (!(entity instanceof LivingEntity living) || living == owner
                 || !living.isAlive() || living.isSpectator()) return false;
@@ -228,6 +327,11 @@ public final class ClientInputEvents {
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientManualGuidanceState.setGuiding(false);
         ClientSwordRidingState.setActive(false);
+        ClientComboState.clear();
         lastJumpPressMillis = -1L;
+        heldFlyingSwordLastTick = false;
+        formationPresentLastTick = false;
+        techniqueLastTick = null;
+        pendingSwordArrayHintTicks = -1;
     }
 }

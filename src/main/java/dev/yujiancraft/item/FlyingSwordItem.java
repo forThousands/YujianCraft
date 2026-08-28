@@ -258,9 +258,11 @@ public final class FlyingSwordItem extends SwordItem {
     /** Each deployment begins from the implement's nature instead of inheriting another item's art. */
     private static SwordSettings defaultSettingsForSummon(ServerPlayer player, ItemStack stack) {
         SwordSettings current = SwordSettings.read(stack);
-        dev.yujiancraft.combat.technique.TechniqueMode recommended = WanxiangSwordData.isTempered(stack)
+        dev.yujiancraft.combat.technique.TechniqueMode recommended = SwordSettings.hasStoredSettings(stack)
+                ? current.techniqueMode()
+                : (WanxiangSwordData.isTempered(stack)
                 ? WanxiangWeaponCatalog.defaultTechnique(player.server, stack)
-                : WanxiangSwordData.role(stack).recommendedTechnique();
+                : WanxiangSwordData.role(stack).recommendedTechnique());
         if (WanxiangSwordData.isTempered(stack)) {
             recommended = WanxiangWeaponCatalog.effectiveTechnique(player.server, stack, recommended);
         }

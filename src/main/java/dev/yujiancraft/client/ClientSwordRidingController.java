@@ -3,6 +3,9 @@ package dev.yujiancraft.client;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
@@ -21,7 +24,15 @@ import java.util.UUID;
 public final class ClientSwordRidingController {
     private static final double ASCEND_SPEED = 0.32D;
     private static final double DESCEND_SPEED = -0.28D;
+    private static final HumanoidModel.ArmPose ARMS_DOWN = HumanoidModel.ArmPose.create(
+            "YUJIAN_RIDING_ARMS_DOWN", false, (model, entity, arm) -> {
+                var part = arm == HumanoidArm.RIGHT ? model.rightArm : model.leftArm;
+                part.xRot = 0.0F;
+                part.yRot = 0.0F;
+                part.zRot = 0.0F;
+            });
     private static final Map<UUID, Float> SAVED_WALK_SPEEDS = new HashMap<>();
+    private static final Map<UUID, Float> SAVED_ATTACK_TIMES = new HashMap<>();
 
     private ClientSwordRidingController() {
     }
@@ -50,12 +61,21 @@ public final class ClientSwordRidingController {
         // previous stride for one render frame.
         player.walkAnimation.setSpeed(0.0F);
         player.walkAnimation.update(0.0F, 1.0F);
+        PlayerRenderer renderer = event.getRenderer();
+        SAVED_ATTACK_TIMES.put(player.getUUID(), renderer.getModel().attackTime);
+        renderer.getModel().attackTime = 0.0F;
+        if (!ClientComboState.shouldRenderPose(player.getId())) {
+            renderer.getModel().rightArmPose = ARMS_DOWN;
+            renderer.getModel().leftArmPose = ARMS_DOWN;
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
         Float previousSpeed = SAVED_WALK_SPEEDS.remove(event.getEntity().getUUID());
         if (previousSpeed != null) event.getEntity().walkAnimation.setSpeed(previousSpeed);
+        Float previousAttackTime = SAVED_ATTACK_TIMES.remove(event.getEntity().getUUID());
+        if (previousAttackTime != null) event.getRenderer().getModel().attackTime = previousAttackTime;
     }
 
     private static boolean isSwordRiding(Player player) {

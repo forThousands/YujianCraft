@@ -1,161 +1,180 @@
 #version 150
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D NoiseSampler;
-uniform sampler2D FractureSampler;
-uniform sampler2D InkSampler;
-
 uniform vec2 InSize;
-uniform vec2 BeamBottom;
-uniform vec2 BeamTop;
-uniform float BeamRadius;
-uniform float Charge;
-uniform float DarkAmount;
-uniform float Expansion;
-uniform float WhiteAmount;
-uniform float InkAmount;
-uniform float Recovery;
-uniform float Distortion;
-uniform float ChromaAmount;
+uniform vec2 DistortionCenter;
+uniform vec2 RadialCenter;
+uniform vec2 ChromaCenter;
+uniform vec2 VignetteCenter;
+uniform vec2 FlowCenter;
+uniform vec2 SignalBottom;
+uniform vec2 SignalTop;
+uniform float DistortionStrength;
+uniform float DistortionRadius;
+uniform float DistortionWidth;
+uniform float RadialBlurStrength;
+uniform float ChromaticStrength;
+uniform float BlurStrength;
+uniform float Exposure;
+uniform float Contrast;
+uniform float Saturation;
+uniform float ThresholdAmount;
+uniform float ThresholdLevel;
+uniform float ThresholdSoftness;
+uniform float InvertAmount;
+uniform float WhiteoutAmount;
+uniform float ThresholdIsolation;
+uniform float SignalRadius;
+uniform float SignalBeamWidth;
+uniform float SignalFeather;
+uniform float FlowFlashAmount;
+uniform float FlowInvertIntensity;
+uniform float FlowTransitionStart;
+uniform float FlowTransitionRange;
+uniform float FlowInvertAmount;
+uniform float FlowStrength;
+uniform float FlowScale;
+uniform float FlowSpeed;
+uniform float FlowSharpness;
+uniform float FlowEnabled;
+uniform vec3 FlowHighlightColor;
+uniform vec3 FlowShadowColor;
+uniform float GrainStrength;
+uniform float GrainScale;
+uniform float VignetteStrength;
+uniform float VignetteRadius;
+uniform float VignetteSoftness;
 uniform float Time;
 
 in vec2 texCoord;
 out vec4 fragColor;
 
-mat2 rotate2d(float angle) {
-    float sine = sin(angle);
-    float cosine = cos(angle);
-    return mat2(cosine, -sine, sine, cosine);
+float hash(vec2 point) {
+    return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453123);
 }
 
-float segmentDistance(vec2 point, vec2 start, vec2 end, out float along) {
-    vec2 segment = end - start;
-    float denominator = max(dot(segment, segment), 0.000001);
-    along = clamp(dot(point - start, segment) / denominator, 0.0, 1.0);
-    return length(point - (start + segment * along));
+float noise(vec2 point) {
+    vec2 cell = floor(point);
+    vec2 local = fract(point);
+    local = local * local * (3.0 - 2.0 * local);
+    return mix(mix(hash(cell), hash(cell + vec2(1.0, 0.0)), local.x),
+            mix(hash(cell + vec2(0.0, 1.0)), hash(cell + vec2(1.0)), local.x), local.y);
+}
+
+vec2 mirrorUv(vec2 uv) {
+    return 1.0 - abs(mod(uv, 2.0) - 1.0);
+}
+
+vec2 aspectPoint(vec2 uv) {
+    return vec2((uv.x - 0.5) * InSize.x / max(InSize.y, 1.0) + 0.5, uv.y);
+}
+
+vec3 scene(vec2 uv) {
+    return texture(DiffuseSampler, mirrorUv(uv)).rgb;
 }
 
 void main() {
-    float aspect = InSize.x / max(InSize.y, 1.0);
-    vec2 point = vec2(texCoord.x * aspect, texCoord.y);
-    vec2 bottom = vec2(BeamBottom.x * aspect, BeamBottom.y);
-    vec2 top = vec2(BeamTop.x * aspect, BeamTop.y);
-    vec2 segment = top - bottom;
-    vec2 tangent = segment / max(length(segment), 0.0001);
-    vec2 normal = vec2(-tangent.y, tangent.x);
-    vec2 uvNormal = vec2(normal.x / aspect, normal.y);
-    vec2 impactCentre = mix(bottom, top, 0.16);
+    vec2 uv = texCoord;
 
-    vec2 noiseUv = fract(texCoord * vec2(1.63, 1.21) + vec2(Time * 0.019, -Time * 0.013));
-    vec3 noise = texture(NoiseSampler, noiseUv).rgb;
-    vec2 fractureUv = (point - impactCentre) * rotate2d(0.16 + Time * 0.004) * 0.88 + vec2(0.5);
-    vec3 fracture = texture(FractureSampler, fractureUv).rgb;
-    vec2 inkUv = fract(texCoord * vec2(1.07, 0.93) + vec2(Time * 0.003, -Time * 0.002));
-    vec3 ink = texture(InkSampler, inkUv).rgb;
+    // A world-anchored radial wave alters UVs before every later sample.
+    vec2 aspectUv = aspectPoint(uv);
+    vec2 aspectCentre = aspectPoint(DistortionCenter);
+    vec2 delta = aspectUv - aspectCentre;
+    float distanceToCentre = length(delta);
+    float band = exp(-pow((distanceToCentre - DistortionRadius)
+            / max(0.008, DistortionWidth), 2.0));
+    vec2 direction = delta / max(distanceToCentre, 0.0001);
+    uv += vec2(direction.x * InSize.y / max(InSize.x, 1.0), direction.y)
+            * band * DistortionStrength * 0.055;
 
-    vec2 radial = point - impactCentre;
-    float radialDistance = length(radial);
-    vec2 radialDirection = radial / max(radialDistance, 0.0001);
-    float shockBand = exp(-pow((radialDistance - (0.10 + Expansion * 0.74)) * 11.0, 2.0));
-    float broadTear = (ink.r - 0.5) * 0.018 + (ink.g - 0.34) * 0.012;
-    vec2 warpedUv = texCoord + vec2(radialDirection.x / aspect, radialDirection.y)
-            * (shockBand * Distortion * 0.068 + broadTear * Distortion);
-    warpedUv += vec2(noise.b - 0.5, noise.g - 0.5) * Distortion * 0.008;
-    warpedUv = clamp(warpedUv, vec2(0.001), vec2(0.999));
+    // Eight samples form a bounded radial drag. The module is off when strength is zero.
+    vec2 radialStep = (RadialCenter - uv) * RadialBlurStrength;
+    vec3 colour = vec3(0.0);
+    for (int index = 0; index < 8; index++) {
+        float position = float(index) / 7.0;
+        colour += scene(uv + radialStep * position);
+    }
+    colour /= 8.0;
 
-    float along;
-    float beamDistance = segmentDistance(point, bottom, top, along);
-    vec2 closestPoint = mix(bottom, top, along);
-    float signedSide = dot(point - closestPoint, normal);
-    float endEnergy = pow(max(0.0, sin(3.14159265 * along)), 0.24);
-    float ragged = (noise.r - 0.5) * 0.34 + (noise.g - 0.5) * 0.18
-            + (ink.b - 0.5) * 0.16;
-    float localRadius = max(0.0015, BeamRadius * (0.88 + ragged));
-    float beamBody = 1.0 - smoothstep(localRadius * 0.76, localRadius * 1.16, beamDistance);
-    float beamCore = 1.0 - smoothstep(localRadius * 0.10, localRadius * 0.38, beamDistance);
-    beamBody *= 0.60 + 0.40 * endEnergy;
+    vec2 chromaDirection = uv - ChromaCenter;
+    chromaDirection /= max(length(chromaDirection), 0.001);
+    vec2 chromaOffset = chromaDirection * ChromaticStrength;
+    vec3 separated = vec3(scene(uv + chromaOffset).r, scene(uv).g,
+            scene(uv - chromaOffset).b);
+    colour = mix(colour, separated, clamp(ChromaticStrength * 100.0, 0.0, 1.0));
 
-    // Continuous exponential falloff produces a welding-like glare without concentric bands.
-    float outside = max(0.0, beamDistance - localRadius * 0.72);
-    float nearHalo = exp(-outside / max(0.006, localRadius * 0.72));
-    float wideHalo = exp(-outside / max(0.022, localRadius * 2.55));
-    float glare = clamp(beamBody + nearHalo * 0.54 + wideHalo * 0.20, 0.0, 1.0);
-    float chargeGlow = clamp(glare * (0.16 + Charge * 0.84), 0.0, 1.0);
-
-    // Large blocks and vertical tears punch readable voids through the pillar. Hairline cracks
-    // are intentionally excluded here; they made the former full-screen frame look dirty.
-    float blockField = ink.r * 0.66 + ink.b * 0.22 + noise.r * 0.12;
-    float broadHole = smoothstep(0.55, 0.69, blockField);
-    float columnHole = smoothstep(0.38, 0.70, ink.g + (noise.b - 0.5) * 0.14);
-    float hole = clamp(max(broadHole * 0.72, columnHole * 0.94), 0.0, 1.0);
-    float brokenBeam = beamBody * (1.0 - hole * 0.90);
-    float brokenCore = beamCore * (1.0 - hole * 0.76);
-    float pillarWhite = clamp(max(brokenCore, brokenBeam * (0.74 + noise.g * 0.26)), 0.0, 1.0);
-
-    // RGB separation is confined to a discontinuous high-contrast rim, so it reads as optical
-    // dispersion instead of making the entire game blurry.
-    float rimDistance = abs(beamDistance - localRadius * 0.98);
-    float rim = exp(-pow(rimDistance / max(0.003, localRadius * 0.15), 2.0));
-    float rimBreak = smoothstep(0.43, 0.61,
-            noise.b * 0.58 + ink.b * 0.34 + fracture.g * 0.08);
-    vec3 rimColour = signedSide >= 0.0
-            ? vec3(1.0, 0.10, 0.015)
-            : vec3(0.02, 0.30, 1.0);
-    vec3 chromaFringe = rimColour * rim * rimBreak * ChromaAmount;
-
-    float chromaShift = ChromaAmount * (0.0014 + rim * 0.0028);
-    vec3 scene;
-    scene.r = texture(DiffuseSampler, clamp(warpedUv + uvNormal * chromaShift,
-            vec2(0.001), vec2(0.999))).r;
-    scene.g = texture(DiffuseSampler, warpedUv).g;
-    scene.b = texture(DiffuseSampler, clamp(warpedUv - uvNormal * chromaShift,
-            vec2(0.001), vec2(0.999))).b;
-
-    vec3 chargedScene = mix(scene, vec3(1.0), chargeGlow * (1.0 - DarkAmount));
-
-    // The impact image is genuinely black outside the broken pillar. The colour fringe is the
-    // only chroma deliberately retained during this beat.
-    vec3 impactImage = vec3(pillarWhite);
-    impactImage += chromaFringe * (1.0 - pillarWhite);
-    vec3 colour = mix(chargedScene, clamp(impactImage, 0.0, 1.0), DarkAmount);
-
-    // White grows from the pillar through an irregular front. Only the last part becomes a true
-    // full-white frame, rather than lifting the entire screen as soon as expansion begins.
-    if (WhiteAmount > 0.001) {
-        float expandedRadius = localRadius * (1.05 + WhiteAmount * 2.40);
-        float expandedPillar = 1.0 - smoothstep(expandedRadius * 0.72,
-                expandedRadius * 1.14, beamDistance);
-        float whiteSeed = ink.b * 0.52 + ink.r * 0.28 + noise.r * 0.20;
-        float irregularFront = smoothstep(0.82 - WhiteAmount * 0.88,
-                0.91 - WhiteAmount * 0.88, whiteSeed);
-        float partialWhite = clamp(max(expandedPillar, irregularFront * WhiteAmount)
-                * WhiteAmount, 0.0, 1.0);
-        float fullWhite = smoothstep(0.91, 0.995, WhiteAmount);
-        colour = mix(colour, vec3(1.0), max(partialWhite, fullWhite));
+    // One-pass mirrored blur is intentionally bounded for predictable finisher cost.
+    vec2 pixelRadius = vec2(max(BlurStrength, 0.0)) / max(InSize, vec2(1.0));
+    if (BlurStrength > 0.001) {
+        vec3 blurred = scene(uv) * 0.28;
+        blurred += (scene(uv + vec2(pixelRadius.x, 0.0))
+                + scene(uv - vec2(pixelRadius.x, 0.0))) * 0.12;
+        blurred += (scene(uv + vec2(0.0, pixelRadius.y))
+                + scene(uv - vec2(0.0, pixelRadius.y))) * 0.12;
+        blurred += (scene(uv + pixelRadius) + scene(uv - pixelRadius)) * 0.06;
+        blurred += (scene(uv + vec2(pixelRadius.x, -pixelRadius.y))
+                + scene(uv + vec2(-pixelRadius.x, pixelRadius.y))) * 0.06;
+        colour = mix(colour, blurred, clamp(BlurStrength / 4.0, 0.0, 1.0));
     }
 
-    // After the white frame, broad quantised fields form ink-wash black, grey and white masses.
-    // Grey transitions remain visible at boundaries instead of reducing the frame to binary noise.
-    if (InkAmount > 0.001) {
-        float inkField = ink.b * 0.48 + ink.r * 0.34 + noise.r * 0.18;
-        float inkTone = smoothstep(0.18, 0.31, inkField) * 0.24
-                + smoothstep(0.37, 0.51, inkField) * 0.31
-                + smoothstep(0.61, 0.75, inkField) * 0.45;
-        inkTone = max(inkTone, pillarWhite * (0.70 + noise.g * 0.30));
-        colour = mix(colour, vec3(clamp(inkTone, 0.0, 1.0)), InkAmount);
-    }
+    colour *= exp2(Exposure);
+    colour = (colour - 0.5) * Contrast + 0.5;
+    float luminance = dot(colour, vec3(0.2126, 0.7152, 0.0722));
+    colour = mix(vec3(luminance), colour, Saturation);
+    colour = mix(colour, vec3(1.0) - colour, InvertAmount);
 
-    // Colour returns through broad ink islands. The pillar stays white-hot during the reveal but
-    // fades before the post chain ends, preventing a one-frame pop back to normal gameplay.
-    if (Recovery > 0.001) {
-        float revealField = ink.b * 0.62 + noise.r * 0.38;
-        float returnMask = smoothstep(0.92 - Recovery, 1.12 - Recovery, revealField);
-        returnMask *= smoothstep(0.0, 0.08, Recovery);
-        colour = mix(colour, scene, returnMask);
-        float remainingEnergy = 1.0 - smoothstep(0.55, 1.0, Recovery);
-        colour = mix(colour, vec3(1.0), clamp((brokenCore * 0.92 + nearHalo * 0.24)
-                * remainingEnergy, 0.0, 1.0));
-    }
+    // Threshold is a reusable black/white module, not a pre-authored mask sequence.
+    luminance = dot(colour, vec3(0.2126, 0.7152, 0.0722));
+    float monochrome = smoothstep(ThresholdLevel - ThresholdSoftness,
+            ThresholdLevel + ThresholdSoftness, luminance);
+    vec2 signalPoint = aspectPoint(uv);
+    vec2 signalBottom = aspectPoint(SignalBottom);
+    vec2 signalTop = aspectPoint(SignalTop);
+    vec2 signalAxis = signalTop - signalBottom;
+    float along = clamp(dot(signalPoint - signalBottom, signalAxis)
+            / max(dot(signalAxis, signalAxis), 0.0001), 0.0, 1.0);
+    float signalDistance = length(signalPoint - mix(signalBottom, signalTop, along));
+    float beamSignal = 1.0 - smoothstep(SignalBeamWidth,
+            SignalBeamWidth + max(0.002, SignalFeather), signalDistance);
+    float arrayDistance = length(signalPoint - signalTop);
+    float arraySignal = 1.0 - smoothstep(SignalRadius,
+            SignalRadius + max(0.002, SignalFeather), arrayDistance);
+    float signalMask = max(beamSignal, arraySignal);
+    monochrome *= mix(1.0, signalMask, clamp(ThresholdIsolation, 0.0, 1.0));
+    colour = mix(colour, vec3(monochrome), ThresholdAmount);
+    colour = mix(colour, vec3(1.0), WhiteoutAmount);
+
+    // A procedural, centre-out luminance transition inspired by dual-colour flash compositors.
+    // It is resolution independent and avoids a fixed mask that would only fit one camera shot.
+    vec2 flowPoint = aspectPoint(uv) - aspectPoint(FlowCenter);
+    float flowRadius = length(flowPoint);
+    float flowAngle = atan(flowPoint.y, flowPoint.x);
+    float flowNoise = noise(vec2(flowAngle * 1.7 + Time * 0.11,
+            flowRadius * FlowScale - Time * FlowSpeed));
+    float radialMotion = flowRadius * 5.0 - Time * FlowSpeed;
+    float angularStreak = sin(flowAngle * FlowScale + flowNoise * 3.5 + radialMotion) * 0.5 + 0.5;
+    float flowWave = mix(0.5, smoothstep(0.42, 0.78, angularStreak), FlowEnabled);
+    float boundary = (flowWave - 0.5) * FlowStrength
+            + (flowNoise - 0.5) * FlowStrength * 0.8;
+    float flowLuminance = dot(colour, vec3(0.2126, 0.7152, 0.0722));
+    float mapped = smoothstep(FlowTransitionStart + boundary - FlowSharpness * 0.5,
+            FlowTransitionStart + FlowTransitionRange + boundary + FlowSharpness * 0.5,
+            flowLuminance);
+    mapped = mix(mapped, 1.0 - mapped, clamp(FlowInvertAmount, 0.0, 1.0));
+    vec3 flowColour = mix(FlowShadowColor, FlowHighlightColor, mapped);
+    float flowingAmount = clamp(FlowFlashAmount * FlowInvertIntensity
+            * (0.72 + 0.28 * flowWave), 0.0, 1.0);
+    colour = mix(colour, flowColour, flowingAmount);
+
+    float grain = (hash(gl_FragCoord.xy / max(0.25, GrainScale)
+            + floor(Time * 40.0)) - 0.5) * GrainStrength;
+    colour += grain;
+
+    vec2 vignettePoint = aspectPoint(uv) - aspectPoint(VignetteCenter);
+    float vignetteDistance = length(vignettePoint);
+    float vignette = smoothstep(VignetteRadius,
+            VignetteRadius + max(0.001, VignetteSoftness), vignetteDistance);
+    colour *= 1.0 - vignette * VignetteStrength;
 
     fragColor = vec4(clamp(colour, 0.0, 1.0), 1.0);
 }
