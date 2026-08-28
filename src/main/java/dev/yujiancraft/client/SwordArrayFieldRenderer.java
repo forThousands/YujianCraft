@@ -63,10 +63,6 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         renderTexturedCelestialSeal(field, style, material, age, ringRadius,
                 poseStack, buffers);
 
-        if (ClientOptions.spiritCurtain()) {
-            renderSpiritCurtainField(field, age, finisherAge, poseStack, buffers);
-        }
-
         renderArraySwords(field, style, ringRadius, age, partialTick, poseStack, buffers);
 
         if (finisherAge >= 0.0F) {
@@ -131,13 +127,6 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
                                 arrayTexture(variant, layer, "glow"), true)),
                         poseStack.last(), planeRadius * 1.035F,
                         255, 255, 255, glowAlpha);
-            }
-            if (ClientOptions.swordArrayFlow()) {
-                float flowPulse = 0.62F + 0.38F * Mth.sin(age * 0.31F + index * 1.73F);
-                drawTexturedPlane(buffers.getBuffer(SpiritRenderStates.textured(
-                                arrayTexture(variant, layer, "flow"), true)),
-                        poseStack.last(), planeRadius * 1.004F,
-                        255, 255, 255, Math.round(178.0F * flowPulse * brightnessProfile));
             }
             poseStack.popPose();
         }
