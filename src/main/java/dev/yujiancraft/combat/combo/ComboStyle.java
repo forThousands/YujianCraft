@@ -8,30 +8,27 @@ import java.util.Locale;
  */
 public enum ComboStyle {
     FLOWING_BALANCE("flowing_balance", "combo_style.yujiancraft.flowing_balance",
-            flowingStages(false), false, false, false, false),
+            flowingStages(false), false, false, false),
     FOURFOLD_BALANCE("fourfold_balance", "combo_style.yujiancraft.fourfold_balance",
-            fourfoldStages(false), false, false, false, false),
+            fourfoldStages(false), false, false, false),
     MOUNTAIN_STRIDE("mountain_stride", "combo_style.yujiancraft.mountain_stride",
-            mountainStages(true, false, true), false, false, false, true),
+            mountainStages(true, false, true), false, false, true),
     SWORD_SHADOW_SWIFT("sword_shadow_swift", "combo_style.yujiancraft.sword_shadow_swift",
-            shadowStages(true), true, false, false, true);
+            shadowStages(true), true, false, true);
 
     private final String id;
     private final String translationKey;
     private final ComboStageDefinition[] stages;
     private final boolean targetSuppression;
-    private final boolean persistentAureole;
     private final boolean particlesOnlyWarp;
     private final boolean heavyFinisher;
 
     ComboStyle(String id, String translationKey, ComboStageDefinition[] stages,
-               boolean targetSuppression, boolean persistentAureole,
-               boolean particlesOnlyWarp, boolean heavyFinisher) {
+               boolean targetSuppression, boolean particlesOnlyWarp, boolean heavyFinisher) {
         this.id = id;
         this.translationKey = translationKey;
         this.stages = stages;
         this.targetSuppression = targetSuppression;
-        this.persistentAureole = persistentAureole;
         this.particlesOnlyWarp = particlesOnlyWarp;
         this.heavyFinisher = heavyFinisher;
     }
@@ -52,11 +49,6 @@ public enum ComboStyle {
             if (stages[i].warp() != ComboWarpProfile.NONE) return true;
         }
         return false;
-    }
-
-    /** Aureoles persist for enhanced sets and punctuate the two Sword-Shadow suppression beats. */
-    public boolean showsAureoleAt(int stage) {
-        return persistentAureole || stage == maxStage() || (targetSuppression && stage == 7);
     }
 
     public static ComboStyle byId(String id) {

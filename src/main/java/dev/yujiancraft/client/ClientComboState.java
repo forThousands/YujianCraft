@@ -324,7 +324,7 @@ public final class ClientComboState {
             Vec3 current = entity == null ? state.warpDestination : interpolatedPosition(entity, partialTick);
             visuals.add(new WarpVisual(entry.getKey(), state.playerAnchor, state.warpDestination,
                     current, age, warp.executeTick(), warp == ComboWarpProfile.NONE ? 1.0F : warp.vfxStrength(),
-                    warp.halo(), true, state.stage));
+                    true, state.stage));
         }
         return visuals;
     }
@@ -334,7 +334,7 @@ public final class ClientComboState {
                          ComboStyle style, int stage) { }
 
     public record WarpVisual(int playerId, Vec3 origin, Vec3 destination, Vec3 current,
-                             float age, int executeTick, float strength, boolean halo,
+                             float age, int executeTick, float strength,
                              boolean transition, int stage) { }
 
     private static final class State {

@@ -16,7 +16,7 @@
   · <a href="https://github.com/forThousands/YujianCraft/issues">Issues</a>
 </p>
 
-> **当前版本 / Current version:** `0.13.19`（Release）<br>
+> **当前版本 / Current version:** `0.14.0`（Release）<br>
 > **环境 / Environment:** Minecraft `1.20.1` · Forge `47.4.22` · Java `17` · Client & Server<br>
 > **协议 / License:** [MIT](LICENSE) · 无必需前置模组 / No required third-party dependency
 
@@ -79,9 +79,9 @@ Once sword riding is enabled, carrying any flying sword in the inventory is enou
 
 ## 剑阵终结与御剑连势 / Celestial Sword Array & Combo Stance
 
-`0.13.19` 延续并完善剑阵术式的高空演出：六柄就绪飞剑升至目标上空，鎏金或三华阵盘持续旋转、追踪并降下环形剑气，最终召下一柄继承当前飞剑模型、剑罡和核心外观的巨大飞剑。落地伤害与范围由服务端配置，后处理使用专用识别信号区分剑阵、天空和太阳；亮度、扩张、粒子雾等可在开发者选项中比较。按 `H` 可直接对准索敌范围内目标发动，无需先建立持久锁定；`Ctrl+K` 切换剑阵形态。
+当前版本延续并完善剑阵术式的高空演出：六柄就绪飞剑升至目标上空，鎏金或三华阵盘持续旋转、追踪并降下环形剑气，最终召下一柄继承当前飞剑模型、剑罡和核心外观的巨大飞剑。落地伤害与范围由服务端配置，后处理使用专用识别信号区分剑阵、天空和太阳；亮度、扩张、粒子雾等可在开发者选项中比较。按 `H` 可直接对准索敌范围内目标发动，无需先建立持久锁定；`Ctrl+K` 切换剑阵形态。
 
-Version `0.13.19` continues the complete celestial Sword Array performance. Six ready swords occupy stations over the target while a Gilded or Tricolour seal rotates, tracks and rains ring-shaped sword-qi, ending with a colossal sword that inherits the active item model, aura and installed-core visuals. Impact damage and radius are server-configurable. A dedicated signal channel separates the array from sky and sun during post-processing, while brightness, expansion and atmosphere remain optional developer comparisons. Aim at a valid target and press `H` without establishing a persistent lock; `Ctrl+K` switches the seal style.
+The current release continues the complete celestial Sword Array performance. Six ready swords occupy stations over the target while a Gilded or Tricolour seal rotates, tracks and rains ring-shaped sword-qi, ending with a colossal sword that inherits the active item model, aura and installed-core visuals. Impact damage and radius are server-configurable. A dedicated signal channel separates the array from sky and sun during post-processing, while brightness, expansion and atmosphere remain optional developer comparisons. Aim at a valid target and press `H` without establishing a persistent lock; `Ctrl+K` switches the seal style.
 
 按 `X` 可在六器展开时进入御剑连势。五段普攻依次完成左右交叉穿刺、近身环斩、后撤蓄势六剑齐发与加速巨剑终结；输入缓冲允许玩家提前点击下一段，软目标选择优先准心附近敌人。连势渲染使用客户端同帧轨迹重建以消除移动拖行，伤害和终结倍率仍只由服务端裁决。
 
@@ -92,6 +92,10 @@ Press `X` with all six implements deployed to enter Yujian Combo Stance. Five at
 <p align="center">
   <img src="docs/images/flying-sword-workbench.jpg" alt="飞剑工作台装配界面与实时预览 / Flying Sword Workbench with live preview" width="100%">
 </p>
+
+`0.14.0` 为飞剑工作台、淬灵台和补灵台重绘了统一的 `32×32` 像素贴图：顶面突出飞剑、灵炉与灵晶，侧面则使用更克制的结构和灵火观察窗，避免重复顶面构图。
+
+Version `0.14.0` gives the Flying Sword Workbench, Spirit Tempering Table and Spirit Replenishing Table a unified `32×32` pixel-art set. Their top faces emphasize the sword, refining furnace and spirit crystal, while quieter sides avoid repeating the same top-down composition.
 
 模块可以安装、替换和拆除，拆除时返还材料。界面右侧使用与实战相同的实体渲染管线实时预览；拖动可旋转，滚轮可缩放。三级模块通常按 `1 / 16 / 64` 份材料安装为 I / II / III。
 

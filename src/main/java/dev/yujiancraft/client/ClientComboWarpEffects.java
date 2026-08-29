@@ -17,7 +17,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 
-/** Non-recursive qi silhouettes, destination previews and compact sword-array aureoles. */
+/** Non-recursive qi silhouettes and destination previews for spatial combo transitions. */
 @Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientComboWarpEffects {
     private ClientComboWarpEffects() { }

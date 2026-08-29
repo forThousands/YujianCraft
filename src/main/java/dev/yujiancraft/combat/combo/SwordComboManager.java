@@ -3,7 +3,6 @@ package dev.yujiancraft.combat.combo;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.combat.SwordTargetingRules;
 import dev.yujiancraft.entity.FlyingSwordEntity;
-import dev.yujiancraft.entity.ComboAureoleEntity;
 import dev.yujiancraft.entity.SwordArrayFieldEntity;
 import dev.yujiancraft.config.EffectBalanceConfig;
 import dev.yujiancraft.config.EffectParameter;
@@ -189,13 +188,6 @@ public final class SwordComboManager {
         session.warpApplied = session.style.stage(session.stage).warp() == ComboWarpProfile.NONE;
         session.swords.forEach(FlyingSwordEntity::enterComboControl);
         sendState(player, session, target.getId(), targetPoint);
-        ComboStageDefinition stageDefinition = session.style.stage(session.stage);
-        if (session.style.showsAureoleAt(session.stage) || stageDefinition.warp().halo()) {
-            boolean finisherAureole = session.stage == session.style.maxStage();
-            int lifetime = stageDefinition.durationTicks() + (finisherAureole ? 20 : 0);
-            ComboAureoleEntity.spawn((ServerLevel) player.level(), player, lifetime,
-                    finisherAureole ? 2.05F : 1.82F);
-        }
         boolean forceful = session.style.stage(session.stage).vfx().thresholdAmount() > 0.001F;
         float pitch = forceful
                 ? 1.15F - session.stage * 0.055F : 1.55F - session.stage * 0.08F;

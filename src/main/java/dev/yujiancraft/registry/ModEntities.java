@@ -2,7 +2,6 @@ package dev.yujiancraft.registry;
 
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.FlyingSwordEntity;
-import dev.yujiancraft.entity.ComboAureoleEntity;
 import dev.yujiancraft.entity.SpiritTrialDummyEntity;
 import dev.yujiancraft.entity.SwordArrayQiEntity;
 import dev.yujiancraft.entity.SwordArrayFieldEntity;
@@ -49,15 +48,6 @@ public final class ModEntities {
                     .updateInterval(1)
                     .build(YujianCraft.MOD_ID + ":sword_array_field")
     );
-    public static final RegistryObject<EntityType<ComboAureoleEntity>> COMBO_AUREOLE = ENTITIES.register(
-            "combo_aureole",
-            () -> EntityType.Builder.<ComboAureoleEntity>of(ComboAureoleEntity::new, MobCategory.MISC)
-                    .sized(0.25F, 0.25F)
-                    .clientTrackingRange(128)
-                    .updateInterval(1)
-                    .build(YujianCraft.MOD_ID + ":combo_aureole")
-    );
-
     private ModEntities() {
     }
 

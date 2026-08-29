@@ -12,7 +12,12 @@ import java.util.List;
 public final class YujianGuideScreen extends Screen {
     private static final int PAGE_COUNT = 16;
     private static final int CONTENTS_PAGE = 1;
+    private static final float BOOK_TITLE_SCALE = 1.22F;
+    private static final float PAGE_TITLE_SCALE = 1.16F;
+    private static final float BODY_SCALE = 1.18F;
     private int page;
+    private double bodyScroll;
+    private int bodyMaxScroll;
     private Button previous;
     private Button next;
     private Button contents;
@@ -66,6 +71,8 @@ public final class YujianGuideScreen extends Screen {
 
     private void setPage(int destination) {
         page = Math.max(0, Math.min(PAGE_COUNT - 1, destination));
+        bodyScroll = 0.0D;
+        bodyMaxScroll = 0;
         refreshButtons();
     }
 
@@ -88,20 +95,80 @@ public final class YujianGuideScreen extends Screen {
         graphics.fill(left, top, left + panelWidth, bottom, 0xF11B1720);
         graphics.fill(left + 4, top + 4, left + panelWidth - 4, bottom - 4, 0xFF272130);
         graphics.fill(left + 13, top + 38, left + panelWidth - 13, bottom - 34, 0xFF15151C);
-        graphics.drawCenteredString(font, title, width / 2, top + 12, 0x8DECF3);
+        drawCenteredScaled(graphics, title, width / 2, top + 11, 0x8DECF3, BOOK_TITLE_SCALE);
         graphics.drawCenteredString(font,
                 Component.translatable("screen.yujiancraft.guide.page", page + 1, PAGE_COUNT),
-                width / 2, top + 25, 0xA9A0B5);
-        graphics.drawString(font, Component.translatable(pageTitleKey(page)),
-                left + 22, top + 46, 0xF2E5C4, false);
+                width / 2, top + 27, 0xA9A0B5);
+        drawScaled(graphics, Component.translatable(pageTitleKey(page)),
+                left + 22, top + 45, 0xF2E5C4, PAGE_TITLE_SCALE);
         if (page == CONTENTS_PAGE) {
             graphics.drawString(font, Component.translatable("screen.yujiancraft.guide.contents_hint"),
-                    left + 22, top + 56, 0xA9A0B5, false);
+                    left + 22, top + 59, 0xA9A0B5, false);
         } else {
-            graphics.drawWordWrap(font, pageBody(), left + 22, top + 65,
-                    panelWidth - 44, 0xD8D3DE);
+            renderBody(graphics, left, top, bottom, panelWidth);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void renderBody(GuiGraphics graphics, int left, int top, int bottom, int panelWidth) {
+        int textLeft = left + 22;
+        int textTop = top + 66;
+        int textRight = left + panelWidth - 22;
+        int textBottom = bottom - 36;
+        int viewportHeight = Math.max(1, textBottom - textTop);
+        int wrapWidth = Math.max(80, Math.round((textRight - textLeft) / BODY_SCALE));
+        Component body = pageBody();
+        int contentHeight = Math.round(font.split(body, wrapWidth).size() * font.lineHeight * BODY_SCALE);
+        bodyMaxScroll = Math.max(0, contentHeight - viewportHeight + 2);
+        bodyScroll = Math.max(0.0D, Math.min(bodyScroll, bodyMaxScroll));
+
+        graphics.enableScissor(textLeft, textTop, textRight, textBottom);
+        graphics.pose().pushPose();
+        graphics.pose().scale(BODY_SCALE, BODY_SCALE, 1.0F);
+        graphics.drawWordWrap(font, body,
+                Math.round(textLeft / BODY_SCALE),
+                (int) Math.round((textTop - bodyScroll) / BODY_SCALE),
+                wrapWidth, 0xD8D3DE);
+        graphics.pose().popPose();
+        graphics.disableScissor();
+
+        if (bodyMaxScroll > 0) {
+            int trackTop = textTop;
+            int trackBottom = textBottom;
+            int thumbHeight = Math.max(14,
+                    Math.round((float) viewportHeight * viewportHeight / (viewportHeight + bodyMaxScroll)));
+            int travel = trackBottom - trackTop - thumbHeight;
+            int thumbTop = trackTop + Math.round((float) (bodyScroll / bodyMaxScroll) * travel);
+            graphics.fill(textRight + 6, trackTop, textRight + 8, trackBottom, 0x553F3948);
+            graphics.fill(textRight + 5, thumbTop, textRight + 9, thumbTop + thumbHeight, 0xCC79C8CE);
+        }
+    }
+
+    private void drawCenteredScaled(GuiGraphics graphics, Component text, int centreX, int y,
+                                    int colour, float scale) {
+        graphics.pose().pushPose();
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.drawCenteredString(font, text, Math.round(centreX / scale),
+                Math.round(y / scale), colour);
+        graphics.pose().popPose();
+    }
+
+    private void drawScaled(GuiGraphics graphics, Component text, int x, int y,
+                            int colour, float scale) {
+        graphics.pose().pushPose();
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.drawString(font, text, Math.round(x / scale), Math.round(y / scale), colour, false);
+        graphics.pose().popPose();
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (page != CONTENTS_PAGE && bodyMaxScroll > 0 && delta != 0.0D) {
+            double step = font.lineHeight * BODY_SCALE * 2.0D;
+            bodyScroll = Math.max(0.0D, Math.min(bodyMaxScroll, bodyScroll - delta * step));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private Component pageBody() {
@@ -135,11 +202,11 @@ public final class YujianGuideScreen extends Screen {
     }
 
     private int panelWidth() {
-        return Math.max(300, Math.min(420, width - 30));
+        return Math.max(320, Math.min(520, width - 30));
     }
 
     private int panelHeight() {
-        return Math.max(230, Math.min(300, height - 24));
+        return Math.max(240, Math.min(360, height - 24));
     }
 
     @Override
