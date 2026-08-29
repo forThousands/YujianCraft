@@ -64,10 +64,8 @@ public final class ClientSwordRidingController {
         PlayerRenderer renderer = event.getRenderer();
         SAVED_ATTACK_TIMES.put(player.getUUID(), renderer.getModel().attackTime);
         renderer.getModel().attackTime = 0.0F;
-        if (!ClientComboState.shouldRenderPose(player.getId())) {
-            renderer.getModel().rightArmPose = ARMS_DOWN;
-            renderer.getModel().leftArmPose = ARMS_DOWN;
-        }
+        renderer.getModel().rightArmPose = ARMS_DOWN;
+        renderer.getModel().leftArmPose = ARMS_DOWN;
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

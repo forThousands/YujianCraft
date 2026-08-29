@@ -17,9 +17,14 @@ import java.util.List;
 /** Client-only calligraphy notice and the staged sword-array finisher presentation. */
 public final class ClientTechniqueOverlayState {
     private static final long NOTICE_DURATION_MS = 2400L;
+    private static final long CONTROL_GUIDE_DURATION_MS = 5200L;
     private static final float NOTICE_SCALE = 1.48F;
     private static TechniqueMode technique;
     private static long noticeStartedAt;
+    private static String comboStyleTranslationKey;
+    private static long comboNoticeStartedAt;
+    private static Component[] controlGuide;
+    private static long controlGuideStartedAt;
     private static long finisherStartGameTick = Long.MIN_VALUE;
     private static Vec3 finisherBottom;
     private static Vec3 finisherTop;
@@ -36,6 +41,31 @@ public final class ClientTechniqueOverlayState {
     public static void showTechnique(int ordinal) {
         technique = TechniqueMode.fromOrdinal(ordinal);
         noticeStartedAt = Util.getMillis();
+    }
+
+    public static void showComboStyle(String translationKey) {
+        comboStyleTranslationKey = translationKey;
+        comboNoticeStartedAt = Util.getMillis();
+    }
+
+    /** Shows contextual controls in a dedicated right-side column, independent of the action bar. */
+    public static void showFormationControls(Component comboKey, Component techniqueKey) {
+        controlGuide = new Component[]{
+                Component.translatable("overlay.yujiancraft.guide.combo", comboKey),
+                Component.translatable("overlay.yujiancraft.guide.technique", techniqueKey)
+        };
+        controlGuideStartedAt = Util.getMillis();
+    }
+
+    public static void showComboControls(Component styleKey) {
+        controlGuide = new Component[]{
+                Component.translatable("overlay.yujiancraft.guide.combo_style", styleKey)
+        };
+        controlGuideStartedAt = Util.getMillis();
+    }
+
+    public static void clearControlGuide() {
+        controlGuide = null;
     }
 
     public static void showFinisherFlash(long startGameTick, Vec3 bottom, Vec3 top, float maximumRadius,
@@ -65,6 +95,8 @@ public final class ClientTechniqueOverlayState {
                               int screenWidth, int screenHeight) {
         long now = Util.getMillis();
         renderTechnique(graphics, screenWidth, screenHeight, now);
+        renderComboStyle(graphics, screenWidth, screenHeight, now);
+        renderControlGuide(graphics, screenWidth, screenHeight, now);
     }
 
     private static void renderTechnique(GuiGraphics graphics, int width, int height, long now) {
@@ -74,13 +106,61 @@ public final class ClientTechniqueOverlayState {
             technique = null;
             return;
         }
+        String localized = Component.translatable(technique.translationKey()).getString();
+        renderCalligraphy(graphics, width, height, localized, age, 0.79F);
+    }
+
+    private static void renderComboStyle(GuiGraphics graphics, int width, int height, long now) {
+        if (comboStyleTranslationKey == null) return;
+        long age = now - comboNoticeStartedAt;
+        if (age < 0L || age >= NOTICE_DURATION_MS) {
+            comboStyleTranslationKey = null;
+            return;
+        }
+        renderCalligraphy(graphics, width, height,
+                Component.translatable(comboStyleTranslationKey).getString(), age, 0.84F);
+    }
+
+    private static void renderControlGuide(GuiGraphics graphics, int width, int height, long now) {
+        if (controlGuide == null) return;
+        long age = now - controlGuideStartedAt;
+        if (age < 0L || age >= CONTROL_GUIDE_DURATION_MS) {
+            controlGuide = null;
+            return;
+        }
+        float fade = age < 260L ? age / 260.0F
+                : Math.min(1.0F, (CONTROL_GUIDE_DURATION_MS - age) / 520.0F);
+        int alpha = Math.max(0, Math.min(230, Math.round(230.0F * fade)));
+        Font font = Minecraft.getInstance().font;
+        int maxWidth = 0;
+        for (Component line : controlGuide) maxWidth = Math.max(maxWidth, font.width(line));
+        int right = width - 18;
+        int lineHeight = font.lineHeight + 6;
+        int panelHeight = controlGuide.length * lineHeight + 12;
+        // Keep the controls below the technique/style calligraphy columns, which occupy the
+        // vertical centre on the right. Clamp for short windows so the panel stays on-screen.
+        int top = Math.min(height - panelHeight - 24, Math.max(18, Math.round(height * 0.70F)));
+        int left = right - maxWidth - 18;
+        graphics.fill(left, top - 9, right + 8, top + controlGuide.length * lineHeight + 3,
+                (Math.round(alpha * 0.38F) << 24) | 0x071B22);
+        graphics.fill(right + 5, top - 7, right + 7,
+                top + controlGuide.length * lineHeight,
+                (Math.round(alpha * 0.88F) << 24) | 0x78E8E1);
+        for (int index = 0; index < controlGuide.length; index++) {
+            int color = (alpha << 24) | 0xD9FAF6;
+            graphics.drawString(font, controlGuide[index], left + 9,
+                    top + index * lineHeight, color, false);
+        }
+    }
+
+    private static void renderCalligraphy(GuiGraphics graphics, int width, int height,
+                                          String localized, long age, float horizontalPosition) {
         Minecraft minecraft = Minecraft.getInstance();
         Font font = minecraft.font;
-        String localized = Component.translatable(technique.translationKey()).getString();
         List<String> lines = verticalLines(localized);
         int sourceLineStep = font.lineHeight + 3;
         int totalHeight = Math.round((lines.size() * sourceLineStep - 3) * NOTICE_SCALE);
-        int x = Math.round(width * 0.79F);
+        int x = Math.round(width * horizontalPosition);
         int y = Math.max(18, (height - totalHeight) / 2);
         float fade = age < 240L ? age / 240.0F
                 : Math.min(1.0F, (NOTICE_DURATION_MS - age) / 420.0F);

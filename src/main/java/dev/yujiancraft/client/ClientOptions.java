@@ -39,6 +39,12 @@ public final class ClientOptions {
     public static final boolean DEFAULT_SPIRIT_CURTAIN_MIST = true;
     public static final boolean DEFAULT_WORKBENCH_PREVIEW = true;
     public static final boolean DEFAULT_OPTIMIZED_THIRD_PERSON = true;
+    public static final boolean DEFAULT_COMBO_PRECISE_CAMERA_ASSIST = false;
+    public static final boolean DEFAULT_COMBO_WARP_BLACKOUT = false;
+    public static final boolean DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE = false;
+    /** Exposure is measured in stops: 0 keeps the authored image, -1 halves luminance. */
+    public static final double DEFAULT_GLOBAL_VFX_EXPOSURE = -0.3D;
+    public static final double MAX_GLOBAL_VFX_EXPOSURE = 4.0D;
     public static final SwordGlowBrightness DEFAULT_GLOW_BRIGHTNESS = SwordGlowBrightness.DEFAULT;
     public static final SwordArrayBrightness DEFAULT_SWORD_ARRAY_BRIGHTNESS = SwordArrayBrightness.DEFAULT;
     public static final SpiritCurtainDensity DEFAULT_SPIRIT_CURTAIN_DENSITY = SpiritCurtainDensity.STANDARD;
@@ -50,6 +56,10 @@ public final class ClientOptions {
     private static JsonObject document = defaultsDocument();
     private static boolean showDeveloperOptions;
     private static boolean optimizedThirdPerson;
+    private static boolean comboPreciseCameraAssist;
+    private static boolean comboWarpBlackout;
+    private static boolean comboHighFrequencyShake;
+    private static double globalVfxExposure;
     private static boolean swordRidingEnabled;
     private static boolean flightSound;
     private static boolean swordTrail;
@@ -93,6 +103,12 @@ public final class ClientOptions {
             if (migrateDocument()) saveDocument(path);
             showDeveloperOptions = booleanValue("showDeveloperOptions", false);
             optimizedThirdPerson = booleanValue("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
+            comboPreciseCameraAssist = booleanValue("comboPreciseCameraAssist",
+                    DEFAULT_COMBO_PRECISE_CAMERA_ASSIST);
+            comboWarpBlackout = booleanValue("comboWarpBlackout", DEFAULT_COMBO_WARP_BLACKOUT);
+            comboHighFrequencyShake = booleanValue("comboHighFrequencyShake",
+                    DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE);
+            globalVfxExposure = doubleValue("globalVfxExposure", DEFAULT_GLOBAL_VFX_EXPOSURE);
             swordRidingEnabled = booleanValue("swordRidingEnabled", true);
             flightSound = booleanValue("flightSound", DEFAULT_FLIGHT_SOUND);
             swordTrail = booleanValue("swordTrail", DEFAULT_SWORD_TRAIL);
@@ -125,6 +141,10 @@ public final class ClientOptions {
         } catch (Exception exception) {
             showDeveloperOptions = false;
             optimizedThirdPerson = DEFAULT_OPTIMIZED_THIRD_PERSON;
+            comboPreciseCameraAssist = DEFAULT_COMBO_PRECISE_CAMERA_ASSIST;
+            comboWarpBlackout = DEFAULT_COMBO_WARP_BLACKOUT;
+            comboHighFrequencyShake = DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE;
+            globalVfxExposure = DEFAULT_GLOBAL_VFX_EXPOSURE;
             swordRidingEnabled = true;
             flightSound = DEFAULT_FLIGHT_SOUND;
             swordTrail = DEFAULT_SWORD_TRAIL;
@@ -163,6 +183,11 @@ public final class ClientOptions {
         return optimizedThirdPerson;
     }
 
+    public static boolean comboPreciseCameraAssist() { return comboPreciseCameraAssist; }
+    public static boolean comboWarpBlackout() { return comboWarpBlackout; }
+    public static boolean comboHighFrequencyShake() { return comboHighFrequencyShake; }
+    public static double globalVfxExposure() { return globalVfxExposure; }
+
     public static boolean swordRidingEnabled() { return swordRidingEnabled; }
 
     public static boolean flightSound() { return flightSound; }
@@ -194,6 +219,27 @@ public final class ClientOptions {
     public static synchronized void setOptimizedThirdPerson(boolean enabled) {
         optimizedThirdPerson = enabled;
         setBoolean("optimizedThirdPerson", enabled);
+    }
+
+    public static synchronized void setComboPreciseCameraAssist(boolean enabled) {
+        comboPreciseCameraAssist = enabled;
+        setBoolean("comboPreciseCameraAssist", enabled);
+    }
+
+    public static synchronized void setComboWarpBlackout(boolean enabled) {
+        comboWarpBlackout = enabled;
+        setBoolean("comboWarpBlackout", enabled);
+    }
+
+    public static synchronized void setComboHighFrequencyShake(boolean enabled) {
+        comboHighFrequencyShake = enabled;
+        setBoolean("comboHighFrequencyShake", enabled);
+    }
+
+    public static synchronized void setGlobalVfxExposure(double exposure) {
+        globalVfxExposure = Double.isFinite(exposure)
+                ? Math.min(MAX_GLOBAL_VFX_EXPOSURE, exposure) : DEFAULT_GLOBAL_VFX_EXPOSURE;
+        setDouble("globalVfxExposure", globalVfxExposure);
     }
 
     public static synchronized void setSwordRidingEnabled(boolean enabled) {
@@ -336,6 +382,11 @@ public final class ClientOptions {
         saveOptionDocument();
     }
 
+    private static void setDouble(String key, double value) {
+        document.addProperty(key, value);
+        saveOptionDocument();
+    }
+
     private static void saveOptionDocument() {
         try {
             Files.createDirectories(path().getParent());
@@ -359,11 +410,25 @@ public final class ClientOptions {
                 ? document.get(key).getAsString() : fallback;
     }
 
+    private static double doubleValue(String key, double fallback) {
+        if (!document.has(key) || !document.get(key).isJsonPrimitive()) return fallback;
+        try {
+            double value = document.get(key).getAsDouble();
+            return Double.isFinite(value) ? Math.min(MAX_GLOBAL_VFX_EXPOSURE, value) : fallback;
+        } catch (RuntimeException exception) {
+            return fallback;
+        }
+    }
+
     private static JsonObject defaultsDocument() {
         JsonObject root = new JsonObject();
-        root.addProperty("schemaVersion", 18);
+        root.addProperty("schemaVersion", 22);
         root.addProperty("showDeveloperOptions", false);
         root.addProperty("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
+        root.addProperty("comboPreciseCameraAssist", DEFAULT_COMBO_PRECISE_CAMERA_ASSIST);
+        root.addProperty("comboWarpBlackout", DEFAULT_COMBO_WARP_BLACKOUT);
+        root.addProperty("comboHighFrequencyShake", DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE);
+        root.addProperty("globalVfxExposure", DEFAULT_GLOBAL_VFX_EXPOSURE);
         root.addProperty("swordRidingEnabled", true);
         root.addProperty("flightSound", DEFAULT_FLIGHT_SOUND);
         root.addProperty("swordTrail", DEFAULT_SWORD_TRAIL);
@@ -464,8 +529,38 @@ public final class ClientOptions {
             document.addProperty("schemaVersion", 18);
             changed = true;
         }
+        if (schemaVersion < 19) {
+            document.addProperty("comboPreciseCameraAssist", DEFAULT_COMBO_PRECISE_CAMERA_ASSIST);
+            document.addProperty("schemaVersion", 19);
+            changed = true;
+        }
+        if (schemaVersion < 20) {
+            document.addProperty("comboWarpBlackout", DEFAULT_COMBO_WARP_BLACKOUT);
+            document.addProperty("comboHighFrequencyShake", DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE);
+            document.addProperty("schemaVersion", 20);
+            changed = true;
+        }
+        if (schemaVersion < 21) {
+            document.addProperty("globalVfxExposure", DEFAULT_GLOBAL_VFX_EXPOSURE);
+            document.addProperty("schemaVersion", 21);
+            changed = true;
+        }
+        if (schemaVersion < 22) {
+            // Preserve deliberate tuning, but migrate the former neutral default to the softer
+            // value selected after in-game visual review.
+            double previous = doubleValue("globalVfxExposure", 0.0D);
+            if (Math.abs(previous) < 1.0E-9D) {
+                document.addProperty("globalVfxExposure", DEFAULT_GLOBAL_VFX_EXPOSURE);
+            }
+            document.addProperty("schemaVersion", 22);
+            changed = true;
+        }
         changed |= addBooleanIfMissing("showDeveloperOptions", false);
         changed |= addBooleanIfMissing("optimizedThirdPerson", DEFAULT_OPTIMIZED_THIRD_PERSON);
+        changed |= addBooleanIfMissing("comboPreciseCameraAssist", DEFAULT_COMBO_PRECISE_CAMERA_ASSIST);
+        changed |= addBooleanIfMissing("comboWarpBlackout", DEFAULT_COMBO_WARP_BLACKOUT);
+        changed |= addBooleanIfMissing("comboHighFrequencyShake", DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE);
+        changed |= addDoubleIfMissing("globalVfxExposure", DEFAULT_GLOBAL_VFX_EXPOSURE);
         changed |= addBooleanIfMissing("swordRidingEnabled", true);
         changed |= addBooleanIfMissing("flightSound", DEFAULT_FLIGHT_SOUND);
         changed |= addBooleanIfMissing("swordTrail", DEFAULT_SWORD_TRAIL);
@@ -504,6 +599,12 @@ public final class ClientOptions {
     }
 
     private static boolean addStringIfMissing(String key, String value) {
+        if (document.has(key)) return false;
+        document.addProperty(key, value);
+        return true;
+    }
+
+    private static boolean addDoubleIfMissing(String key, double value) {
         if (document.has(key)) return false;
         document.addProperty(key, value);
         return true;

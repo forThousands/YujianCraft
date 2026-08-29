@@ -1,6 +1,13 @@
 package dev.yujiancraft.client;
 
 import dev.yujiancraft.YujianCraft;
+import dev.yujiancraft.combat.combo.ComboMotionFrame;
+import dev.yujiancraft.combat.combo.ComboMotionMath;
+import dev.yujiancraft.combat.combo.ComboRootMotion;
+import dev.yujiancraft.combat.combo.ComboStageDefinition;
+import dev.yujiancraft.combat.combo.ComboStyle;
+import dev.yujiancraft.combat.combo.ComboVfxProfile;
+import dev.yujiancraft.combat.combo.ComboWarpProfile;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.network.ModNetwork;
 import net.minecraft.Util;
@@ -8,16 +15,19 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-/** Client mirror used only for input interception, pose interpolation and restrained camera assist. */
+/** Client mirror for input, pose interpolation, shared sword reconstruction and local root prediction. */
 @Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientComboState {
     private static final Map<Integer, State> STATES = new HashMap<>();
@@ -35,10 +45,17 @@ public final class ClientComboState {
             assistedStage = -1;
             return;
         }
-        STATES.put(packet.playerId(), new State(true, packet.stage(), packet.startGameTick(),
+        ComboStyle style = ComboStyle.byId(packet.styleId());
+        Minecraft minecraft = Minecraft.getInstance();
+        STATES.put(packet.playerId(), new State(true, style, packet.stage(), packet.startGameTick(),
                 packet.durationTicks(), packet.targetId(), packet.playerAnchor(), packet.targetAnchor(),
+                packet.warpDestination(), packet.warpYaw(),
                 previous == null || !previous.active ? now : previous.transitionAt, 0L));
         if (packet.stage() == 0) assistedStage = -1;
+        if (minecraft.player != null && packet.playerId() == minecraft.player.getId()
+                && (previous == null || previous.style != style)) {
+            ClientTechniqueOverlayState.showComboStyle(style.translationKey());
+        }
     }
 
     public static boolean isLocalActive() {
@@ -51,24 +68,6 @@ public final class ClientComboState {
         return state != null && state.active;
     }
 
-    public static float poseWeight(int playerId) {
-        State state = STATES.get(playerId);
-        if (state == null) return 0.0F;
-        long now = Util.getMillis();
-        if (state.active) return Mth.clamp((now - state.transitionAt) / 250.0F, 0.0F, 1.0F);
-        return 1.0F - Mth.clamp((now - state.endedAt) / 250.0F, 0.0F, 1.0F);
-    }
-
-    public static boolean shouldRenderPose(int playerId) {
-        return poseWeight(playerId) > 0.001F;
-    }
-
-    /**
-     * Rebuilds the authored combo path from the same timeline used by the server. The server still
-     * owns combat and entity state; this is only a render position. Keeping both the owner and the
-     * sword on the client's current interpolation frame avoids the one-packet "towed behind" look
-     * that appears whenever a locally predicted player moves faster than entity updates arrive.
-     */
     public static Vec3 visualSwordPosition(FlyingSwordEntity sword, float partialTick) {
         if (!sword.isVisualComboControlled()) return null;
         var owner = sword.getVisualOwner();
@@ -86,6 +85,15 @@ public final class ClientComboState {
         float age = minecraft.level == null ? 0.0F
                 : minecraft.level.getGameTime() + partialTick - state.startTick;
         double tick = Mth.clamp(age, 0.0F, Math.max(0, state.durationTicks - 0.001F));
+        Vec3 targetPoint = resolveTargetPoint(minecraft, state, partialTick);
+        Vec3 forward = ComboMotionMath.horizontal(state.targetAnchor.subtract(state.playerAnchor), ownerLook);
+        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        ComboStageDefinition definition = state.style.stage(state.stage);
+        return definition.choreography().position(new ComboMotionFrame(ownerPosition, state.playerAnchor,
+                targetPoint, forward, right, slot, tick, state.durationTicks));
+    }
+
+    private static Vec3 resolveTargetPoint(Minecraft minecraft, State state, float partialTick) {
         Vec3 targetPoint = state.targetAnchor;
         if (minecraft.level != null && state.targetId >= 0) {
             Entity raw = minecraft.level.getEntity(state.targetId);
@@ -94,70 +102,11 @@ public final class ClientComboState {
                         .add(0.0D, target.getBbHeight() * 0.52D, 0.0D);
             }
         }
-        Vec3 forward = horizontal(targetPoint.subtract(ownerPosition), ownerLook);
-        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
-        return switch (state.stage) {
-            case 1 -> crossCutPosition(ownerPosition, targetPoint, forward, right, slot, tick,
-                    state.durationTicks, true);
-            case 2 -> crossCutPosition(ownerPosition, targetPoint, forward, right, slot, tick,
-                    state.durationTicks, false);
-            case 3 -> ringLungePosition(ownerPosition, forward, right, slot, tick, state.durationTicks);
-            case 4 -> sixSwordPosition(state.playerAnchor, targetPoint, forward, right, slot, tick);
-            case 5 -> giantSwordStation(ownerPosition, targetPoint, forward, right, slot, tick);
-            default -> idlePosition(ownerPosition, ownerLook, slot);
-        };
-    }
-
-    private static Vec3 crossCutPosition(Vec3 owner, Vec3 target, Vec3 forward, Vec3 right,
-                                         int slot, double tick, int duration, boolean leftToRight) {
-        boolean active = leftToRight ? slot < 3 : slot >= 3;
-        if (!active) {
-            return owner.add(0.0D, 1.25D + (slot % 3) * 0.24D, 0.0D)
-                    .add(right.scale((slot - 2.5D) * 0.36D)).subtract(forward.scale(0.7D));
-        }
-        int lane = slot % 3;
-        double sign = leftToRight ? 1.0D : -1.0D;
-        Vec3 start = target.add(right.scale(-sign * (3.2D + lane * 0.34D)))
-                .add(0.0D, leftToRight ? 3.0D + lane * 0.22D : -0.15D + lane * 0.16D, 0.0D)
-                .subtract(forward.scale(0.7D));
-        Vec3 end = target.add(right.scale(sign * (3.2D + lane * 0.34D)))
-                .add(0.0D, leftToRight ? -0.2D + lane * 0.12D : 3.0D + lane * 0.22D, 0.0D)
-                .add(forward.scale(1.0D));
-        return start.lerp(end, smooth(tick / Math.max(1.0D, duration)));
-    }
-
-    private static Vec3 ringLungePosition(Vec3 owner, Vec3 forward, Vec3 right, int slot,
-                                          double tick, int duration) {
-        double progress = smooth(tick / Math.max(1.0D, duration));
-        Vec3 centre = owner.add(forward.scale(1.35D)).add(0.0D, 1.0D, 0.0D);
-        double angle = Math.PI * 2.0D * slot / 6.0D + progress * Math.PI * 4.4D;
-        Vec3 radial = right.scale(Math.cos(angle)).add(0.0D, Math.sin(angle), 0.0D);
-        return centre.add(radial.scale(2.65D)).add(forward.scale(Math.sin(angle * 2.0D) * 0.3D));
-    }
-
-    private static Vec3 sixSwordPosition(Vec3 playerAnchor, Vec3 target, Vec3 forward, Vec3 right,
-                                         int slot, double tick) {
-        Vec3 apex = playerAnchor.subtract(forward.scale(3.2D)).add(0.0D, 2.65D, 0.0D);
-        double angle = Math.PI * 2.0D * slot / 6.0D + tick * 0.12D;
-        Vec3 ring = apex.add(right.scale(Math.cos(angle) * 2.25D))
-                .add(forward.scale(Math.sin(angle) * 1.15D)).add(0.0D, Math.sin(angle) * 1.65D, 0.0D);
-        Vec3 end = target.add(forward.scale(2.2D)).add(right.scale((slot - 2.5D) * 0.12D));
-        return ring.lerp(end, smooth(Mth.clamp((tick - 6.0D) / 5.0D, 0.0D, 1.0D)));
-    }
-
-    private static Vec3 giantSwordStation(Vec3 owner, Vec3 target, Vec3 forward, Vec3 right,
-                                          int slot, double tick) {
-        double progress = smooth(Math.min(1.0D, tick / 7.0D));
-        Vec3 centre = target.add(0.0D, 14.0D, 0.0D);
-        double angle = Math.PI * 2.0D * slot / 6.0D + tick * 0.09D;
-        Vec3 station = centre.add(Math.cos(angle) * 9.5D, 0.0D, Math.sin(angle) * 9.5D);
-        Vec3 start = owner.add(0.0D, 1.2D, 0.0D)
-                .add(right.scale((slot - 2.5D) * 0.45D)).subtract(forward.scale(0.5D));
-        return start.lerp(station, progress);
+        return targetPoint;
     }
 
     private static Vec3 idlePosition(Vec3 owner, Vec3 look, int slot) {
-        Vec3 forward = horizontal(look, new Vec3(0.0D, 0.0D, 1.0D));
+        Vec3 forward = ComboMotionMath.horizontal(look, new Vec3(0.0D, 0.0D, 1.0D));
         Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
         double angle = Math.PI * 2.0D * slot / 6.0D;
         return owner.add(0.0D, 1.2D, 0.0D)
@@ -172,63 +121,165 @@ public final class ClientComboState {
                 Mth.lerp(partialTick, entity.zo, entity.getZ()));
     }
 
-    private static Vec3 horizontal(Vec3 vector, Vec3 fallback) {
-        Vec3 result = new Vec3(vector.x, 0.0D, vector.z);
-        if (result.lengthSqr() < 1.0E-6D) result = new Vec3(fallback.x, 0.0D, fallback.z);
-        return result.lengthSqr() < 1.0E-6D ? new Vec3(0.0D, 0.0D, 1.0D) : result.normalize();
-    }
-
-    private static double smooth(double value) {
-        double x = Mth.clamp(value, 0.0D, 1.0D);
-        return x * x * (3.0D - 2.0D * x);
-    }
-
     public static Impact impact(float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null) return null;
+        if (minecraft.player == null || minecraft.level == null || !ClientOptions.hitImpactVisual()) return null;
         State state = STATES.get(minecraft.player.getId());
         if (state == null || !state.active || state.stage <= 0) return null;
+        ComboStageDefinition definition = state.style.stage(state.stage);
         float age = minecraft.level.getGameTime() + partialTick - state.startTick;
-        int impactTick = switch (state.stage) { case 1, 2 -> 5; case 3 -> 8; case 4 -> 10; default -> 19; };
-        float distance = Math.abs(age - impactTick);
-        if (distance > 2.4F) return null;
-        float envelope = 1.0F - distance / 2.4F;
-        float strength = switch (state.stage) { case 1 -> 0.52F; case 2 -> 0.62F;
-            case 3 -> 0.9F; case 4 -> 1.15F; default -> 1.7F; };
-        return new Impact(envelope * strength, state.targetAnchor);
+        ComboWarpProfile warp = definition.warp();
+        if (warp != ComboWarpProfile.NONE) {
+            if (state.style.particlesOnlyWarp()) return null;
+            float execute = warp.executeTick();
+            float blackout = ClientOptions.comboWarpBlackout()
+                    ? triangular(age, execute - 0.32F, execute, execute + 0.38F) : 0.0F;
+            float arrival = triangular(age, execute - 0.6F, execute + 0.3F, execute + 2.4F);
+            // The black frame conceals the discontinuous spatial/camera change. The monochrome
+            // impact deliberately begins afterwards, so the arrival reads as a second heavy beat.
+            float delayedFlash = heldEnvelope(age, execute + 2.2F, 3.2F, 2.8F);
+            if (blackout > 0.001F || arrival > 0.001F || delayedFlash > 0.001F) {
+                float power = warp.vfxStrength();
+                return new Impact(arrival * power * 1.28F,
+                        Math.min(0.96F, delayedFlash * (0.78F + power * 0.10F)),
+                        (arrival * 0.0135F + delayedFlash * 0.0090F) * power,
+                        (arrival * 0.0052F + delayedFlash * 0.0032F) * power,
+                        blackout, Mth.clamp((age - (execute - 0.6F)) / 3.0F, 0.0F, 1.0F),
+                        state.warpDestination, state.style, state.stage);
+            }
+        }
+        if (!definition.damagingAttack()) return null;
+        ComboVfxProfile vfx = definition.vfx();
+        float envelope;
+        if (vfx.thresholdHoldTicks() > 0.0F) {
+            envelope = heldEnvelope(age, definition.commitTick(), vfx.thresholdHoldTicks(), 3.2F);
+        } else {
+            float width = definition.vfx().thresholdAmount() <= 0.001F ? 2.4F : 1.65F;
+            float distance = Math.abs(age - definition.commitTick());
+            if (distance > width) return null;
+            envelope = 1.0F - distance / width;
+        }
+        if (envelope <= 0.001F) return null;
+        float cameraEnvelope = vfx.thresholdHoldTicks() > 0.0F
+                ? triangular(age, definition.commitTick() - 0.45F,
+                definition.commitTick() + 0.35F, definition.commitTick() + 3.8F)
+                : envelope;
+        float shakePhase = Mth.clamp((age - (definition.commitTick() - 0.45F)) / 4.25F,
+                0.0F, 1.0F);
+        return new Impact(cameraEnvelope * vfx.cameraStrength(), envelope * vfx.thresholdAmount(),
+                envelope * vfx.radialBlurStrength(), envelope * vfx.chromaticStrength(),
+                0.0F, shakePhase, resolveTargetPoint(minecraft, state, partialTick),
+                state.style, state.stage);
+    }
+
+    private static float heldEnvelope(float age, float impact, float hold, float release) {
+        float lead = 1.8F;
+        if (age < impact - lead || age > impact + hold + release) return 0.0F;
+        if (age < impact) return Mth.clamp((age - (impact - lead)) / lead, 0.0F, 1.0F);
+        if (age <= impact + hold) return 1.0F;
+        return 1.0F - Mth.clamp((age - impact - hold) / release, 0.0F, 1.0F);
+    }
+
+    private static float triangular(float age, float start, float peak, float end) {
+        if (age <= start || age >= end) return 0.0F;
+        if (age <= peak) return Mth.clamp((age - start) / Math.max(0.001F, peak - start), 0.0F, 1.0F);
+        return 1.0F - Mth.clamp((age - peak) / Math.max(0.001F, end - peak), 0.0F, 1.0F);
     }
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
+        if (minecraft.player == null || minecraft.level == null) return;
         State state = STATES.get(minecraft.player.getId());
         STATES.entrySet().removeIf(entry -> !entry.getValue().active
                 && Util.getMillis() - entry.getValue().endedAt > 300L);
-        if (state == null || !state.active || state.stage <= 0 || state.targetId < 0) return;
+        if (state == null || !state.active || state.stage <= 0) return;
+
+        applyLocalMotion(minecraft, state);
+        if (minecraft.screen != null || state.targetId < 0) return;
+        // Warp sets never continuously steer the reticle. The one authored 180-degree turn is
+        // applied atomically with its mirror transition instead of dragging aim between stages.
+        if (state.style.hasWarpStages()) return;
         float age = minecraft.level.getGameTime() - state.startTick;
         if (state.stage != assistedStage) {
             assistedStage = state.stage;
             lastPlayerYaw = minecraft.player.getYRot();
             lastPlayerPitch = minecraft.player.getXRot();
         }
-        if (age < 0 || age > 3) return;
-        // Any deliberate mouse movement immediately wins over assistance.
+        if (age < 0 || age > 6) return;
         float manualYaw = Math.abs(Mth.wrapDegrees(minecraft.player.getYRot() - lastPlayerYaw));
         float manualPitch = Math.abs(minecraft.player.getXRot() - lastPlayerPitch);
-        if (manualYaw > 2.2F || manualPitch > 2.2F) return;
+        if (manualYaw > 0.75F || manualPitch > 0.75F) {
+            lastPlayerYaw = minecraft.player.getYRot();
+            lastPlayerPitch = minecraft.player.getXRot();
+            return;
+        }
         Entity raw = minecraft.level.getEntity(state.targetId);
         if (!(raw instanceof LivingEntity target)) return;
         Vec3 delta = target.getEyePosition().subtract(minecraft.player.getEyePosition());
         float desiredYaw = (float) (Mth.atan2(-delta.x, delta.z) * Mth.RAD_TO_DEG);
         float desiredPitch = (float) (Mth.atan2(-delta.y, delta.horizontalDistance()) * Mth.RAD_TO_DEG);
-        float yawStep = Mth.clamp(Mth.wrapDegrees(desiredYaw - minecraft.player.getYRot()), -3.5F, 3.5F);
-        float pitchStep = Mth.clamp(desiredPitch - minecraft.player.getXRot(), -2.6F, 2.6F);
-        minecraft.player.setYRot(minecraft.player.getYRot() + yawStep);
-        minecraft.player.setXRot(minecraft.player.getXRot() + pitchStep);
+        float yawError = Mth.wrapDegrees(desiredYaw - minecraft.player.getYRot());
+        float pitchError = desiredPitch - minecraft.player.getXRot();
+        if (ClientOptions.comboPreciseCameraAssist()) {
+            minecraft.player.setYRot(minecraft.player.getYRot()
+                    + Mth.clamp(yawError, -3.5F, 3.5F));
+            minecraft.player.setXRot(minecraft.player.getXRot()
+                    + Mth.clamp(pitchError, -2.6F, 2.6F));
+        } else {
+            // A large dead zone leaves ordinary aim entirely player-controlled. Outside it only
+            // the excess angle is damped, so target selection never implies reticle ownership.
+            float yawExcess = Math.copySign(Math.max(0.0F, Math.abs(yawError) - 46.0F), yawError);
+            float pitchExcess = Math.copySign(Math.max(0.0F, Math.abs(pitchError) - 30.0F), pitchError);
+            minecraft.player.setYRot(minecraft.player.getYRot()
+                    + Mth.clamp(yawExcess * 0.035F, -0.55F, 0.55F));
+            minecraft.player.setXRot(minecraft.player.getXRot()
+                    + Mth.clamp(pitchExcess * 0.028F, -0.34F, 0.34F));
+        }
         lastPlayerYaw = minecraft.player.getYRot();
         lastPlayerPitch = minecraft.player.getXRot();
+    }
+
+    private static boolean applyLocalMotion(Minecraft minecraft, State state) {
+        ComboStageDefinition definition = state.style.stage(state.stage);
+        double tick = Mth.clamp(minecraft.level.getGameTime() - state.startTick, 0.0D,
+                Math.max(0, state.durationTicks - 0.001D));
+        ComboWarpProfile warp = definition.warp();
+        if (warp != ComboWarpProfile.NONE) {
+            if (tick < warp.executeTick()) {
+                minecraft.player.move(MoverType.SELF,
+                        state.playerAnchor.subtract(minecraft.player.position()));
+                minecraft.player.setDeltaMovement(Vec3.ZERO);
+                return false;
+            }
+            if (!state.localWarpApplied) {
+                state.localWarpApplied = true;
+                minecraft.player.setPos(state.warpDestination.x, state.warpDestination.y,
+                        state.warpDestination.z);
+                minecraft.player.xo = state.warpDestination.x;
+                minecraft.player.yo = state.warpDestination.y;
+                minecraft.player.zo = state.warpDestination.z;
+                if (warp.reverseFacing()) {
+                    minecraft.player.setYRot(state.warpYaw);
+                    minecraft.player.yRotO = minecraft.player.getYRot();
+                }
+                minecraft.player.setDeltaMovement(Vec3.ZERO);
+                minecraft.player.fallDistance = 0.0F;
+            }
+            return tick <= warp.executeTick() + 4.0D;
+        }
+        if (definition.rootMotion() == ComboRootMotion.NONE) return false;
+        Vec3 fallback = Vec3.directionFromRotation(0.0F, minecraft.player.getYRot());
+        Vec3 forward = ComboMotionMath.horizontal(state.targetAnchor.subtract(state.playerAnchor), fallback);
+        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        ComboMotionFrame frame = new ComboMotionFrame(minecraft.player.position(), state.playerAnchor,
+                state.targetAnchor, forward, right, 0, tick, state.durationTicks);
+        Vec3 destination = definition.rootMotion().destination(frame);
+        minecraft.player.move(MoverType.SELF, destination.subtract(minecraft.player.position()).scale(0.88D));
+        minecraft.player.setDeltaMovement(Vec3.ZERO);
+        minecraft.player.fallDistance = 0.0F;
+        return false;
     }
 
     public static void clear() {
@@ -236,13 +287,92 @@ public final class ClientComboState {
         assistedStage = -1;
     }
 
-    public record Impact(float strength, Vec3 centre) { }
+    /** Final GUI pass makes the authored full-black interval truly cover the whole frame. */
+    public static void renderBlackout(net.minecraftforge.client.gui.overlay.ForgeGui gui,
+                                      net.minecraft.client.gui.GuiGraphics graphics,
+                                      float partialTick, int width, int height) {
+        if (!ClientOptions.swordArrayPostEffect()) return;
+        Impact current = impact(partialTick);
+        if (current == null || current.blackout() <= 0.001F) return;
+        int alpha = Mth.clamp(Math.round(current.blackout() * 255.0F), 0, 255);
+        graphics.fill(0, 0, width, height, alpha << 24);
+    }
 
-    private record State(boolean active, int stage, long startTick, int durationTicks, int targetId,
-                         Vec3 playerAnchor, Vec3 targetAnchor, long transitionAt, long endedAt) {
+    public static boolean shouldHidePlayer(int playerId, float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        State state = STATES.get(playerId);
+        if (minecraft.level == null || state == null || !state.active || state.stage <= 0) return false;
+        ComboWarpProfile warp = state.style.stage(state.stage).warp();
+        if (warp == ComboWarpProfile.NONE || state.style.particlesOnlyWarp()) return false;
+        float age = minecraft.level.getGameTime() + partialTick - state.startTick;
+        return age >= warp.executeTick() - 2.25F && age <= warp.executeTick() + 2.25F;
+    }
+
+    public static List<WarpVisual> warpVisuals(float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        List<WarpVisual> visuals = new ArrayList<>();
+        if (minecraft.level == null) return visuals;
+        for (Map.Entry<Integer, State> entry : STATES.entrySet()) {
+            State state = entry.getValue();
+            if (!state.active || state.stage <= 0) continue;
+            ComboWarpProfile warp = state.style.stage(state.stage).warp();
+            boolean transitionVisible = warp != ComboWarpProfile.NONE && !state.style.particlesOnlyWarp();
+            if (!transitionVisible) continue;
+            float age = minecraft.level.getGameTime() + partialTick - state.startTick;
+            if (age < -0.5F || age > state.durationTicks + 1.0F) continue;
+            Entity entity = minecraft.level.getEntity(entry.getKey());
+            Vec3 current = entity == null ? state.warpDestination : interpolatedPosition(entity, partialTick);
+            visuals.add(new WarpVisual(entry.getKey(), state.playerAnchor, state.warpDestination,
+                    current, age, warp.executeTick(), warp == ComboWarpProfile.NONE ? 1.0F : warp.vfxStrength(),
+                    warp.halo(), true, state.stage));
+        }
+        return visuals;
+    }
+
+    public record Impact(float strength, float threshold, float radialBlur, float chromatic,
+                         float blackout, float shakePhase, Vec3 centre,
+                         ComboStyle style, int stage) { }
+
+    public record WarpVisual(int playerId, Vec3 origin, Vec3 destination, Vec3 current,
+                             float age, int executeTick, float strength, boolean halo,
+                             boolean transition, int stage) { }
+
+    private static final class State {
+        private final boolean active;
+        private final ComboStyle style;
+        private final int stage;
+        private final long startTick;
+        private final int durationTicks;
+        private final int targetId;
+        private final Vec3 playerAnchor;
+        private final Vec3 targetAnchor;
+        private final Vec3 warpDestination;
+        private final float warpYaw;
+        private final long transitionAt;
+        private final long endedAt;
+        private boolean localWarpApplied;
+
+        private State(boolean active, ComboStyle style, int stage, long startTick, int durationTicks,
+                      int targetId, Vec3 playerAnchor, Vec3 targetAnchor, Vec3 warpDestination,
+                      float warpYaw, long transitionAt, long endedAt) {
+            this.active = active;
+            this.style = style;
+            this.stage = stage;
+            this.startTick = startTick;
+            this.durationTicks = durationTicks;
+            this.targetId = targetId;
+            this.playerAnchor = playerAnchor;
+            this.targetAnchor = targetAnchor;
+            this.warpDestination = warpDestination;
+            this.warpYaw = warpYaw;
+            this.transitionAt = transitionAt;
+            this.endedAt = endedAt;
+            this.localWarpApplied = stage <= 0 || style.stage(Math.max(1, stage)).warp() == ComboWarpProfile.NONE;
+        }
+
         private State end(long now) {
-            return new State(false, 0, startTick, durationTicks, -1, playerAnchor, targetAnchor,
-                    transitionAt, now);
+            return new State(false, style, 0, startTick, durationTicks, -1, playerAnchor,
+                    targetAnchor, warpDestination, warpYaw, transitionAt, now);
         }
     }
 }

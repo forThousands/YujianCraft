@@ -96,6 +96,7 @@ public final class SwordArrayFieldEntity extends Entity {
     private boolean consumedDurability;
     private int visualVariant;
     private boolean comboFinisher;
+    private float comboPower = 1.0F;
     private float clientPreviewAge = -1.0F;
     private SwordArrayVisualStyle clientPreviewStyle = SwordArrayVisualStyle.DEFAULT;
     private final Set<UUID> hitTargets = new HashSet<>();
@@ -142,7 +143,8 @@ public final class SwordArrayFieldEntity extends Entity {
 
     /** Accelerated, slightly smaller field used by the fifth hit of Yujian Combo Stance. */
     public static void spawnCombo(ServerLevel level, ServerPlayer owner, ItemStack source, UUID bindingId,
-                                  UUID targetId, Vec3 targetAnchor, double targetHeight, double targetWidth) {
+                                  UUID targetId, Vec3 targetAnchor, double targetHeight, double targetWidth,
+                                  boolean heavy) {
         if (targetId == null) return;
         TargetKey key = new TargetKey(level.dimension(), targetId);
         UUID activeId = ACTIVE_BY_TARGET.get(key);
@@ -160,19 +162,20 @@ public final class SwordArrayFieldEntity extends Entity {
         field.targetHeight = targetHeight;
         field.targetWidth = targetWidth;
         field.comboFinisher = true;
+        field.comboPower = heavy ? 1.45F : 1.0F;
         field.visualVariant = Mth.clamp(owner.getPersistentData()
                 .getInt("YujianCraftSwordArrayStyle"), 0, 1);
         field.syncStaticData();
         field.updateAnchor(level, targetAnchor, targetHeight, targetWidth);
         // Keep the proven renderer/signal channel, but compress the performance for a combo beat.
-        field.entityData.set(DATA_BASE_RADIUS, 11.5F);
+        field.entityData.set(DATA_BASE_RADIUS, heavy ? 13.25F : 11.5F);
         field.entityData.set(DATA_FINISHER_START, 2);
-        field.entityData.set(DATA_CHARGE_TICKS, 4);
-        field.entityData.set(DATA_HOLD_TICKS, 3);
-        field.entityData.set(DATA_EXPAND_TICKS, 4);
-        field.entityData.set(DATA_SUSTAIN_TICKS, 14);
-        field.entityData.set(DATA_EXPANSION, 1.62F);
-        field.entityData.set(DATA_BEAM_SCALE, 0.76F);
+        field.entityData.set(DATA_CHARGE_TICKS, heavy ? 5 : 4);
+        field.entityData.set(DATA_HOLD_TICKS, heavy ? 4 : 3);
+        field.entityData.set(DATA_EXPAND_TICKS, heavy ? 5 : 4);
+        field.entityData.set(DATA_SUSTAIN_TICKS, heavy ? 16 : 14);
+        field.entityData.set(DATA_EXPANSION, heavy ? 1.74F : 1.62F);
+        field.entityData.set(DATA_BEAM_SCALE, heavy ? 0.92F : 0.76F);
         field.entityData.set(DATA_COMBO_FINISHER, true);
         if (level.addFreshEntity(field)) ACTIVE_BY_TARGET.put(key, field.getUUID());
     }
@@ -288,7 +291,8 @@ public final class SwordArrayFieldEntity extends Entity {
                 + (comboFinisher ? 19.0D : TechniqueConfig.swordArrayHeight());
         entityData.set(DATA_BEAM_HEIGHT, (float) Math.max(2.0D, topY - getY()));
         entityData.set(DATA_BASE_RADIUS, (float) Math.max(width * 0.5D
-                + TechniqueConfig.swordArrayRadiusPadding(), comboFinisher ? 11.5D : 18.0D));
+                + TechniqueConfig.swordArrayRadiusPadding(), comboFinisher
+                        ? (comboPower > 1.01F ? 13.25D : 11.5D) : 18.0D));
     }
 
     private static Vec3 groundBelow(ServerLevel level, Vec3 targetAnchor) {
@@ -376,6 +380,7 @@ public final class SwordArrayFieldEntity extends Entity {
                 * Math.max(0.0D, EffectBalanceConfig.get(comboFinisher
                         ? EffectParameter.COMBO_FINISHER_DAMAGE_SCALE
                         : EffectParameter.SWORD_ARRAY_FINISHER_DAMAGE_SCALE))
+                * (comboFinisher ? comboPower : 1.0F)
                 * Mth.clamp(radialScale, 0.0D, 1.0D);
         boolean marked = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
         boolean success;
@@ -503,6 +508,7 @@ public final class SwordArrayFieldEntity extends Entity {
         consumedDurability = tag.getBoolean("ConsumedDurability");
         visualVariant = Mth.clamp(tag.getInt("VisualVariant"), 0, 1);
         comboFinisher = tag.getBoolean("ComboFinisher");
+        comboPower = tag.contains("ComboPower") ? Math.max(1.0F, tag.getFloat("ComboPower")) : 1.0F;
         syncStaticData();
         if (tag.contains("BaseRadius")) entityData.set(DATA_BASE_RADIUS, tag.getFloat("BaseRadius"));
         if (tag.contains("BeamHeight")) entityData.set(DATA_BEAM_HEIGHT, tag.getFloat("BeamHeight"));
@@ -537,6 +543,7 @@ public final class SwordArrayFieldEntity extends Entity {
         tag.putBoolean("ConsumedDurability", consumedDurability);
         tag.putInt("VisualVariant", visualVariant());
         tag.putBoolean("ComboFinisher", comboFinisher);
+        tag.putFloat("ComboPower", comboPower);
         tag.putFloat("BaseRadius", baseRadius());
         tag.putFloat("BeamHeight", beamHeight());
         tag.putInt("FinisherStart", finisherStartTick());

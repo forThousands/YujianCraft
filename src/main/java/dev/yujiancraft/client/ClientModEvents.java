@@ -130,6 +130,14 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_X,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping CYCLE_COMBO_STYLE = new KeyMapping(
+            "key.yujiancraft.cycle_combo_style",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_X,
+            "key.categories.yujiancraft"
+    );
     public static final KeyMapping RELEASE_VFX_CURSOR = new KeyMapping(
             "key.yujiancraft.release_vfx_cursor",
             KeyConflictContext.UNIVERSAL,
@@ -195,6 +203,7 @@ public final class ClientModEvents {
         event.registerEntityRenderer(ModEntities.SPIRIT_TRIAL_DUMMY.get(), SpiritTrialDummyRenderer::new);
         event.registerEntityRenderer(ModEntities.SWORD_ARRAY.get(), SwordArrayQiRenderer::new);
         event.registerEntityRenderer(ModEntities.SWORD_ARRAY_FIELD.get(), SwordArrayFieldRenderer::new);
+        event.registerEntityRenderer(ModEntities.COMBO_AUREOLE.get(), ComboAureoleRenderer::new);
     }
 
     @SubscribeEvent
@@ -213,6 +222,7 @@ public final class ClientModEvents {
         event.register(ACTIVATE_SWORD_ARRAY);
         event.register(SWITCH_SWORD_ARRAY_STYLE);
         event.register(TOGGLE_COMBO);
+        event.register(CYCLE_COMBO_STYLE);
         if (VfxLivePreviewBridge.isAvailable()) event.register(RELEASE_VFX_CURSOR);
     }
 
@@ -222,6 +232,7 @@ public final class ClientModEvents {
                 OptimizedThirdPersonController::renderCrosshair);
         event.registerAboveAll("spirit_trial_countdown", ClientTrialCountdownState::render);
         event.registerAboveAll("technique_calligraphy", ClientTechniqueOverlayState::render);
+        event.registerAboveAll("combo_warp_blackout", ClientComboState::renderBlackout);
     }
 
     @SubscribeEvent

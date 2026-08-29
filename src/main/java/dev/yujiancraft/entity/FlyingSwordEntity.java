@@ -700,15 +700,31 @@ public final class FlyingSwordEntity extends Entity {
             return;
         }
         Vec3 normal = Vec3.atLowerCornerOf(actionFace.getNormal());
-        Vec3 base = Vec3.atCenterOf(actionBlockPos).add(normal.scale(0.82D));
-        Vec3 pulse = base.add(normal.scale(Math.sin(techniqueTicks * 1.5D) * 0.18D));
-        Vec3 motion = pulse.subtract(position());
-        setPos(pulse);
+        Vec3 swingUp = toolSwingUp(owner, normal);
+        int swingPeriod = 8;
+        double cycle = Math.floorMod(techniqueTicks, swingPeriod) / (double) swingPeriod;
+        double stroke = 0.5D - 0.5D * Math.cos(cycle * Math.PI * 2.0D);
+        // Ease the authored stroke so the implement accelerates into the block and spends more
+        // of the return half visibly recovering, like an ordinary mining swing rather than a
+        // repeated thrust along the face normal.
+        double easedStroke = stroke * stroke * (3.0D - 2.0D * stroke);
+        double swingAngle = 0.98D + (-0.14D - 0.98D) * easedStroke;
+        Vec3 direction = normal.scale(-Math.cos(swingAngle))
+                .add(swingUp.scale(Math.sin(swingAngle))).normalize();
+        Vec3 base = Vec3.atCenterOf(actionBlockPos).add(normal.scale(0.92D));
+        Vec3 swingPosition = base
+                .add(swingUp.scale((1.0D - easedStroke) * 0.26D))
+                .add(normal.scale(0.09D - easedStroke * 0.19D));
+        Vec3 motion = swingPosition.subtract(position());
+        setPos(swingPosition);
         setDeltaMovement(motion);
-        faceDirection(normal.scale(-1.0D), 0.8D);
-        if (techniqueTicks % 5 == 0) {
+        faceDirection(direction, 1.0D);
+        if (Math.floorMod(techniqueTicks, swingPeriod) == swingPeriod / 2) {
             serverLevel.sendParticles(ParticleTypes.CRIT, base.x, base.y, base.z, 3, 0.12D, 0.12D, 0.12D, 0.03D);
-            serverLevel.playSound(null, actionBlockPos, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.18F, 1.8F);
+            net.minecraft.world.level.block.SoundType sound = serverLevel.getBlockState(actionBlockPos)
+                    .getSoundType(serverLevel, actionBlockPos, owner);
+            serverLevel.playSound(null, actionBlockPos, sound.getHitSound(), SoundSource.BLOCKS,
+                    0.32F, sound.getPitch() * 0.88F);
         }
         techniqueTicks++;
         if (techniqueTicks >= actionWorkTicks) {
@@ -719,6 +735,14 @@ public final class FlyingSwordEntity extends Entity {
             postDockCooldown = 12;
             beginReturn();
         }
+    }
+
+    private static Vec3 toolSwingUp(ServerPlayer owner, Vec3 faceNormal) {
+        if (Math.abs(faceNormal.y) < 0.85D) return new Vec3(0.0D, 1.0D, 0.0D);
+        Vec3 look = owner.getLookAngle();
+        Vec3 horizontal = new Vec3(look.x, 0.0D, look.z);
+        return horizontal.lengthSqr() < 1.0E-6D
+                ? new Vec3(0.0D, 0.0D, 1.0D) : horizontal.normalize();
     }
 
     private void tickFishingApproach(ServerPlayer owner) {

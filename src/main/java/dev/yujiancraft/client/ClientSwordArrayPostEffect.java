@@ -30,6 +30,7 @@ public final class ClientSwordArrayPostEffect {
     private static int height = -1;
     private static boolean failed;
     private static long debugLastTriggered;
+    private static long lastActiveAt;
 
     private ClientSwordArrayPostEffect() {
     }
@@ -56,10 +57,16 @@ public final class ClientSwordArrayPostEffect {
         }
         ClientTechniqueOverlayState.FinisherFrame frame =
                 ClientTechniqueOverlayState.sampleFinisher(event.getPartialTick());
-        if (frame == null) {
-            closeChain();
+        ClientComboState.Impact combo = ClientComboState.impact(event.getPartialTick());
+        if (combo != null && combo.threshold() <= 0.0001F && combo.radialBlur() <= 0.0001F
+                && combo.chromatic() <= 0.0001F && combo.blackout() <= 0.0001F) combo = null;
+        if (frame == null && combo == null) {
+            // Combo strikes are intentionally close together. Keep the compiled chain warm across
+            // their short gaps instead of recompiling GLSL five times in one sequence.
+            if (postChain != null && now - lastActiveAt >= 5000L) closeChain();
             return;
         }
+        lastActiveAt = now;
 
         if (minecraft.level == null || minecraft.player == null || failed || !ensureChain(minecraft)) return;
         RenderTarget mainTarget = minecraft.getMainRenderTarget();
@@ -69,12 +76,15 @@ public final class ClientSwordArrayPostEffect {
             postChain.resize(width, height);
         }
 
-        Projection impact = project(frame.bottom(), event.getCamera(), width, height,
+        Vec3 bottomWorld = frame != null ? frame.bottom() : combo.centre();
+        Vec3 topWorld = frame != null ? frame.top() : combo.centre().add(0.0D, 2.0D, 0.0D);
+        float maximumRadius = frame != null ? frame.maximumRadius() : 4.0F;
+        Projection impact = project(bottomWorld, event.getCamera(), width, height,
                 minecraft.options.fov().get());
         if (impact == null) impact = new Projection(0.5F, 0.58F, 12.0D);
-        Projection top = project(frame.top(), event.getCamera(), width, height, minecraft.options.fov().get());
+        Projection top = project(topWorld, event.getCamera(), width, height, minecraft.options.fov().get());
         Vec3 cameraRight = Vec3.directionFromRotation(0.0F, event.getCamera().getYRot() + 90.0F).normalize();
-        Projection radiusPoint = project(frame.top().add(cameraRight.scale(frame.maximumRadius())),
+        Projection radiusPoint = project(topWorld.add(cameraRight.scale(maximumRadius)),
                 event.getCamera(), width, height, minecraft.options.fov().get());
         if (top == null) top = new Projection(impact.x, Math.min(1.25F, impact.y + 0.42F), impact.depth);
         float signalRadius = radiusPoint == null ? 0.22F
@@ -95,42 +105,47 @@ public final class ClientSwordArrayPostEffect {
         effect.safeGetUniform("SignalTop").set(top.x, top.y);
         effect.safeGetUniform("SignalRadius").set(Math.max(0.08F, signalRadius));
         effect.safeGetUniform("SignalBeamWidth").set(Math.max(0.025F, signalRadius * 0.16F));
-        effect.safeGetUniform("DistortionStrength").set(value(frame, "distortion", "post.distortion.strength", 0.0F));
-        effect.safeGetUniform("DistortionRadius").set(value(frame, "distortion", "post.distortion.radius", 0.1F));
-        effect.safeGetUniform("DistortionWidth").set(value(frame, "distortion", "post.distortion.width", 0.08F));
-        effect.safeGetUniform("RadialBlurStrength").set(value(frame, "radialBlur", "post.radialBlur.strength", 0.0F));
-        effect.safeGetUniform("ChromaticStrength").set(value(frame, "chromatic", "post.chromatic.strength", 0.0F));
-        effect.safeGetUniform("BlurStrength").set(value(frame, "blur", "post.blur.strength", 0.0F));
-        effect.safeGetUniform("Exposure").set(value(frame, "colorGrade", "post.color.exposure", 0.0F));
-        effect.safeGetUniform("Contrast").set(value(frame, "colorGrade", "post.color.contrast", 1.0F));
-        effect.safeGetUniform("Saturation").set(value(frame, "colorGrade", "post.color.saturation", 1.0F));
-        effect.safeGetUniform("ThresholdAmount").set(value(frame, "thresholdFlash", "post.threshold.amount", 0.0F));
-        effect.safeGetUniform("ThresholdLevel").set(value(frame, "thresholdFlash", "post.threshold.level", 0.5F));
-        effect.safeGetUniform("ThresholdSoftness").set(value(frame, "thresholdFlash", "post.threshold.softness", 0.03F));
-        effect.safeGetUniform("InvertAmount").set(value(frame, "thresholdFlash", "post.threshold.invert", 0.0F));
-        effect.safeGetUniform("WhiteoutAmount").set(value(frame, "thresholdFlash", "post.threshold.whiteout", 0.0F));
-        effect.safeGetUniform("ThresholdIsolation").set(value(frame, "thresholdFlash", "post.threshold.isolation", 0.92F));
-        effect.safeGetUniform("SignalFeather").set(value(frame, "thresholdFlash", "post.threshold.signalFeather", 0.08F));
-        effect.safeGetUniform("FlowFlashAmount").set(value(frame, "flowFlash", "post.flowFlash.amount", 0.0F));
-        effect.safeGetUniform("FlowInvertIntensity").set(value(frame, "flowFlash", "post.flowFlash.invertIntensity", 1.0F));
-        effect.safeGetUniform("FlowTransitionStart").set(value(frame, "flowFlash", "post.flowFlash.transitionStart", 0.25F));
-        effect.safeGetUniform("FlowTransitionRange").set(value(frame, "flowFlash", "post.flowFlash.transitionRange", 0.5F));
-        effect.safeGetUniform("FlowInvertAmount").set(value(frame, "flowFlash", "post.flowFlash.invertAmount", 0.0F));
-        effect.safeGetUniform("FlowStrength").set(value(frame, "flowFlash", "post.flowFlash.flowStrength", 0.18F));
-        effect.safeGetUniform("FlowScale").set(value(frame, "flowFlash", "post.flowFlash.flowScale", 9.0F));
-        effect.safeGetUniform("FlowSpeed").set(value(frame, "flowFlash", "post.flowFlash.flowSpeed", 1.4F));
-        effect.safeGetUniform("FlowSharpness").set(value(frame, "flowFlash", "post.flowFlash.flowSharpness", 0.22F));
-        effect.safeGetUniform("FlowEnabled").set(value(frame, "flowFlash", "post.flowFlash.flowEnabled", 0.0F));
-        float[] highlight = colour(frame.timeline().moduleSetting("flowFlash", "highlightColor", "#000000"));
-        float[] shadow = colour(frame.timeline().moduleSetting("flowFlash", "shadowColor", "#ffffff"));
+        effect.safeGetUniform("DistortionStrength").set(value(frame, combo, "distortion", "post.distortion.strength", 0.0F));
+        effect.safeGetUniform("DistortionRadius").set(value(frame, combo, "distortion", "post.distortion.radius", 0.1F));
+        effect.safeGetUniform("DistortionWidth").set(value(frame, combo, "distortion", "post.distortion.width", 0.08F));
+        effect.safeGetUniform("RadialBlurStrength").set(value(frame, combo, "radialBlur", "post.radialBlur.strength", 0.0F));
+        effect.safeGetUniform("ChromaticStrength").set(value(frame, combo, "chromatic", "post.chromatic.strength", 0.0F));
+        effect.safeGetUniform("BlurStrength").set(value(frame, combo, "blur", "post.blur.strength", 0.0F));
+        effect.safeGetUniform("Exposure").set(value(frame, combo, "colorGrade",
+                "post.color.exposure", 0.0F));
+        effect.safeGetUniform("GlobalExposure").set((float) ClientOptions.globalVfxExposure());
+        effect.safeGetUniform("Contrast").set(value(frame, combo, "colorGrade", "post.color.contrast", 1.0F));
+        effect.safeGetUniform("Saturation").set(value(frame, combo, "colorGrade", "post.color.saturation", 1.0F));
+        effect.safeGetUniform("ThresholdAmount").set(value(frame, combo, "thresholdFlash", "post.threshold.amount", 0.0F));
+        effect.safeGetUniform("ThresholdLevel").set(value(frame, combo, "thresholdFlash", "post.threshold.level", 0.5F));
+        effect.safeGetUniform("ThresholdSoftness").set(value(frame, combo, "thresholdFlash", "post.threshold.softness", 0.03F));
+        effect.safeGetUniform("InvertAmount").set(value(frame, combo, "thresholdFlash", "post.threshold.invert", 0.0F));
+        effect.safeGetUniform("WhiteoutAmount").set(value(frame, combo, "thresholdFlash", "post.threshold.whiteout", 0.0F));
+        effect.safeGetUniform("BlackoutAmount").set(value(frame, combo, "thresholdFlash", "post.blackout.amount", 0.0F));
+        effect.safeGetUniform("ThresholdIsolation").set(value(frame, combo, "thresholdFlash", "post.threshold.isolation", 0.92F));
+        effect.safeGetUniform("SignalFeather").set(value(frame, combo, "thresholdFlash", "post.threshold.signalFeather", 0.08F));
+        effect.safeGetUniform("FlowFlashAmount").set(value(frame, combo, "flowFlash", "post.flowFlash.amount", 0.0F));
+        effect.safeGetUniform("FlowInvertIntensity").set(value(frame, combo, "flowFlash", "post.flowFlash.invertIntensity", 1.0F));
+        effect.safeGetUniform("FlowTransitionStart").set(value(frame, combo, "flowFlash", "post.flowFlash.transitionStart", 0.25F));
+        effect.safeGetUniform("FlowTransitionRange").set(value(frame, combo, "flowFlash", "post.flowFlash.transitionRange", 0.5F));
+        effect.safeGetUniform("FlowInvertAmount").set(value(frame, combo, "flowFlash", "post.flowFlash.invertAmount", 0.0F));
+        effect.safeGetUniform("FlowStrength").set(value(frame, combo, "flowFlash", "post.flowFlash.flowStrength", 0.18F));
+        effect.safeGetUniform("FlowScale").set(value(frame, combo, "flowFlash", "post.flowFlash.flowScale", 9.0F));
+        effect.safeGetUniform("FlowSpeed").set(value(frame, combo, "flowFlash", "post.flowFlash.flowSpeed", 1.4F));
+        effect.safeGetUniform("FlowSharpness").set(value(frame, combo, "flowFlash", "post.flowFlash.flowSharpness", 0.22F));
+        effect.safeGetUniform("FlowEnabled").set(value(frame, combo, "flowFlash", "post.flowFlash.flowEnabled", 0.0F));
+        float[] highlight = colour(frame == null ? "#000000"
+                : frame.timeline().moduleSetting("flowFlash", "highlightColor", "#000000"));
+        float[] shadow = colour(frame == null ? "#ffffff"
+                : frame.timeline().moduleSetting("flowFlash", "shadowColor", "#ffffff"));
         effect.safeGetUniform("FlowHighlightColor").set(highlight[0], highlight[1], highlight[2]);
         effect.safeGetUniform("FlowShadowColor").set(shadow[0], shadow[1], shadow[2]);
-        effect.safeGetUniform("GrainStrength").set(value(frame, "grain", "post.grain.strength", 0.0F));
-        effect.safeGetUniform("GrainScale").set(value(frame, "grain", "post.grain.scale", 1.0F));
-        effect.safeGetUniform("VignetteStrength").set(value(frame, "vignette", "post.vignette.strength", 0.0F));
-        effect.safeGetUniform("VignetteRadius").set(value(frame, "vignette", "post.vignette.radius", 0.7F));
-        effect.safeGetUniform("VignetteSoftness").set(value(frame, "vignette", "post.vignette.softness", 0.3F));
-        effect.safeGetUniform("Time").set(frame.ageSeconds());
+        effect.safeGetUniform("GrainStrength").set(value(frame, combo, "grain", "post.grain.strength", 0.0F));
+        effect.safeGetUniform("GrainScale").set(value(frame, combo, "grain", "post.grain.scale", 1.0F));
+        effect.safeGetUniform("VignetteStrength").set(value(frame, combo, "vignette", "post.vignette.strength", 0.0F));
+        effect.safeGetUniform("VignetteRadius").set(value(frame, combo, "vignette", "post.vignette.radius", 0.7F));
+        effect.safeGetUniform("VignetteSoftness").set(value(frame, combo, "vignette", "post.vignette.softness", 0.3F));
+        effect.safeGetUniform("Time").set(frame == null ? Util.getMillis() / 1000.0F : frame.ageSeconds());
         postChain.process(event.getPartialTick());
         mainTarget.bindWrite(false);
     }
@@ -175,13 +190,35 @@ public final class ClientSwordArrayPostEffect {
         return Math.max(minimum, Math.min(maximum, value));
     }
 
-    private static float value(ClientTechniqueOverlayState.FinisherFrame frame, String module,
+    private static float value(ClientTechniqueOverlayState.FinisherFrame frame,
+                               ClientComboState.Impact combo, String module,
                                String track, float neutral) {
-        return frame.enabled(module) ? frame.value(track, neutral) : neutral;
+        if (frame != null) return frame.enabled(module) ? frame.value(track, neutral) : neutral;
+        if (combo == null) return neutral;
+        return switch (track) {
+            case "post.distortion.strength" -> combo.radialBlur() * 1.8F;
+            case "post.distortion.radius" -> 0.13F;
+            case "post.distortion.width" -> 0.10F;
+            case "post.radialBlur.strength" -> combo.radialBlur();
+            case "post.chromatic.strength" -> combo.chromatic();
+            case "post.color.contrast" -> 1.0F + combo.threshold() * 0.18F;
+            case "post.color.saturation" -> 1.0F - combo.threshold() * 0.32F;
+            case "post.threshold.amount" -> combo.threshold();
+            case "post.threshold.level" -> 0.51F;
+            case "post.threshold.softness" -> 0.028F;
+            case "post.threshold.isolation" -> 0.0F;
+            case "post.threshold.signalFeather" -> 0.10F;
+            case "post.blackout.amount" -> combo.blackout();
+            case "post.vignette.strength" -> combo.threshold() * 0.24F;
+            case "post.vignette.radius" -> 0.68F;
+            case "post.vignette.softness" -> 0.30F;
+            default -> neutral;
+        };
     }
 
     private static float[] resolveCenter(ClientTechniqueOverlayState.FinisherFrame frame,
                                          String module, Projection impact) {
+        if (frame == null) return new float[]{impact.x, impact.y};
         if ("beamImpact".equals(frame.anchor(module))) return new float[]{impact.x, impact.y};
         var center = frame.center(module, 0.5F, 0.5F);
         return new float[]{center.x(), center.y()};

@@ -227,6 +227,7 @@ public final class FlyingSwordItem extends SwordItem {
         } else {
             summonFormation(player, stack);
         }
+        ModNetwork.sendFormationState(player, !getOwnedFormationSwords(player).isEmpty());
         player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
                 SoundSource.PLAYERS, 0.8F, activeSwords.isEmpty() ? 1.4F : 0.9F);
         return true;

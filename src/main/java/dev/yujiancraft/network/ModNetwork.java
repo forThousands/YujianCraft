@@ -41,7 +41,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "23";
+    private static final String PROTOCOL = "26";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -143,6 +143,12 @@ public final class ModNetwork {
         CHANNEL.registerMessage(30, ComboStatePacket.class,
                 ComboStatePacket::encode, ComboStatePacket::decode,
                 ModNetwork::handleComboState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(31, CycleComboStylePacket.class,
+                (message, buffer) -> { }, buffer -> new CycleComboStylePacket(),
+                ModNetwork::handleCycleComboStyle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(32, FormationStatePacket.class,
+                FormationStatePacket::encode, FormationStatePacket::decode,
+                ModNetwork::handleFormationState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private static void handleToggleCombo(ToggleComboPacket message,
@@ -165,11 +171,29 @@ public final class ModNetwork {
         context.setPacketHandled(true);
     }
 
+    private static void handleCycleComboStyle(CycleComboStylePacket message,
+                                              Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) SwordComboManager.cycleStyle(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
     private static void handleComboState(ComboStatePacket message,
                                          Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> () -> dev.yujiancraft.client.ClientComboState.accept(message)));
+        context.setPacketHandled(true);
+    }
+
+    private static void handleFormationState(FormationStatePacket message,
+                                              Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ClientInputEvents.onFormationState(message.deployed)));
         context.setPacketHandled(true);
     }
 
@@ -495,6 +519,10 @@ public final class ModNetwork {
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
     }
 
+    public static void sendFormationState(ServerPlayer player, boolean deployed) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new FormationStatePacket(deployed));
+    }
+
     private static void sendBalances(ServerPlayer player) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new SyncBalancePacket(SwordBalanceConfig.snapshot(), EffectBalanceConfig.snapshot()));
@@ -542,12 +570,13 @@ public final class ModNetwork {
                 sustainTicks));
     }
 
-    public static void sendComboState(ServerPlayer player, boolean active, int stage,
+    public static void sendComboState(ServerPlayer player, boolean active, String styleId, int stage,
                                       long startGameTick, int durationTicks, int targetId,
-                                      Vec3 playerAnchor, Vec3 targetAnchor) {
+                                      Vec3 playerAnchor, Vec3 targetAnchor, Vec3 warpDestination,
+                                      float warpYaw) {
         CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-                new ComboStatePacket(player.getId(), active, stage, startGameTick, durationTicks,
-                        targetId, playerAnchor, targetAnchor));
+                new ComboStatePacket(player.getId(), active, styleId, stage, startGameTick, durationTicks,
+                        targetId, playerAnchor, targetAnchor, warpDestination, warpYaw));
     }
 
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
@@ -569,6 +598,16 @@ public final class ModNetwork {
     }
 
     public record ToggleSummonedSwordsPacket() {
+    }
+
+    public record FormationStatePacket(boolean deployed) {
+        private static void encode(FormationStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeBoolean(message.deployed);
+        }
+
+        private static FormationStatePacket decode(FriendlyByteBuf buffer) {
+            return new FormationStatePacket(buffer.readBoolean());
+        }
     }
 
     public record OpenGuidePacket() {
@@ -608,6 +647,8 @@ public final class ModNetwork {
 
     public record ToggleComboPacket() { }
 
+    public record CycleComboStylePacket() { }
+
     public record ComboAttackPacket(int targetId, float lookX, float lookY, float lookZ) {
         public ComboAttackPacket(int targetId, Vec3 look) {
             this(targetId, (float) look.x, (float) look.y, (float) look.z);
@@ -628,24 +669,27 @@ public final class ModNetwork {
         }
     }
 
-    public record ComboStatePacket(int playerId, boolean active, int stage, long startGameTick,
+    public record ComboStatePacket(int playerId, boolean active, String styleId, int stage, long startGameTick,
                                    int durationTicks, int targetId, Vec3 playerAnchor,
-                                   Vec3 targetAnchor) {
+                                   Vec3 targetAnchor, Vec3 warpDestination, float warpYaw) {
         private static void encode(ComboStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.playerId);
             buffer.writeBoolean(message.active);
+            buffer.writeUtf(message.styleId, 48);
             buffer.writeVarInt(message.stage);
             buffer.writeLong(message.startGameTick);
             buffer.writeVarInt(message.durationTicks);
             buffer.writeVarInt(message.targetId);
             writeVec(buffer, message.playerAnchor);
             writeVec(buffer, message.targetAnchor);
+            writeVec(buffer, message.warpDestination);
+            buffer.writeFloat(message.warpYaw);
         }
 
         private static ComboStatePacket decode(FriendlyByteBuf buffer) {
-            return new ComboStatePacket(buffer.readVarInt(), buffer.readBoolean(), buffer.readVarInt(),
-                    buffer.readLong(), buffer.readVarInt(), buffer.readVarInt(), readVec(buffer),
-                    readVec(buffer));
+            return new ComboStatePacket(buffer.readVarInt(), buffer.readBoolean(), buffer.readUtf(48),
+                    buffer.readVarInt(), buffer.readLong(), buffer.readVarInt(), buffer.readVarInt(),
+                    readVec(buffer), readVec(buffer), readVec(buffer), buffer.readFloat());
         }
 
         private static void writeVec(FriendlyByteBuf buffer, Vec3 value) {

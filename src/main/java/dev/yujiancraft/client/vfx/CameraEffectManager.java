@@ -22,11 +22,20 @@ public final class CameraEffectManager {
                 ClientTechniqueOverlayState.sampleFinisher((float) event.getPartialTick());
         ClientComboState.Impact combo = ClientComboState.impact((float) event.getPartialTick());
         if (combo != null) {
-            float time = net.minecraft.Util.getMillis() / 1000.0F;
             float strength = combo.strength();
-            event.setYaw(event.getYaw() + layeredWave(time, 13.0F, 0.7F, 1.9F) * strength * 1.6F);
-            event.setPitch(event.getPitch() + layeredWave(time, 15.0F, 2.1F, 0.4F) * strength * 1.15F);
-            event.setRoll(event.getRoll() + layeredWave(time, 9.0F, 1.1F, 2.7F) * strength * 0.75F);
+            if (dev.yujiancraft.client.ClientOptions.comboHighFrequencyShake()) {
+                float time = net.minecraft.Util.getMillis() / 1000.0F;
+                event.setYaw(event.getYaw() + layeredWave(time, 13.0F, 0.7F, 1.9F) * strength * 1.6F);
+                event.setPitch(event.getPitch() + layeredWave(time, 15.0F, 2.1F, 0.4F) * strength * 1.15F);
+                event.setRoll(event.getRoll() + layeredWave(time, 9.0F, 1.1F, 2.7F) * strength * 0.75F);
+            } else {
+                // One broad impulse lobe: kick, weight and return, without the reciprocating
+                // vibration that made a sword impact read like a powered saw.
+                float pulse = (float) Math.sin(Math.PI * combo.shakePhase());
+                event.setYaw(event.getYaw() + pulse * strength * 0.72F);
+                event.setPitch(event.getPitch() - pulse * strength * 1.42F);
+                event.setRoll(event.getRoll() + pulse * strength * 0.58F);
+            }
         }
         if (frame == null || !frame.enabled("camera")) return;
         float frequency = Math.max(0.0F, frame.value("camera.frequency", 18.0F));

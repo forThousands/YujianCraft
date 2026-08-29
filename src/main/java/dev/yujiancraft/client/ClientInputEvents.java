@@ -35,9 +35,24 @@ public final class ClientInputEvents {
     private static long lastJumpPressMillis = -1L;
     private static boolean heldFlyingSwordLastTick;
     private static boolean formationPresentLastTick;
+    private static boolean formationSynced;
+    private static boolean comboActiveLastTick;
     private static TechniqueMode techniqueLastTick;
     private static int pendingSwordArrayHintTicks = -1;
     private ClientInputEvents() {
+    }
+
+    /** Server-confirmed formation lifecycle; entity-list scans are frustum-dependent and unreliable. */
+    public static void onFormationState(boolean deployed) {
+        formationSynced = deployed;
+        formationPresentLastTick = deployed;
+        if (deployed) {
+            ClientTechniqueOverlayState.showFormationControls(
+                    ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage(),
+                    ClientModEvents.SWITCH_TECHNIQUE.getTranslatedKeyMessage());
+        } else {
+            ClientTechniqueOverlayState.clearControlGuide();
+        }
     }
 
     @SubscribeEvent
@@ -71,6 +86,9 @@ public final class ClientInputEvents {
         }
         while (ClientModEvents.SWITCH_SWORD_ARRAY_STYLE.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordArrayStylePacket());
+        }
+        while (ClientModEvents.CYCLE_COMBO_STYLE.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.CycleComboStylePacket());
         }
         while (ClientModEvents.TOGGLE_COMBO.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleComboPacket());
@@ -279,24 +297,25 @@ public final class ClientInputEvents {
     private static void updateContextualGuidance(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
         boolean holding = FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem());
-        boolean formation = false;
-        for (Entity entity : minecraft.level.entitiesForRendering()) {
-            if (entity instanceof FlyingSwordEntity sword && sword.isOwnedBy(minecraft.player)
-                    && sword.isFormationSword()) {
-                formation = true;
-                break;
-            }
-        }
+        // Formation presence comes from an explicit server acknowledgement. Scanning
+        // entitiesForRendering() is frustum-dependent and can miss swords even while deployed.
+        boolean formation = formationSynced;
         TechniqueMode technique = ClientSettingsState.get().techniqueMode();
+        boolean comboActive = ClientComboState.isLocalActive();
         if (holding && !heldFlyingSwordLastTick) {
             minecraft.player.displayClientMessage(Component.translatable(
                     "message.yujiancraft.guide.toggle_formation",
                     ClientModEvents.TOGGLE_SWORDS.getTranslatedKeyMessage()), true);
-        } else if (formation && !formationPresentLastTick) {
-            minecraft.player.displayClientMessage(Component.translatable(
-                    "message.yujiancraft.combo.guide",
-                    ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage()), true);
-            pendingSwordArrayHintTicks = technique == TechniqueMode.SWORD_ARRAY ? 50 : -1;
+        }
+        if (formation && !formationPresentLastTick) {
+            ClientTechniqueOverlayState.showFormationControls(
+                    ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage(),
+                    ClientModEvents.SWITCH_TECHNIQUE.getTranslatedKeyMessage());
+            pendingSwordArrayHintTicks = technique == TechniqueMode.SWORD_ARRAY ? 70 : -1;
+        }
+        if (comboActive && !comboActiveLastTick) {
+            ClientTechniqueOverlayState.showComboControls(
+                    ClientModEvents.CYCLE_COMBO_STYLE.getTranslatedKeyMessage());
         } else if (formation && technique == TechniqueMode.SWORD_ARRAY
                 && techniqueLastTick != TechniqueMode.SWORD_ARRAY) {
             minecraft.player.displayClientMessage(Component.translatable(
@@ -310,9 +329,13 @@ public final class ClientInputEvents {
                     ClientModEvents.ACTIVATE_SWORD_ARRAY.getTranslatedKeyMessage()), true);
             pendingSwordArrayHintTicks = -1;
         }
-        if (!formation) pendingSwordArrayHintTicks = -1;
+        if (!formation) {
+            pendingSwordArrayHintTicks = -1;
+            ClientTechniqueOverlayState.clearControlGuide();
+        }
         heldFlyingSwordLastTick = holding;
         formationPresentLastTick = formation;
+        comboActiveLastTick = comboActive;
         techniqueLastTick = technique;
     }
 
@@ -331,6 +354,8 @@ public final class ClientInputEvents {
         lastJumpPressMillis = -1L;
         heldFlyingSwordLastTick = false;
         formationPresentLastTick = false;
+        formationSynced = false;
+        comboActiveLastTick = false;
         techniqueLastTick = null;
         pendingSwordArrayHintTicks = -1;
     }

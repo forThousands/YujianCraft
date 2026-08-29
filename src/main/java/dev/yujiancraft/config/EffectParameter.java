@@ -41,7 +41,13 @@ public enum EffectParameter {
     SWORD_ARRAY_FINISHER_DAMAGE_SCALE(EffectConfigGroup.FINISHERS,
             "sword_array_finisher_damage_scale", 12.0, 0, 500, 1.0, false),
     COMBO_FINISHER_DAMAGE_SCALE(EffectConfigGroup.FINISHERS,
-            "combo_finisher_damage_scale", 32.0, 0, 500, 1.0, false);
+            "combo_finisher_damage_scale", 32.0, 0, 500, 1.0, false),
+    COMBO_TARGET_SUPPRESSION_ENABLED(EffectConfigGroup.FINISHERS,
+            "combo_target_suppression_enabled", 1.0, 0, 1, 1.0, true),
+    COMBO_INPUT_GRACE_TICKS(EffectConfigGroup.FINISHERS,
+            "combo_input_grace_ticks", 8.0, 0, 80, 2.0, true),
+    COMBO_BUFFERED_INPUT_DEPTH(EffectConfigGroup.FINISHERS,
+            "combo_buffered_input_depth", 1.0, 1, 4, 1.0, true);
 
     private final EffectConfigGroup group;
     private final String serializedName;

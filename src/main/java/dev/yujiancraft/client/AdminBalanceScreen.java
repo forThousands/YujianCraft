@@ -146,7 +146,7 @@ public final class AdminBalanceScreen extends Screen {
     }
 
     private void buildPresentationControls(int left, int top, int panelWidth) {
-        int pageCount = 6;
+        int pageCount = 7;
         Button category = addRenderableWidget(Button.builder(
                         Component.translatable("screen.yujiancraft.balance.presentation_group_page",
                                 presentationPage + 1, pageCount), button -> { })
@@ -224,6 +224,24 @@ public final class AdminBalanceScreen extends Screen {
                     ClientOptions::swordArrayExpansion, ClientOptions::setSwordArrayExpansion,
                     ClientOptions.DEFAULT_SWORD_ARRAY_EXPANSION);
             addSwordArrayBrightnessRow(controlsLeft, top + 25, controlsWidth);
+        } else if (presentationPage == 6) {
+            addToggleRow(controlsLeft, top, controlsWidth,
+                    "screen.yujiancraft.balance.combo_precise_camera_assist",
+                    ClientOptions::comboPreciseCameraAssist, ClientOptions::setComboPreciseCameraAssist,
+                    ClientOptions.DEFAULT_COMBO_PRECISE_CAMERA_ASSIST);
+            addToggleRow(controlsLeft, top + 25, controlsWidth,
+                    "screen.yujiancraft.balance.combo_warp_blackout",
+                    ClientOptions::comboWarpBlackout, ClientOptions::setComboWarpBlackout,
+                    ClientOptions.DEFAULT_COMBO_WARP_BLACKOUT);
+            addToggleRow(controlsLeft, top + 50, controlsWidth,
+                    "screen.yujiancraft.balance.combo_high_frequency_shake",
+                    ClientOptions::comboHighFrequencyShake, ClientOptions::setComboHighFrequencyShake,
+                    ClientOptions.DEFAULT_COMBO_HIGH_FREQUENCY_SHAKE);
+            addNumericRow(controlsLeft, top + 75, controlsWidth,
+                    Component.translatable("screen.yujiancraft.balance.global_vfx_exposure"),
+                    ClientOptions.globalVfxExposure(), 0.10D,
+                    () -> ClientOptions.DEFAULT_GLOBAL_VFX_EXPOSURE,
+                    ClientOptions::setGlobalVfxExposure);
         }
     }
 

@@ -15,6 +15,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -31,7 +33,6 @@ import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.joml.Vector3f;
 
 @Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class OptimizedThirdPersonController {
@@ -39,11 +40,16 @@ public final class OptimizedThirdPersonController {
     private static final double VERTICAL_OFFSET = 0.12D;
     private static final double THIRD_PERSON_DISTANCE = 4.0D;
     private static final double CRAMPED_DISTANCE = 1.05D;
+    private static final double BALLISTIC_CONVERGENCE_RANGE = 512.0D;
+    private static final double MINIMUM_CONVERGENCE_DISTANCE = 2.0D;
+    private static final double BALLISTIC_PARALLAX_RESPONSE = 0.18D;
     private static double cameraDistanceFactor = 1.0D;
     private static boolean pseudoFirstPerson;
     private static Entity highlightedEntity;
     private static boolean highlightedEntityWasGlowing;
     private static int aimedLivingEntityId = -1;
+    private static double ballisticInverseDistance;
+    private static boolean ballisticConvergenceActive;
 
     private OptimizedThirdPersonController() {
     }
@@ -60,8 +66,11 @@ public final class OptimizedThirdPersonController {
 
         Vec3 eye = player.getEyePosition((float) event.getPartialTick());
         Vec3 realLook = player.getViewVector((float) event.getPartialTick()).normalize();
-        Vector3f leftVector = camera.getLeftVector();
-        Vec3 right = new Vec3(-leftVector.x, -leftVector.y, -leftVector.z).normalize();
+        float playerYaw = Mth.rotLerp((float) event.getPartialTick(), player.yRotO, player.getYRot());
+        // Derive the shoulder axis from the player rather than the camera. TACZ convergence toes
+        // the camera inward, and feeding that adjusted camera axis back into its own position on
+        // the next frame would otherwise cause a small lateral drift.
+        Vec3 right = Vec3.directionFromRotation(0.0F, playerYaw + 90.0F).normalize();
         Vec3 desiredTrack = realLook.scale(-THIRD_PERSON_DISTANCE)
                 .add(right.scale(SHOULDER_OFFSET)).add(0.0D, VERTICAL_OFFSET, 0.0D);
         double safeFactor = safeCameraDistanceFactor(player, eye, desiredTrack);
@@ -71,7 +80,22 @@ public final class OptimizedThirdPersonController {
         camera.setPosition(cameraPosition);
         pseudoFirstPerson = cameraPosition.distanceTo(eye) < CRAMPED_DISTANCE;
 
-        updateScreenCenterAim(minecraft, player, camera, (float) event.getPartialTick());
+        Vec3 screenDirection = screenDirection(player, eye, cameraPosition, realLook, true);
+        if (usesBallisticShoulderConvergence(player)) {
+            float ballisticYaw = (float) (Mth.atan2(-realLook.x, realLook.z) * Mth.RAD_TO_DEG);
+            float ballisticPitch = (float) (Mth.atan2(-realLook.y, realLook.horizontalDistance())
+                    * Mth.RAD_TO_DEG);
+            float convergedYaw = (float) (Mth.atan2(-screenDirection.x, screenDirection.z) * Mth.RAD_TO_DEG);
+            float convergedPitch = (float) (Mth.atan2(-screenDirection.y,
+                    screenDirection.horizontalDistance()) * Mth.RAD_TO_DEG);
+            // Add only the shoulder-parallax correction. TACZ and other camera handlers may
+            // already have authored recoil/walk sway in the event; replacing the absolute angles
+            // made those effects fight this controller during movement.
+            event.setYaw(event.getYaw() + Mth.wrapDegrees(convergedYaw - ballisticYaw));
+            event.setPitch(event.getPitch() + convergedPitch - ballisticPitch);
+            screenDirection = Vec3.directionFromRotation(event.getPitch(), event.getYaw()).normalize();
+        }
+        updateScreenCenterAim(minecraft, player, camera, (float) event.getPartialTick(), screenDirection);
     }
 
     private static double safeCameraDistanceFactor(Player player, Vec3 eye, Vec3 track) {
@@ -101,10 +125,12 @@ public final class OptimizedThirdPersonController {
                 || hit.getLocation().distanceTo(end) <= 0.12D;
     }
 
-    private static void updateScreenCenterAim(Minecraft minecraft, Player player, Camera camera, float partialTick) {
+    private static void updateScreenCenterAim(Minecraft minecraft, Player player, Camera camera, float partialTick,
+                                              Vec3 suppliedScreenDirection) {
         if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) return;
         Vec3 eye = player.getEyePosition(partialTick);
-        Vec3 screenDirection = player.getViewVector(partialTick).normalize();
+        Vec3 screenDirection = suppliedScreenDirection.lengthSqr() < 1.0E-6D
+                ? player.getViewVector(partialTick).normalize() : suppliedScreenDirection.normalize();
         Vec3 screenOrigin = camera.getPosition();
         double eyeToCamera = eye.distanceTo(screenOrigin);
         double interactionRange = minecraft.gameMode.getPickRange();
@@ -185,8 +211,65 @@ public final class OptimizedThirdPersonController {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isActive(minecraft) || minecraft.level == null || minecraft.gameMode == null
                 || !(minecraft.gameRenderer.getMainCamera().getEntity() instanceof Player player)) return false;
-        updateScreenCenterAim(minecraft, player, minecraft.gameRenderer.getMainCamera(), 1.0F);
+        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 look = player.getViewVector(1.0F).normalize();
+        Vec3 eye = player.getEyePosition(1.0F);
+        updateScreenCenterAim(minecraft, player, camera, 1.0F,
+                screenDirection(player, eye, camera.getPosition(), look, false));
         return true;
+    }
+
+    /**
+     * TACZ launches from the shooter using player yaw/pitch. A shoulder camera using the same
+     * direction produces two parallel rays, so its centre reticle appears to the right of the
+     * actual impact. Toe the camera toward the first point on the real ballistic ray instead of
+     * mutating player rotation or TACZ state; this keeps recoil, spread and server authority intact.
+     */
+    private static Vec3 screenDirection(Player player, Vec3 eye, Vec3 cameraPosition, Vec3 playerLook,
+                                        boolean advanceSmoothing) {
+        if (!usesBallisticShoulderConvergence(player)) {
+            ballisticConvergenceActive = false;
+            ballisticInverseDistance = 0.0D;
+            return playerLook;
+        }
+        Vec3 end = eye.add(playerLook.scale(BALLISTIC_CONVERGENCE_RANGE));
+        BlockHitResult blockHit = player.level().clip(new ClipContext(eye, end,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+        double maximumDistance = blockHit.getType() == HitResult.Type.MISS
+                ? eye.distanceToSqr(end) : eye.distanceToSqr(blockHit.getLocation());
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(player, eye, end,
+                new AABB(eye, end).inflate(1.0D),
+                entity -> isScreenRayCandidate(player, entity, BALLISTIC_CONVERGENCE_RANGE),
+                maximumDistance);
+        Vec3 rawConvergence = entityHit != null ? entityHit.getLocation()
+                : blockHit.getType() == HitResult.Type.BLOCK ? blockHit.getLocation() : end;
+        double desiredDistance = Mth.clamp(eye.distanceTo(rawConvergence),
+                MINIMUM_CONVERGENCE_DISTANCE, BALLISTIC_CONVERGENCE_RANGE);
+        double desiredInverseDistance = 1.0D / desiredDistance;
+        if (!ballisticConvergenceActive) {
+            ballisticInverseDistance = desiredInverseDistance;
+            ballisticConvergenceActive = true;
+        } else if (advanceSmoothing) {
+            // Smooth parallax rather than metres. Crossing the horizon changes the raw trace from
+            // a nearby floor hit to the 512-block miss point in one frame; inverse-distance
+            // smoothing removes that discontinuity while preserving close-range convergence.
+            ballisticInverseDistance = Mth.lerp(BALLISTIC_PARALLAX_RESPONSE,
+                    ballisticInverseDistance, desiredInverseDistance);
+        }
+        double convergenceDistance = 1.0D / Math.max(1.0D / BALLISTIC_CONVERGENCE_RANGE,
+                ballisticInverseDistance);
+        Vec3 convergence = eye.add(playerLook.scale(convergenceDistance));
+        Vec3 converged = convergence.subtract(cameraPosition);
+        return converged.lengthSqr() < 1.0E-6D ? playerLook : converged.normalize();
+    }
+
+    /** Optional TACZ detection without a compile-time dependency. */
+    private static boolean usesBallisticShoulderConvergence(Player player) {
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty()) return false;
+        String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
+        String implementation = stack.getItem().getClass().getName();
+        return "tacz".equals(namespace) || implementation.startsWith("com.tacz.");
     }
 
     private static void setHighlightedEntity(Entity entity) {
@@ -257,6 +340,8 @@ public final class OptimizedThirdPersonController {
         cameraDistanceFactor = 1.0D;
         pseudoFirstPerson = false;
         aimedLivingEntityId = -1;
+        ballisticConvergenceActive = false;
+        ballisticInverseDistance = 0.0D;
         clearHighlightedEntity();
     }
 

@@ -16,6 +16,7 @@ uniform float RadialBlurStrength;
 uniform float ChromaticStrength;
 uniform float BlurStrength;
 uniform float Exposure;
+uniform float GlobalExposure;
 uniform float Contrast;
 uniform float Saturation;
 uniform float ThresholdAmount;
@@ -23,6 +24,7 @@ uniform float ThresholdLevel;
 uniform float ThresholdSoftness;
 uniform float InvertAmount;
 uniform float WhiteoutAmount;
+uniform float BlackoutAmount;
 uniform float ThresholdIsolation;
 uniform float SignalRadius;
 uniform float SignalBeamWidth;
@@ -175,6 +177,12 @@ void main() {
     float vignette = smoothstep(VignetteRadius,
             VignetteRadius + max(0.001, VignetteSoftness), vignetteDistance);
     colour *= 1.0 - vignette * VignetteStrength;
+    // Developer exposure is a final display adjustment. It deliberately runs after threshold
+    // classification so lowering brightness cannot make the sword-array signal misclassify.
+    colour *= exp2(GlobalExposure);
+    // Warp transitions use a true neutral black frame. Keeping it as the final compositing
+    // operation prevents shader packs, sky exposure and bloom from lifting it back to grey.
+    colour = mix(colour, vec3(0.0), clamp(BlackoutAmount, 0.0, 1.0));
 
     fragColor = vec4(clamp(colour, 0.0, 1.0), 1.0);
 }
