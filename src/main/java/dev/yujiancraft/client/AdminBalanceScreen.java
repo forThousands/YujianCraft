@@ -178,6 +178,10 @@ public final class AdminBalanceScreen extends Screen {
                     ClientOptions.DEFAULT_SWORD_ENERGY_HIGHLIGHT);
             addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.yujiancraft.balance.sword_outline",
                     ClientOptions::swordOutline, ClientOptions::setSwordOutline, ClientOptions.DEFAULT_SWORD_OUTLINE);
+            addToggleRow(controlsLeft, top + 50, controlsWidth,
+                    "screen.yujiancraft.balance.trial_pedestal_sword_aura",
+                    ClientOptions::trialPedestalSwordAura, ClientOptions::setTrialPedestalSwordAura,
+                    ClientOptions.DEFAULT_TRIAL_PEDESTAL_SWORD_AURA);
         } else if (presentationPage == 2) {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.yujiancraft.balance.flame_module_visual",
                     ClientOptions::flameModuleVisual, ClientOptions::setFlameModuleVisual,

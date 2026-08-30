@@ -23,9 +23,6 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.model.geom.builders.CubeDeformation;
-import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.BakedModel;
@@ -206,12 +203,6 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
-    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        event.registerLayerDefinition(SpiritTrialDummyRenderer.LAYER, () -> LayerDefinition.create(
-                HumanoidModel.createMesh(CubeDeformation.NONE, 0.0F), 64, 64));
-    }
-
-    @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(SWITCH_FORMATION);
         event.register(OPEN_CONFIG);
@@ -367,7 +358,8 @@ public final class ClientModEvents {
             boolean customRenderer = hasUnsafeCustomRenderer(sword, visualStack);
             boolean bodyGlow = ClientOptions.swordBodyGlow()
                     && glowMode == WanxiangGlowMode.FULL_BODY && !customRenderer;
-            boolean auraGlow = ClientOptions.swordBodyGlow() && glowMode != WanxiangGlowMode.ORIGINAL;
+            boolean auraGlow = ClientOptions.swordBodyGlow()
+                    && glowMode != WanxiangGlowMode.ORIGINAL && !sword.isVisualAuraSuppressed();
             int swordLight = bodyGlow ? LightTexture.FULL_BRIGHT : packedLight;
             if (bodyGlow) {
                 try {

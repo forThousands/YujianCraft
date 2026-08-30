@@ -38,6 +38,7 @@ public final class ClientOptions {
     public static final boolean DEFAULT_SPIRIT_CURTAIN_FLOW = true;
     public static final boolean DEFAULT_SPIRIT_CURTAIN_MIST = true;
     public static final boolean DEFAULT_WORKBENCH_PREVIEW = true;
+    public static final boolean DEFAULT_TRIAL_PEDESTAL_SWORD_AURA = false;
     public static final boolean DEFAULT_OPTIMIZED_THIRD_PERSON = true;
     public static final boolean DEFAULT_COMBO_PRECISE_CAMERA_ASSIST = false;
     public static final boolean DEFAULT_COMBO_WARP_BLACKOUT = false;
@@ -83,6 +84,7 @@ public final class ClientOptions {
     private static boolean spiritCurtainFlow;
     private static boolean spiritCurtainMist;
     private static boolean workbenchPreview;
+    private static boolean trialPedestalSwordAura;
     private static SwordGlowBrightness glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
     private static SwordArrayBrightness swordArrayBrightness = DEFAULT_SWORD_ARRAY_BRIGHTNESS;
     private static SpiritCurtainDensity spiritCurtainDensity = DEFAULT_SPIRIT_CURTAIN_DENSITY;
@@ -132,6 +134,8 @@ public final class ClientOptions {
             spiritCurtainFlow = booleanValue("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
             spiritCurtainMist = booleanValue("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
             workbenchPreview = booleanValue("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
+            trialPedestalSwordAura = booleanValue("trialPedestalSwordAura",
+                    DEFAULT_TRIAL_PEDESTAL_SWORD_AURA);
             glowBrightness = SwordGlowBrightness.fromName(stringValue("glowBrightness",
                     DEFAULT_GLOW_BRIGHTNESS.serializedName()));
             swordArrayBrightness = SwordArrayBrightness.fromName(stringValue("swordArrayBrightness",
@@ -168,6 +172,7 @@ public final class ClientOptions {
             spiritCurtainFlow = DEFAULT_SPIRIT_CURTAIN_FLOW;
             spiritCurtainMist = DEFAULT_SPIRIT_CURTAIN_MIST;
             workbenchPreview = DEFAULT_WORKBENCH_PREVIEW;
+            trialPedestalSwordAura = DEFAULT_TRIAL_PEDESTAL_SWORD_AURA;
             glowBrightness = DEFAULT_GLOW_BRIGHTNESS;
             swordArrayBrightness = DEFAULT_SWORD_ARRAY_BRIGHTNESS;
             spiritCurtainDensity = DEFAULT_SPIRIT_CURTAIN_DENSITY;
@@ -212,6 +217,7 @@ public final class ClientOptions {
     public static boolean spiritCurtainFlow() { return spiritCurtainFlow; }
     public static boolean spiritCurtainMist() { return spiritCurtainMist; }
     public static boolean workbenchPreview() { return workbenchPreview; }
+    public static boolean trialPedestalSwordAura() { return trialPedestalSwordAura; }
     public static SwordGlowBrightness glowBrightness() { return glowBrightness; }
     public static SwordArrayBrightness swordArrayBrightness() { return swordArrayBrightness; }
     public static SpiritCurtainDensity spiritCurtainDensity() { return spiritCurtainDensity; }
@@ -357,6 +363,11 @@ public final class ClientOptions {
         setBoolean("workbenchPreview", enabled);
     }
 
+    public static synchronized void setTrialPedestalSwordAura(boolean enabled) {
+        trialPedestalSwordAura = enabled;
+        setBoolean("trialPedestalSwordAura", enabled);
+    }
+
     public static synchronized void setGlowBrightness(SwordGlowBrightness brightness) {
         glowBrightness = brightness == null ? DEFAULT_GLOW_BRIGHTNESS : brightness;
         setString("glowBrightness", glowBrightness.serializedName());
@@ -452,6 +463,7 @@ public final class ClientOptions {
         root.addProperty("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
         root.addProperty("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
         root.addProperty("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
+        root.addProperty("trialPedestalSwordAura", DEFAULT_TRIAL_PEDESTAL_SWORD_AURA);
         root.addProperty("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         root.addProperty("swordArrayBrightness", DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName());
         root.addProperty("spiritCurtainDensity", DEFAULT_SPIRIT_CURTAIN_DENSITY.serializedName());
@@ -463,6 +475,12 @@ public final class ClientOptions {
     private static boolean migrateDocument() {
         boolean changed = false;
         int schemaVersion = document.has("schemaVersion") ? document.get("schemaVersion").getAsInt() : 0;
+        if (document.has("trialPedestalSwordEffects") && !document.has("trialPedestalSwordAura")) {
+            document.addProperty("trialPedestalSwordAura",
+                    booleanValue("trialPedestalSwordEffects", DEFAULT_TRIAL_PEDESTAL_SWORD_AURA));
+            document.remove("trialPedestalSwordEffects");
+            changed = true;
+        }
         if (schemaVersion < 6) {
             changed = true;
         }
@@ -584,6 +602,8 @@ public final class ClientOptions {
         changed |= addBooleanIfMissing("spiritCurtainFlow", DEFAULT_SPIRIT_CURTAIN_FLOW);
         changed |= addBooleanIfMissing("spiritCurtainMist", DEFAULT_SPIRIT_CURTAIN_MIST);
         changed |= addBooleanIfMissing("workbenchPreview", DEFAULT_WORKBENCH_PREVIEW);
+        changed |= addBooleanIfMissing("trialPedestalSwordAura",
+                DEFAULT_TRIAL_PEDESTAL_SWORD_AURA);
         changed |= addStringIfMissing("glowBrightness", DEFAULT_GLOW_BRIGHTNESS.serializedName());
         changed |= addStringIfMissing("swordArrayBrightness",
                 DEFAULT_SWORD_ARRAY_BRIGHTNESS.serializedName());

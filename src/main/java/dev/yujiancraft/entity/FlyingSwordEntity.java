@@ -103,6 +103,7 @@ public final class FlyingSwordEntity extends Entity {
     private Vec3 manualLaunchDirection;
     private int manualLaunchTicks;
     private boolean visualPreview;
+    private boolean visualAuraSuppressed;
     private UUID sourceBindingId;
     private ItemStack displayStack = ItemStack.EMPTY;
     private int techniqueTicks;
@@ -1042,6 +1043,15 @@ public final class FlyingSwordEntity extends Entity {
         return visualPreview;
     }
 
+    /** Client-side preview override used when a presentation needs the luminous body but no aura. */
+    public boolean isVisualAuraSuppressed() {
+        return visualAuraSuppressed;
+    }
+
+    public void setVisualAuraSuppressed(boolean suppressed) {
+        visualAuraSuppressed = suppressed;
+    }
+
     /** Configures an unspawned client entity so the workbench renders the real sword pipeline. */
     public void configureVisualPreview(ItemStack stack) {
         if (!WanxiangSwordData.isUsable(stack)) return;
@@ -1051,6 +1061,7 @@ public final class FlyingSwordEntity extends Entity {
         displayStack = displayCopy(stack);
         sourceBindingId = WanxiangSwordData.binding(stack);
         visualPreview = true;
+        visualAuraSuppressed = false;
         phase = FlightPhase.DOCKED;
         entityData.set(DATA_MATERIAL, material.ordinal());
         entityData.set(DATA_SERIES, series.ordinal());

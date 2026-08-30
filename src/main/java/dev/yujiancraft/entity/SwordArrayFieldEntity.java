@@ -8,6 +8,7 @@ import dev.yujiancraft.config.EffectParameter;
 import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.registry.ModEntities;
+import dev.yujiancraft.registry.ModSounds;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.wanxiang.FlyingSwordDamage;
 import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
@@ -242,9 +243,9 @@ public final class SwordArrayFieldEntity extends Entity {
         }
         int descentTick = finisherStart + chargeTicks() + holdTicks();
         if (age == descentTick) {
-            level().playSound(null, BlockPos.containing(topCentre()), SoundEvents.TRIDENT_RIPTIDE_3,
+            level().playSound(null, BlockPos.containing(topCentre()), ModSounds.SWORD_ARRAY_RIPTIDE_DESCENT.get(),
                     SoundSource.PLAYERS, 1.8F, 0.48F);
-            level().playSound(null, BlockPos.containing(topCentre()), SoundEvents.BEACON_POWER_SELECT,
+            level().playSound(null, BlockPos.containing(topCentre()), ModSounds.SWORD_ARRAY_BEACON_DESCENT.get(),
                     SoundSource.PLAYERS, 1.4F, 0.62F);
         }
         int impactTick = descentTick + expandTicks();
@@ -320,11 +321,11 @@ public final class SwordArrayFieldEntity extends Entity {
 
     private void beginFinisher(ServerLevel level, ServerPlayer owner) {
         Vec3 top = topCentre();
-        level.playSound(null, BlockPos.containing(top), SoundEvents.BEACON_ACTIVATE,
+        level.playSound(null, BlockPos.containing(top), ModSounds.SWORD_ARRAY_BEACON_ACTIVATE.get(),
                 SoundSource.PLAYERS, 1.6F, 0.46F);
         level.playSound(null, blockPosition(), SoundEvents.WARDEN_SONIC_CHARGE,
                 SoundSource.PLAYERS, 1.15F, 0.62F);
-        level.playSound(null, BlockPos.containing(top), SoundEvents.AMETHYST_BLOCK_RESONATE,
+        level.playSound(null, BlockPos.containing(top), ModSounds.SWORD_ARRAY_AMETHYST_RESONATE.get(),
                 SoundSource.PLAYERS, 1.35F, 0.52F);
         ModNetwork.sendSwordArrayFinisher(owner, level.getGameTime(), position(), top,
                 maximumBeamRadius(),
