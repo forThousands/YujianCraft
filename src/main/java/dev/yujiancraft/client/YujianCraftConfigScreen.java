@@ -158,7 +158,9 @@ public final class YujianCraftConfigScreen extends Screen {
                     Component.translatable(settings.attackMode().translationKey())));
         }
         if (thirdPersonButton != null) {
-            thirdPersonButton.setMessage(Component.translatable("screen.yujiancraft.config.optimized_third_person",
+            thirdPersonButton.setMessage(ClientModCompatibility.isShoulderSurfingLoaded()
+                    ? Component.translatable("screen.yujiancraft.config.optimized_third_person_external")
+                    : Component.translatable("screen.yujiancraft.config.optimized_third_person",
                     Component.translatable(ClientOptions.optimizedThirdPerson() ? "options.on" : "options.off")));
         }
         if (swordRidingButton != null) {

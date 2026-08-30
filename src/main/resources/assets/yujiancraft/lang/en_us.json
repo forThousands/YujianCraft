@@ -99,6 +99,7 @@
   "screen.yujiancraft.config.reset_short": "Default",
   "screen.yujiancraft.config.reset_all": "Reset All",
   "screen.yujiancraft.config.optimized_third_person": "Optimized third person: %s",
+  "screen.yujiancraft.config.optimized_third_person_external": "Optimized third person: managed by Shoulder Surfing",
   "screen.yujiancraft.config.sword_riding": "Double-tap jump sword riding: %s",
   "screen.yujiancraft.config.sword_glow": "Flying sword effects: %s",
   "screen.yujiancraft.config.glow_brightness": "Flying sword brightness: %s",

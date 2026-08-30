@@ -99,6 +99,7 @@
   "screen.yujiancraft.config.reset_short": "默认",
   "screen.yujiancraft.config.reset_all": "全部默认",
   "screen.yujiancraft.config.optimized_third_person": "优化第三人称：%s",
+  "screen.yujiancraft.config.optimized_third_person_external": "优化第三人称：由越肩视角接管",
   "screen.yujiancraft.config.sword_riding": "双击空格御剑飞行：%s",
   "screen.yujiancraft.config.sword_glow": "飞剑光效：%s",
   "screen.yujiancraft.config.glow_brightness": "飞剑亮度档：%s",

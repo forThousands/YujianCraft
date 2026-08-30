@@ -80,7 +80,9 @@ public final class OptimizedThirdPersonController {
         camera.setPosition(cameraPosition);
         pseudoFirstPerson = cameraPosition.distanceTo(eye) < CRAMPED_DISTANCE;
 
-        Vec3 screenDirection = screenDirection(player, eye, cameraPosition, realLook, true);
+        Vec3 screenDirection = ClientModCompatibility.isEpicFightLoaded()
+                ? Vec3.directionFromRotation(event.getPitch(), event.getYaw()).normalize()
+                : screenDirection(player, eye, cameraPosition, realLook, true);
         if (usesBallisticShoulderConvergence(player)) {
             float ballisticYaw = (float) (Mth.atan2(-realLook.x, realLook.z) * Mth.RAD_TO_DEG);
             float ballisticPitch = (float) (Mth.atan2(-realLook.y, realLook.horizontalDistance())
@@ -212,10 +214,8 @@ public final class OptimizedThirdPersonController {
         if (!isActive(minecraft) || minecraft.level == null || minecraft.gameMode == null
                 || !(minecraft.gameRenderer.getMainCamera().getEntity() instanceof Player player)) return false;
         Camera camera = minecraft.gameRenderer.getMainCamera();
-        Vec3 look = player.getViewVector(1.0F).normalize();
-        Vec3 eye = player.getEyePosition(1.0F);
-        updateScreenCenterAim(minecraft, player, camera, 1.0F,
-                screenDirection(player, eye, camera.getPosition(), look, false));
+        Vec3 cameraLook = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot()).normalize();
+        updateScreenCenterAim(minecraft, player, camera, 1.0F, cameraLook);
         return true;
     }
 
@@ -273,6 +273,13 @@ public final class OptimizedThirdPersonController {
     }
 
     private static void setHighlightedEntity(Entity entity) {
+        // Epic Fight owns its target indicator/highlight state. Sharing vanilla's glowing flag
+        // lets either mod accidentally clear the other one's marker, so keep Yujian's aim data
+        // but relinquish the visual flag when Epic Fight is installed.
+        if (ClientModCompatibility.isEpicFightLoaded()) {
+            clearHighlightedEntity();
+            return;
+        }
         if (highlightedEntity == entity) return;
         clearHighlightedEntity();
         highlightedEntity = entity;
@@ -333,6 +340,7 @@ public final class OptimizedThirdPersonController {
 
     private static boolean isActive(Minecraft minecraft) {
         return ClientOptions.optimizedThirdPerson()
+                && ClientModCompatibility.mayUseYujianThirdPersonCamera()
                 && minecraft.options.getCameraType() == CameraType.THIRD_PERSON_BACK;
     }
 

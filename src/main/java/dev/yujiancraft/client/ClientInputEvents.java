@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import dev.yujiancraft.item.FlyingSwordItem;
@@ -32,6 +33,8 @@ public final class ClientInputEvents {
     private static final long SWORD_RIDING_DOUBLE_TAP_MS = 350L;
     private static int manualAimSyncCountdown;
     private static boolean blockAttackHandledThisTick;
+    private static boolean epicFightAttackHandledThisTick;
+    private static boolean epicFightLockHandledThisTick;
     private static long lastJumpPressMillis = -1L;
     private static boolean heldFlyingSwordLastTick;
     private static boolean formationPresentLastTick;
@@ -128,16 +131,42 @@ public final class ClientInputEvents {
                 : ModNetwork.ArtifactActionPacket.miss();
     }
 
-    @SubscribeEvent
+    /**
+     * Epic Fight consumes the vanilla attack KeyMapping click while it is in battle mode, before
+     * Forge can emit InteractionKeyMappingTriggered. Capture the physical attack edge first so
+     * Yujian combo input remains independent of Epic Fight's combat/targeting pipeline.
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
+    public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
+        if (!ClientModCompatibility.isEpicFightLoaded() || event.getAction() != GLFW.GLFW_PRESS) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null || minecraft.player == null || minecraft.level == null
+                || !minecraft.options.keyAttack.matchesMouse(event.getButton())) return;
+
+        if (ClientComboState.isLocalActive()) {
+            sendComboAttack(minecraft);
+            epicFightAttackHandledThisTick = true;
+            // Combo stance deliberately owns attack input. Prevent Epic Fight and vanilla from
+            // starting a second attack animation for the same physical click.
+            event.setCanceled(true);
+            return;
+        }
+        if (FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(
+                    findSwordArrayTargetId(minecraft)));
+            epicFightLockHandledThisTick = true;
+            // Do not cancel: outside combo stance Epic Fight's normal attack remains available.
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public static void onInteractionInput(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
         boolean optimizedAim = OptimizedThirdPersonController.refreshScreenCenterHit();
         if (event.isAttack() && minecraft.player != null && ClientComboState.isLocalActive()) {
             event.setCanceled(true);
             event.setSwingHand(false);
-            int targetId = findSwordArrayTargetId(minecraft);
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ComboAttackPacket(targetId,
-                    minecraft.player.getViewVector(1.0F)));
+            if (!epicFightAttackHandledThisTick) sendComboAttack(minecraft);
             return;
         }
         if (event.isAttack() && minecraft.player != null
@@ -156,12 +185,14 @@ public final class ClientInputEvents {
                         minecraft.player.getViewVector(1.0F)));
                 return;
             }
-            int targetId = ClientOptions.optimizedThirdPerson()
+            int targetId = optimizedAim
                     ? OptimizedThirdPersonController.getAimedLivingEntityId() : -1;
             if (targetId < 0 && minecraft.hitResult instanceof EntityHitResult entityHit) {
                 targetId = entityHit.getEntity().getId();
             }
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(targetId));
+            if (!epicFightLockHandledThisTick) {
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(targetId));
+            }
             // Do not cancel: the same click must still swing, attack an entity or mine a block.
         } else if (event.isUseItem() && minecraft.player != null
                 && FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())
@@ -189,6 +220,8 @@ public final class ClientInputEvents {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
             blockAttackHandledThisTick = false;
+            epicFightAttackHandledThisTick = false;
+            epicFightLockHandledThisTick = false;
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -245,8 +278,8 @@ public final class ClientInputEvents {
     private static int findManualTargetId(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null) return -1;
         if (ClientOptions.optimizedThirdPerson()
-                && minecraft.options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK) {
-            OptimizedThirdPersonController.refreshScreenCenterHit();
+                && minecraft.options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK
+                && OptimizedThirdPersonController.refreshScreenCenterHit()) {
             return OptimizedThirdPersonController.getAimedLivingEntityId();
         }
         if (minecraft.hitResult instanceof EntityHitResult entityHit
@@ -272,8 +305,8 @@ public final class ClientInputEvents {
         if (minecraft.player == null || minecraft.level == null) return -1;
         double range = Math.max(2.0D, ClientSettingsState.get().crosshairLockRadius());
         if (ClientOptions.optimizedThirdPerson()
-                && minecraft.options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK) {
-            OptimizedThirdPersonController.refreshScreenCenterHit();
+                && minecraft.options.getCameraType() == net.minecraft.client.CameraType.THIRD_PERSON_BACK
+                && OptimizedThirdPersonController.refreshScreenCenterHit()) {
             int targetId = OptimizedThirdPersonController.getAimedLivingEntityId();
             Entity aimed = minecraft.level.getEntity(targetId);
             if (aimed != null && isPotentialSwordTarget(minecraft.player, aimed)
@@ -282,7 +315,7 @@ public final class ClientInputEvents {
             }
         }
         Vec3 start = minecraft.gameRenderer.getMainCamera().getPosition();
-        Vec3 direction = minecraft.player.getViewVector(1.0F).normalize();
+        Vec3 direction = currentAimDirection(minecraft);
         Vec3 end = start.add(direction.scale(range));
         BlockHitResult blockHit = minecraft.level.clip(new ClipContext(start, end,
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player));
@@ -292,6 +325,23 @@ public final class ClientInputEvents {
                 new AABB(start, end).inflate(1.0D),
                 entity -> isPotentialSwordTarget(minecraft.player, entity), maximumDistance);
         return entityHit == null ? -1 : entityHit.getEntity().getId();
+    }
+
+    private static void sendComboAttack(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.level == null) return;
+        Vec3 look = currentAimDirection(minecraft);
+        ModNetwork.CHANNEL.sendToServer(new ModNetwork.ComboAttackPacket(
+                findSwordArrayTargetId(minecraft), look));
+    }
+
+    /** Camera direction remains correct for Epic Fight's decoupled camera and shoulder cameras. */
+    private static Vec3 currentAimDirection(Minecraft minecraft) {
+        net.minecraft.client.Camera camera = minecraft.gameRenderer.getMainCamera();
+        Vec3 direction = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot());
+        if (direction.lengthSqr() < 1.0E-6D && minecraft.player != null) {
+            direction = minecraft.player.getViewVector(1.0F);
+        }
+        return direction.normalize();
     }
 
     private static void updateContextualGuidance(Minecraft minecraft) {
