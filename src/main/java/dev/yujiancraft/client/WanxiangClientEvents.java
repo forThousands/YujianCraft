@@ -11,13 +11,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /** Adds Yujian Craft information to tempered items without replacing their original item class. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class WanxiangClientEvents {
     private WanxiangClientEvents() {
     }
@@ -89,7 +89,7 @@ public final class WanxiangClientEvents {
             Component replacement = Component.translatable(
                     "attribute.modifier.equals.0",
                     formatAttributeValue(currentDamage),
-                    Component.translatable(Attributes.ATTACK_DAMAGE.getDescriptionId()))
+                    Component.translatable(Attributes.ATTACK_DAMAGE.value().getDescriptionId()))
                     .setStyle(line.getStyle());
             event.getToolTip().set(index, replacement);
             return;
@@ -103,7 +103,7 @@ public final class WanxiangClientEvents {
         for (Object argument : modifier.getArgs()) {
             if (argument instanceof Component component
                     && component.getContents() instanceof TranslatableContents attribute
-                    && Attributes.ATTACK_DAMAGE.getDescriptionId().equals(attribute.getKey())) {
+                    && Attributes.ATTACK_DAMAGE.value().getDescriptionId().equals(attribute.getKey())) {
                 return true;
             }
         }

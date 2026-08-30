@@ -10,26 +10,43 @@ import dev.yujiancraft.registry.ModBlockEntities;
 import dev.yujiancraft.registry.ModBlocks;
 import dev.yujiancraft.registry.ModEffects;
 import dev.yujiancraft.registry.ModMenus;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import dev.yujiancraft.registry.ModDataComponents;
+import dev.yujiancraft.registry.ModSounds;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 
 @Mod(YujianCraft.MOD_ID)
 public final class YujianCraft {
     public static final String MOD_ID = "yujiancraft";
 
-    public YujianCraft(FMLJavaModLoadingContext context) {
-        IEventBus modBus = context.getModEventBus();
+    public YujianCraft(IEventBus modBus, ModContainer modContainer) {
         ModBlocks.register(modBus);
         ModItems.register(modBus);
         ModEntities.register(modBus);
         ModBlockEntities.register(modBus);
         ModMenus.register(modBus);
         ModEffects.register(modBus);
-        ModNetwork.register();
-        context.registerConfig(ModConfig.Type.SERVER, SwordBalanceConfig.SPEC);
-        context.registerConfig(ModConfig.Type.SERVER, EffectBalanceConfig.SPEC, "yujiancraft-effects-server.toml");
-        context.registerConfig(ModConfig.Type.SERVER, TechniqueConfig.SPEC, "yujiancraft-techniques-server.toml");
+        ModDataComponents.register(modBus);
+        ModSounds.register(modBus);
+        modBus.addListener(ModNetwork::register);
+        modBus.addListener(YujianCraft::registerCapabilities);
+        modContainer.registerConfig(ModConfig.Type.SERVER, SwordBalanceConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.SERVER, EffectBalanceConfig.SPEC,
+                "yujiancraft-effects-server.toml");
+        modContainer.registerConfig(ModConfig.Type.SERVER, TechniqueConfig.SPEC,
+                "yujiancraft-techniques-server.toml");
+    }
+
+    private static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.FLYING_SWORD_WORKBENCH.get(), (blockEntity, side) -> blockEntity.inventory());
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.SPIRIT_TEMPERING_TABLE.get(), (blockEntity, side) -> blockEntity.inventory());
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.SPIRIT_REPLENISHING_TABLE.get(), (blockEntity, side) -> blockEntity.inventory());
     }
 }

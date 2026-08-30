@@ -2,7 +2,7 @@ package dev.yujiancraft.config;
 
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import net.minecraft.util.Mth;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -13,13 +13,13 @@ public final class SwordBalanceConfig {
     public static final double MIN_SPEED = 0.25D;
     public static final double MAX_SPEED = 3.0D;
 
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    private static final EnumMap<FlyingSwordMaterial, ForgeConfigSpec.DoubleValue> DAMAGE =
+    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final EnumMap<FlyingSwordMaterial, ModConfigSpec.DoubleValue> DAMAGE =
             new EnumMap<>(FlyingSwordMaterial.class);
-    private static final EnumMap<FlyingSwordMaterial, ForgeConfigSpec.DoubleValue> SPEED =
+    private static final EnumMap<FlyingSwordMaterial, ModConfigSpec.DoubleValue> SPEED =
             new EnumMap<>(FlyingSwordMaterial.class);
 
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
     static {
         for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {

@@ -318,14 +318,14 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         int phaseChannel = Math.round(Mth.clamp(phase, 0.0F, 1.0F) * 255.0F);
         int brightnessChannel = Math.round(Mth.clamp(brightness / 1.55F, 0.0F, 1.0F) * 255.0F);
         int flowChannel = Math.round(Mth.clamp(flow, 0.0F, 1.0F) * 255.0F);
-        vertices.vertex(pose.pose(), (float) point.x, (float) point.y, (float) point.z)
-                .color(phaseChannel, brightnessChannel, flowChannel,
+        vertices.addVertex(pose.pose(), (float) point.x, (float) point.y, (float) point.z)
+                .setColor(phaseChannel, brightnessChannel, flowChannel,
                         Math.round(Mth.clamp(alpha, 0.0F, 1.0F) * 255.0F))
-                .uv(u, v)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(LightTexture.FULL_BRIGHT)
-                .normal(pose.normal(), 0.0F, 0.0F, 1.0F)
-                .endVertex();
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(pose, 0.0F, 0.0F, 1.0F)
+                ;
     }
 
     private static ResourceLocation curtainTexture(String variant, String pass) {
@@ -377,13 +377,13 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
     private static void texturedVertex(VertexConsumer vertices, PoseStack.Pose pose,
                                        float x, float y, float z, float u, float v,
                                        int red, int green, int blue, int alpha) {
-        vertices.vertex(pose.pose(), x, y, z)
-                .color(red, green, blue, Mth.clamp(alpha, 0, 255))
-                .uv(u, v)
-                .overlayCoords(OverlayTexture.NO_OVERLAY)
-                .uv2(LightTexture.FULL_BRIGHT)
-                .normal(pose.normal(), 0.0F, 1.0F, 0.0F)
-                .endVertex();
+        vertices.addVertex(pose.pose(), x, y, z)
+                .setColor(red, green, blue, Mth.clamp(alpha, 0, 255))
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightTexture.FULL_BRIGHT)
+                .setNormal(pose, 0.0F, 1.0F, 0.0F)
+                ;
     }
 
     /** Kept inside the entity renderer so the dispatcher owns camera-relative positioning. */
@@ -925,8 +925,8 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
 
     private static void vertex(VertexConsumer consumer, Matrix4f matrix, float x, float y, float z,
                                float red, float green, float blue, int alpha) {
-        consumer.vertex(matrix, x, y, z).color(red, green, blue,
-                Mth.clamp(alpha, 0, 255) / 255.0F).endVertex();
+        consumer.addVertex(matrix, x, y, z).setColor(red, green, blue,
+                Mth.clamp(alpha, 0, 255) / 255.0F);
     }
 
     private static float[] color(FlyingSwordMaterial material) {

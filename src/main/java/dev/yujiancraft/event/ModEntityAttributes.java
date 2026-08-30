@@ -3,11 +3,11 @@ package dev.yujiancraft.event;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.entity.SpiritTrialDummyEntity;
 import dev.yujiancraft.registry.ModEntities;
-import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = net.neoforged.fml.common.EventBusSubscriber.Bus.MOD)
 public final class ModEntityAttributes {
     private ModEntityAttributes() {
     }

@@ -127,7 +127,7 @@ public final class YujianCraftConfigScreen extends Screen {
 
     private void setSwordRidingOption(boolean enabled) {
         if (!enabled && ClientSwordRidingState.isActive()) {
-            dev.yujiancraft.network.ModNetwork.CHANNEL.sendToServer(
+            dev.yujiancraft.network.ModNetwork.sendToServer(
                     new dev.yujiancraft.network.ModNetwork.ToggleSwordRidingPacket(false));
         }
         ClientOptions.setSwordRidingEnabled(enabled);
@@ -183,7 +183,7 @@ public final class YujianCraftConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int top = height / 2 - 75;
         graphics.drawCenteredString(font, title, width / 2, top - 48, 0xFFFFFF);
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.config.description"),

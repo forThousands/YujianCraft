@@ -11,10 +11,9 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.BlockItem;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -22,32 +21,32 @@ import java.util.Map;
 
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, YujianCraft.MOD_ID);
+            DeferredRegister.create(Registries.ITEM, YujianCraft.MOD_ID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, YujianCraft.MOD_ID);
 
-    private static final EnumMap<FlyingSwordMaterial, RegistryObject<Item>> MUTABLE_SWORDS =
+    private static final EnumMap<FlyingSwordMaterial, DeferredHolder<Item, Item>> MUTABLE_SWORDS =
             new EnumMap<>(FlyingSwordMaterial.class);
-    private static final EnumMap<FlyingSwordMaterial, RegistryObject<Item>> MUTABLE_SPIRITFORGED_SWORDS =
+    private static final EnumMap<FlyingSwordMaterial, DeferredHolder<Item, Item>> MUTABLE_SPIRITFORGED_SWORDS =
             new EnumMap<>(FlyingSwordMaterial.class);
-    public static final Map<FlyingSwordMaterial, RegistryObject<Item>> FLYING_SWORDS;
-    public static final Map<FlyingSwordMaterial, RegistryObject<Item>> SPIRITFORGED_FLYING_SWORDS;
+    public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> FLYING_SWORDS;
+    public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> SPIRITFORGED_FLYING_SWORDS;
     /** Render-only creative-tab emblem; deliberately omitted from the tab contents and recipes. */
-    public static final RegistryObject<Item> CREATIVE_TAB_ICON = ITEMS.register("creative_tab_icon",
+    public static final DeferredHolder<Item, Item> CREATIVE_TAB_ICON = ITEMS.register("creative_tab_icon",
             () -> new Item(new Item.Properties()));
-    public static final RegistryObject<Item> FLYING_SWORD_WORKBENCH = ITEMS.register("flying_sword_workbench",
+    public static final DeferredHolder<Item, Item> FLYING_SWORD_WORKBENCH = ITEMS.register("flying_sword_workbench",
             () -> new BlockItem(ModBlocks.FLYING_SWORD_WORKBENCH.get(), new Item.Properties()));
-    public static final RegistryObject<Item> SPIRIT_TEMPERING_TABLE = ITEMS.register("spirit_tempering_table",
+    public static final DeferredHolder<Item, Item> SPIRIT_TEMPERING_TABLE = ITEMS.register("spirit_tempering_table",
             () -> new BlockItem(ModBlocks.SPIRIT_TEMPERING_TABLE.get(), new Item.Properties()));
-    public static final RegistryObject<Item> SPIRIT_REPLENISHING_TABLE = ITEMS.register("spirit_replenishing_table",
+    public static final DeferredHolder<Item, Item> SPIRIT_REPLENISHING_TABLE = ITEMS.register("spirit_replenishing_table",
             () -> new BlockItem(ModBlocks.SPIRIT_REPLENISHING_TABLE.get(), new Item.Properties()));
-    public static final RegistryObject<Item> SPIRIT_ORE = ITEMS.register("spirit_ore",
+    public static final DeferredHolder<Item, Item> SPIRIT_ORE = ITEMS.register("spirit_ore",
             () -> new BlockItem(ModBlocks.SPIRIT_ORE.get(), new Item.Properties()));
-    public static final RegistryObject<Item> DEEPSLATE_SPIRIT_ORE = ITEMS.register("deepslate_spirit_ore",
+    public static final DeferredHolder<Item, Item> DEEPSLATE_SPIRIT_ORE = ITEMS.register("deepslate_spirit_ore",
             () -> new BlockItem(ModBlocks.DEEPSLATE_SPIRIT_ORE.get(), new Item.Properties()));
-    public static final RegistryObject<Item> SPIRIT_CRYSTAL = ITEMS.register("spirit_crystal",
+    public static final DeferredHolder<Item, Item> SPIRIT_CRYSTAL = ITEMS.register("spirit_crystal",
             () -> new Item(new Item.Properties()));
-    public static final RegistryObject<Item> YUJIAN_GUIDE = ITEMS.register("yujian_guide",
+    public static final DeferredHolder<Item, Item> YUJIAN_GUIDE = ITEMS.register("yujian_guide",
             () -> new YujianGuideItem(new Item.Properties().stacksTo(1)));
 
     static {
@@ -64,9 +63,9 @@ public final class ModItems {
         SPIRITFORGED_FLYING_SWORDS = Collections.unmodifiableMap(MUTABLE_SPIRITFORGED_SWORDS);
     }
 
-    public static final RegistryObject<Item> IRON_FLYING_SWORD = FLYING_SWORDS.get(FlyingSwordMaterial.IRON);
+    public static final DeferredHolder<Item, Item> IRON_FLYING_SWORD = FLYING_SWORDS.get(FlyingSwordMaterial.IRON);
 
-    public static final RegistryObject<CreativeModeTab> MAIN_TAB = CREATIVE_TABS.register(
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN_TAB = CREATIVE_TABS.register(
             "main",
             () -> CreativeModeTab.builder()
                     .withTabsBefore(CreativeModeTabs.COMBAT)

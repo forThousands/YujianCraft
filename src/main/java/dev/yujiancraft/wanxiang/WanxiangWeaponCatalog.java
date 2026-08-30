@@ -9,7 +9,7 @@ import dev.yujiancraft.combat.technique.TechniqueMode;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -158,7 +158,7 @@ public final class WanxiangWeaponCatalog {
     }
 
     private static String itemId(ItemStack stack) {
-        var id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        var id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return id == null ? "minecraft:air" : id.toString();
     }
 

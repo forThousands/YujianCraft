@@ -5,32 +5,25 @@ import dev.yujiancraft.entity.FlyingSwordEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /** Client movement and presentation that are specific to standing on a flying sword. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientSwordRidingController {
     private static final double ASCEND_SPEED = 0.32D;
     private static final double DESCEND_SPEED = -0.28D;
-    private static final HumanoidModel.ArmPose ARMS_DOWN = HumanoidModel.ArmPose.create(
-            "YUJIAN_RIDING_ARMS_DOWN", false, (model, entity, arm) -> {
-                var part = arm == HumanoidArm.RIGHT ? model.rightArm : model.leftArm;
-                part.xRot = 0.0F;
-                part.yRot = 0.0F;
-                part.zRot = 0.0F;
-            });
+    private static final HumanoidModel.ArmPose ARMS_DOWN = HumanoidModel.ArmPose.EMPTY;
     private static final Map<UUID, Float> SAVED_WALK_SPEEDS = new HashMap<>();
     private static final Map<UUID, Float> SAVED_ATTACK_TIMES = new HashMap<>();
 
@@ -38,8 +31,7 @@ public final class ClientSwordRidingController {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!ClientSwordRidingState.isActive() || minecraft.player == null
                 || minecraft.screen != null || minecraft.isPaused()) return;

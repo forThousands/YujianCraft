@@ -5,22 +5,22 @@ import dev.yujiancraft.menu.FlyingSwordWorkbenchMenu;
 import dev.yujiancraft.menu.SpiritTemperingMenu;
 import dev.yujiancraft.menu.SpiritReplenishingMenu;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraft.core.registries.Registries;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public final class ModMenus {
     public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(ForgeRegistries.MENU_TYPES, YujianCraft.MOD_ID);
+            DeferredRegister.create(Registries.MENU, YujianCraft.MOD_ID);
 
-    public static final RegistryObject<MenuType<FlyingSwordWorkbenchMenu>> FLYING_SWORD_WORKBENCH =
-            MENUS.register("flying_sword_workbench", () -> IForgeMenuType.create(FlyingSwordWorkbenchMenu::new));
-    public static final RegistryObject<MenuType<SpiritTemperingMenu>> SPIRIT_TEMPERING_TABLE =
-            MENUS.register("spirit_tempering_table", () -> IForgeMenuType.create(SpiritTemperingMenu::new));
-    public static final RegistryObject<MenuType<SpiritReplenishingMenu>> SPIRIT_REPLENISHING_TABLE =
-            MENUS.register("spirit_replenishing_table", () -> IForgeMenuType.create(SpiritReplenishingMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<FlyingSwordWorkbenchMenu>> FLYING_SWORD_WORKBENCH =
+            MENUS.register("flying_sword_workbench", () -> IMenuTypeExtension.create(FlyingSwordWorkbenchMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<SpiritTemperingMenu>> SPIRIT_TEMPERING_TABLE =
+            MENUS.register("spirit_tempering_table", () -> IMenuTypeExtension.create(SpiritTemperingMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<SpiritReplenishingMenu>> SPIRIT_REPLENISHING_TABLE =
+            MENUS.register("spirit_replenishing_table", () -> IMenuTypeExtension.create(SpiritReplenishingMenu::new));
 
     private ModMenus() {
     }

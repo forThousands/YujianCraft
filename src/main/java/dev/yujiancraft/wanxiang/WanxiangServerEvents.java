@@ -4,13 +4,13 @@ import com.mojang.brigadier.Command;
 import dev.yujiancraft.YujianCraft;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID)
 public final class WanxiangServerEvents {
     private WanxiangServerEvents() {
     }

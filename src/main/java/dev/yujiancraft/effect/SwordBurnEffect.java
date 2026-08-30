@@ -14,7 +14,7 @@ public final class SwordBurnEffect extends MobEffect {
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         int level = Math.max(1, Math.min(3, amplifier + 1));
         double damage = EffectBalanceConfig.get(switch (level) {
             case 1 -> EffectParameter.FLAME_DAMAGE_I;
@@ -27,10 +27,11 @@ public final class SwordBurnEffect extends MobEffect {
                     5 + level * 2, entity.getBbWidth() * 0.35D, entity.getBbHeight() * 0.25D,
                     entity.getBbWidth() * 0.35D, 0.015D);
         }
+        return true;
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
 }

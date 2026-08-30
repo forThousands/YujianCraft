@@ -17,6 +17,7 @@ import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.combat.SwordEffectEngine;
 import dev.yujiancraft.combat.SwordTargetingRules;
 import dev.yujiancraft.item.FlyingSwordItem;
+import dev.yujiancraft.data.SwordStackData;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.upgrade.FlyingSwordModule;
@@ -48,7 +49,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.Comparator;
 import java.util.HashSet;
@@ -241,7 +241,9 @@ public final class FlyingSwordEntity extends Entity {
         actionBlockPos = pos.immutable();
         techniqueTicks = 0;
         int lure = net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
-                net.minecraft.world.item.enchantment.Enchantments.FISHING_SPEED, displayStack);
+                level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                        .getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.LURE),
+                displayStack);
         int minimum = Math.max(20, TechniqueConfig.fishingMinWait() - lure * 80);
         int maximum = Math.max(minimum, TechniqueConfig.fishingMaxWait() - lure * 80);
         actionWorkTicks = random.nextIntBetweenInclusive(minimum, maximum);
@@ -280,19 +282,19 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_FORMATION_MODE, FormationMode.FAN_ALIGNED.ordinal());
-        entityData.define(DATA_FORMATION_SLOT, 0);
-        entityData.define(DATA_DOCKED, true);
-        entityData.define(DATA_OWNER_ID, Optional.empty());
-        entityData.define(DATA_MATERIAL, FlyingSwordMaterial.IRON.ordinal());
-        entityData.define(DATA_SERIES, FlyingSwordSeries.STANDARD.ordinal());
-        entityData.define(DATA_WHITE_HOT, false);
-        entityData.define(DATA_VISUAL_MODULES, 0);
-        entityData.define(DATA_RIDE_SUPPORT, false);
-        entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
-        entityData.define(DATA_TECHNIQUE, TechniqueMode.PIERCE.ordinal());
-        entityData.define(DATA_COMBO_CONTROLLED, false);
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        builder.define(DATA_FORMATION_MODE, FormationMode.FAN_ALIGNED.ordinal());
+        builder.define(DATA_FORMATION_SLOT, 0);
+        builder.define(DATA_DOCKED, true);
+        builder.define(DATA_OWNER_ID, Optional.empty());
+        builder.define(DATA_MATERIAL, FlyingSwordMaterial.IRON.ordinal());
+        builder.define(DATA_SERIES, FlyingSwordSeries.STANDARD.ordinal());
+        builder.define(DATA_WHITE_HOT, false);
+        builder.define(DATA_VISUAL_MODULES, 0);
+        builder.define(DATA_RIDE_SUPPORT, false);
+        builder.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
+        builder.define(DATA_TECHNIQUE, TechniqueMode.PIERCE.ordinal());
+        builder.define(DATA_COMBO_CONTROLLED, false);
     }
 
     @Override
@@ -812,7 +814,7 @@ public final class FlyingSwordEntity extends Entity {
                 : WanxiangSwordData.pierceDamage(displayStack);
         if (baseDamage <= 0.0D) baseDamage = SwordBalanceConfig.get(material).damage();
         double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
-                baseDamage + SwordEffectEngine.damageBonus(installedModules), target.getMobType())
+                baseDamage + SwordEffectEngine.damageBonus(installedModules), target)
                 * Math.max(0.0D, damageScale);
         boolean markedTrialHit = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
         boolean successfulHit;
@@ -882,9 +884,9 @@ public final class FlyingSwordEntity extends Entity {
      */
     @Override
     public void lerpTo(double x, double y, double z, float yaw, float pitch,
-                       int increments, boolean teleport) {
+                       int increments) {
         super.lerpTo(x, y, z, yaw, pitch,
-                entityData.get(DATA_COMBO_CONTROLLED) ? 1 : increments, teleport);
+                entityData.get(DATA_COMBO_CONTROLLED) ? 1 : increments);
     }
 
     public void consumeSourceDurability(ServerPlayer owner, int requestedCost) {
@@ -894,15 +896,16 @@ public final class FlyingSwordEntity extends Entity {
             discard();
             return;
         }
-        if (stack.getTag() != null && stack.getTag().getBoolean("Unbreakable")) return;
+        if (stack.has(net.minecraft.core.component.DataComponents.UNBREAKABLE)) return;
         int durabilityCost = Math.max(0, requestedCost);
         if (WanxiangSwordData.isTempered(stack)) {
             durabilityCost *= WanxiangWeaponCatalog.durabilityCost(owner.server, stack);
         }
         durabilityCost = SwordModuleData.consumeVirtualDurability(stack, durabilityCost);
         if (durabilityCost <= 0) return;
-        if (stack.hurt(durabilityCost, owner.getRandom(), owner)) {
-            stack.shrink(1);
+        int countBefore = stack.getCount();
+        stack.hurtAndBreak(durabilityCost, owner.serverLevel(), owner, item -> { });
+        if (stack.getCount() < countBefore) {
             FlyingSwordItem.getOwnedFormationSwords(owner).stream()
                     .filter(sword -> java.util.Objects.equals(sword.sourceBindingId, sourceBindingId))
                     .forEach(Entity::discard);
@@ -993,7 +996,7 @@ public final class FlyingSwordEntity extends Entity {
         ItemStack synced = entityData.get(DATA_DISPLAY_STACK);
         if (!synced.isEmpty()) return synced.copy();
         ItemStack fallback = new ItemStack(ModItems.getFlyingSword(getVisualMaterial(), getVisualSeries()));
-        fallback.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
+        SwordStackData.update(fallback, tag -> tag.putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true));
         return fallback;
     }
 
@@ -1119,7 +1122,8 @@ public final class FlyingSwordEntity extends Entity {
                 ? tag.getCompound(SwordModuleData.ROOT_TAG).copy() : new CompoundTag();
         rideSupport = tag.getBoolean("RideSupport");
         sourceBindingId = tag.hasUUID("SourceBindingId") ? tag.getUUID("SourceBindingId") : null;
-        displayStack = tag.contains("DisplayItem") ? ItemStack.of(tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
+        displayStack = tag.contains("DisplayItem")
+                ? ItemStack.parseOptional(level().registryAccess(), tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
         int phaseIndex = Mth.clamp(tag.getInt("FlightPhase"), 0, FlightPhase.values().length - 1);
         phase = FlightPhase.values()[phaseIndex];
         // Combo sessions intentionally are not persisted; after a restart each implement safely
@@ -1173,7 +1177,7 @@ public final class FlyingSwordEntity extends Entity {
         if (!installedModules.isEmpty()) tag.put(SwordModuleData.ROOT_TAG, installedModules.copy());
         tag.putBoolean("RideSupport", rideSupport);
         if (sourceBindingId != null) tag.putUUID("SourceBindingId", sourceBindingId);
-        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(new CompoundTag()));
+        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(level().registryAccess()));
         tag.putInt("FlightPhase", phase.ordinal());
         tag.putInt("TechniqueTicks", techniqueTicks);
         if (fixedWaypoint != null) {
@@ -1196,15 +1200,10 @@ public final class FlyingSwordEntity extends Entity {
         }
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private static ItemStack displayCopy(ItemStack source) {
         ItemStack display = source.copy();
         display.setCount(1);
-        display.getOrCreateTag().putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true);
+        SwordStackData.update(display, tag -> tag.putBoolean(FlyingSwordItem.ENTITY_DISPLAY_TAG, true));
         return display;
     }
 }

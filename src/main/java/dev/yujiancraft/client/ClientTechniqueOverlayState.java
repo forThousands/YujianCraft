@@ -7,9 +7,9 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,8 +91,9 @@ public final class ClientTechniqueOverlayState {
         finisherStartGameTick = startGameTick;
     }
 
-    public static void render(ForgeGui gui, GuiGraphics graphics, float partialTick,
-                              int screenWidth, int screenHeight) {
+    public static void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
+        int screenWidth = graphics.guiWidth();
+        int screenHeight = graphics.guiHeight();
         long now = Util.getMillis();
         renderTechnique(graphics, screenWidth, screenHeight, now);
         renderComboStyle(graphics, screenWidth, screenHeight, now);

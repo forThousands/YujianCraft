@@ -21,10 +21,10 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Server-authoritative runtime shared by all data-defined Yujian combo sets. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID)
 public final class SwordComboManager {
     public static final double TARGET_RANGE = 13.0D;
     private static final String STYLE_TAG = "YujianCraftComboStyle";
@@ -112,9 +112,9 @@ public final class SwordComboManager {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide
-                || !(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (event.getEntity().level().isClientSide
+                || !(event.getEntity() instanceof ServerPlayer player)) return;
         Session session = SESSIONS.get(player.getUUID());
         if (session == null) return;
         if (!player.isAlive() || player.isSpectator() || player.level() != session.level || player.isPassenger()) {
@@ -191,7 +191,7 @@ public final class SwordComboManager {
         boolean forceful = session.style.stage(session.stage).vfx().thresholdAmount() > 0.001F;
         float pitch = forceful
                 ? 1.15F - session.stage * 0.055F : 1.55F - session.stage * 0.08F;
-        player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_THROW,
+        player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_THROW.value(),
                 SoundSource.PLAYERS, 0.76F + session.stage * 0.10F, pitch);
     }
 

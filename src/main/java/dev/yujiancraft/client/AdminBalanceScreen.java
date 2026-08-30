@@ -333,7 +333,7 @@ public final class AdminBalanceScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, Math.max(4, height / 2 - 121), 0xFFFFFF);
         super.render(graphics, mouseX, mouseY, partialTick);
     }

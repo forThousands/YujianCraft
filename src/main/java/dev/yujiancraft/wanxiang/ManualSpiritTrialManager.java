@@ -11,6 +11,7 @@ import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.registry.ModEntities;
 import dev.yujiancraft.upgrade.SwordModuleData;
+import dev.yujiancraft.data.SwordStackData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -28,26 +29,26 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /** The only tempering trial: a player-driven, ten-second, source-verified DPS ritual. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID)
 public final class ManualSpiritTrialManager {
     public static final ResourceKey<Level> TRIAL_LEVEL = ResourceKey.create(Registries.DIMENSION,
-            new ResourceLocation(YujianCraft.MOD_ID, "spirit_trial"));
+            ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID, "spirit_trial"));
     private static final String COPY_TAG = "YujianCraftSpiritTrialCopy";
     private static final String PROJECTILE_TAG = "YujianCraftSpiritTrialProjectile";
     private static final int DPS_DURATION_TICKS = 200;
@@ -103,7 +104,7 @@ public final class ManualSpiritTrialManager {
         WanxiangSwordData.applyShape(trialCopy, shape.preset(), shape.glowMode(), shape.flipped(),
                 shape.scalePercent(), shape.auraRadiusPercent(), shape.auraLengthPercent());
         WanxiangSwordData.setRole(trialCopy, shape.artifactRole());
-        trialCopy.getOrCreateTag().putUUID(COPY_TAG, copyId);
+        SwordStackData.update(trialCopy, tag -> tag.putUUID(COPY_TAG, copyId));
         if (WanxiangSwordData.isUsable(trialCopy)) WanxiangSwordData.ensureBinding(trialCopy);
 
         double laneX = player.getId() * 64.0D;
@@ -172,10 +173,10 @@ public final class ManualSpiritTrialManager {
     }
 
     @SubscribeEvent
-    public static void onDummyDamage(LivingDamageEvent event) {
+    public static void onDummyDamage(LivingDamageEvent.Post event) {
         Session session = DUMMIES.get(event.getEntity().getUUID());
-        if (session == null || session.finished || !Float.isFinite(event.getAmount())
-                || event.getAmount() <= 0.0F) return;
+        if (session == null || session.finished || !Float.isFinite(event.getNewDamage())
+                || event.getNewDamage() <= 0.0F) return;
         DamageChannel channel = session.classify(event.getSource().getDirectEntity(),
                 event.getSource().getEntity());
         if (channel == DamageChannel.NONE) return;
@@ -185,7 +186,7 @@ public final class ManualSpiritTrialManager {
             session.elapsed = 0;
             showCountdown(session.player, 10);
         }
-        session.totalDamage += event.getAmount();
+        session.totalDamage += event.getNewDamage();
     }
 
     @SubscribeEvent
@@ -197,7 +198,7 @@ public final class ManualSpiritTrialManager {
     }
 
     @SubscribeEvent
-    public static void protectParticipant(LivingHurtEvent event) {
+    public static void protectParticipant(LivingIncomingDamageEvent event) {
         if (event.getEntity() instanceof ServerPlayer player && SESSIONS.containsKey(player.getUUID())) {
             event.setCanceled(true);
         }
@@ -214,8 +215,8 @@ public final class ManualSpiritTrialManager {
     }
 
     @SubscribeEvent
-    public static void onTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || SESSIONS.isEmpty()) return;
+    public static void onTick(ServerTickEvent.Post event) {
+        if (SESSIONS.isEmpty()) return;
         for (Session session : java.util.List.copyOf(SESSIONS.values())) session.tick();
     }
 
@@ -297,8 +298,8 @@ public final class ManualSpiritTrialManager {
     }
 
     private static boolean isTrialCopy(ItemStack stack, UUID copyId) {
-        return stack.hasTag() && stack.getTag().hasUUID(COPY_TAG)
-                && copyId.equals(stack.getTag().getUUID(COPY_TAG));
+        var tag = SwordStackData.copy(stack);
+        return tag.hasUUID(COPY_TAG) && copyId.equals(tag.getUUID(COPY_TAG));
     }
 
     private static void buildPlatform(ServerLevel level, double laneX) {

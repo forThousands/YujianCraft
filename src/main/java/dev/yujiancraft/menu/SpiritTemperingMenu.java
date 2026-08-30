@@ -20,9 +20,9 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.items.SlotItemHandler;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.SlotItemHandler;
 
 public final class SpiritTemperingMenu extends AbstractContainerMenu {
     public static final int ROLE_BUTTON = 100;
@@ -237,7 +237,7 @@ public final class SpiritTemperingMenu extends AbstractContainerMenu {
     }
 
     private static boolean same(ItemStack first, ItemStack second) {
-        return first.isEmpty() && second.isEmpty() || ItemStack.isSameItemSameTags(first, second);
+        return first.isEmpty() && second.isEmpty() || ItemStack.isSameItemSameComponents(first, second);
     }
 
     @Override

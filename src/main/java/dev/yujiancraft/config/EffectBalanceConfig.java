@@ -1,16 +1,16 @@
 package dev.yujiancraft.config;
 
 import net.minecraft.util.Mth;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.EnumMap;
 import java.util.Map;
 
 public final class EffectBalanceConfig {
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    private static final EnumMap<EffectParameter, ForgeConfigSpec.DoubleValue> VALUES =
+    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final EnumMap<EffectParameter, ModConfigSpec.DoubleValue> VALUES =
             new EnumMap<>(EffectParameter.class);
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
     static {
         for (EffectConfigGroup group : EffectConfigGroup.values()) {

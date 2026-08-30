@@ -12,15 +12,16 @@ import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.network.ModNetwork;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Client mirror for input, pose interpolation, shared sword reconstruction and local root prediction. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientComboState {
     private static final Map<Integer, State> STATES = new HashMap<>();
     private static float lastPlayerYaw;
@@ -187,8 +188,7 @@ public final class ClientComboState {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) return;
         State state = STATES.get(minecraft.player.getId());
@@ -288,14 +288,14 @@ public final class ClientComboState {
     }
 
     /** Final GUI pass makes the authored full-black interval truly cover the whole frame. */
-    public static void renderBlackout(net.minecraftforge.client.gui.overlay.ForgeGui gui,
-                                      net.minecraft.client.gui.GuiGraphics graphics,
-                                      float partialTick, int width, int height) {
+    public static void renderBlackout(net.minecraft.client.gui.GuiGraphics graphics,
+                                      DeltaTracker deltaTracker) {
         if (!ClientOptions.swordArrayPostEffect()) return;
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
         Impact current = impact(partialTick);
         if (current == null || current.blackout() <= 0.001F) return;
         int alpha = Mth.clamp(Math.round(current.blackout() * 255.0F), 0, 255);
-        graphics.fill(0, 0, width, height, alpha << 24);
+        graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), alpha << 24);
     }
 
     public static boolean shouldHidePlayer(int playerId, float partialTick) {

@@ -171,7 +171,7 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderSwordPreview(graphics, partialTick);
         renderModuleMaterials(graphics, mouseX, mouseY);
@@ -260,13 +260,13 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (ClientOptions.workbenchPreview() && isOverPreview(mouseX, mouseY)) {
-            previewZoom = Math.max(0.68F, Math.min(1.48F, previewZoom + (float) delta * 0.08F));
+            previewZoom = Math.max(0.68F, Math.min(1.48F, previewZoom + (float) scrollY * 0.08F));
             previewIdleTicks = 0;
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void renderModuleMaterials(GuiGraphics graphics, int mouseX, int mouseY) {

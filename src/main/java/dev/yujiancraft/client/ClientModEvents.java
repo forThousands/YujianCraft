@@ -30,7 +30,6 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -38,18 +37,18 @@ import net.minecraft.world.item.Items;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.event.RegisterShadersEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.client.settings.KeyModifier;
-import net.minecraftforge.client.ForgeHooksClient;
-import net.minecraftforge.client.model.pipeline.VertexConsumerWrapper;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RegisterShadersEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.neoforged.neoforge.client.settings.KeyModifier;
+import net.neoforged.neoforge.client.ClientHooks;
+import net.neoforged.neoforge.client.model.pipeline.VertexConsumerWrapper;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.joml.Quaternionf;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
@@ -59,9 +58,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, bus = net.neoforged.fml.common.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ClientModEvents {
     private static ShaderInstance whiteHotEnergyShader;
     private static ShaderInstance spiritCurtainShader;
@@ -226,25 +225,27 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
-    public static void registerGuiOverlays(RegisterGuiOverlaysEvent event) {
-        event.registerAboveAll("optimized_third_person_crosshair",
+    public static void registerGuiOverlays(RegisterGuiLayersEvent event) {
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID,
+                        "optimized_third_person_crosshair"),
                 OptimizedThirdPersonController::renderCrosshair);
-        event.registerAboveAll("spirit_trial_countdown", ClientTrialCountdownState::render);
-        event.registerAboveAll("technique_calligraphy", ClientTechniqueOverlayState::render);
-        event.registerAboveAll("combo_warp_blackout", ClientComboState::renderBlackout);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID,
+                "spirit_trial_countdown"), ClientTrialCountdownState::render);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID,
+                "technique_calligraphy"), ClientTechniqueOverlayState::render);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID,
+                "combo_warp_blackout"), ClientComboState::renderBlackout);
     }
 
     @SubscribeEvent
-    public static void registerMenuScreens(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            ClientOptions.load();
-            MenuScreens.register(dev.yujiancraft.registry.ModMenus.FLYING_SWORD_WORKBENCH.get(),
-                    FlyingSwordWorkbenchScreen::new);
-            MenuScreens.register(dev.yujiancraft.registry.ModMenus.SPIRIT_TEMPERING_TABLE.get(),
-                    SpiritTemperingScreen::new);
-            MenuScreens.register(dev.yujiancraft.registry.ModMenus.SPIRIT_REPLENISHING_TABLE.get(),
-                    SpiritReplenishingScreen::new);
-        });
+    public static void registerMenuScreens(RegisterMenuScreensEvent event) {
+        ClientOptions.load();
+        event.register(dev.yujiancraft.registry.ModMenus.FLYING_SWORD_WORKBENCH.get(),
+                FlyingSwordWorkbenchScreen::new);
+        event.register(dev.yujiancraft.registry.ModMenus.SPIRIT_TEMPERING_TABLE.get(),
+                SpiritTemperingScreen::new);
+        event.register(dev.yujiancraft.registry.ModMenus.SPIRIT_REPLENISHING_TABLE.get(),
+                SpiritReplenishingScreen::new);
     }
 
     private static final class FlyingSwordRenderer extends EntityRenderer<FlyingSwordEntity> {
@@ -423,7 +424,7 @@ public final class ClientModEvents {
 
         private void renderSafeStatic(FlyingSwordEntity sword, ItemStack stack, int light,
                                       PoseStack poseStack, MultiBufferSource buffers) {
-            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (itemId != null && QUARANTINED_MODELS.contains(itemId)) {
                 itemRenderer.renderStatic(new ItemStack(Items.IRON_SWORD), ItemDisplayContext.FIXED, light,
                         OverlayTexture.NO_OVERLAY, poseStack, buffers, sword.level(), sword.getId());
@@ -440,7 +441,7 @@ public final class ClientModEvents {
         }
 
         private boolean hasUnsafeCustomRenderer(FlyingSwordEntity sword, ItemStack stack) {
-            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (itemId != null && QUARANTINED_MODELS.contains(itemId)) return true;
             try {
                 return itemRenderer.getModel(stack, sword.level(), null, sword.getId()).isCustomRenderer();
@@ -451,7 +452,7 @@ public final class ClientModEvents {
         }
 
         private static void quarantineModel(ItemStack stack, RuntimeException exception) {
-            ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (itemId != null && QUARANTINED_MODELS.add(itemId)) {
                 org.slf4j.LoggerFactory.getLogger(ClientModEvents.class).error(
                         "Quarantined incompatible flying item model {}; using the safe fallback until restart",
@@ -471,7 +472,7 @@ public final class ClientModEvents {
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
             try {
-                model = ForgeHooksClient.handleCameraTransforms(
+                model = ClientHooks.handleCameraTransforms(
                         poseStack, model, ItemDisplayContext.FIXED, false);
                 poseStack.translate(-0.5F, -0.5F, -0.5F);
 
@@ -518,7 +519,7 @@ public final class ClientModEvents {
             BakedModel model = itemRenderer.getModel(stack, sword.level(), null, sword.getId());
             poseStack.pushPose();
             try {
-                model = ForgeHooksClient.handleCameraTransforms(
+                model = ClientHooks.handleCameraTransforms(
                         poseStack, model, ItemDisplayContext.FIXED, false);
                 poseStack.translate(-0.5F, -0.5F, -0.5F);
 
@@ -988,8 +989,8 @@ public final class ClientModEvents {
 
         private static void wispVertex(VertexConsumer vertices, Matrix4f pose, Vec3 point,
                                        int red, int green, int blue, int alpha) {
-            vertices.vertex(pose, (float) point.x, (float) point.y, (float) point.z)
-                    .color(red, green, blue, alpha).endVertex();
+            vertices.addVertex(pose, (float) point.x, (float) point.y, (float) point.z)
+                    .setColor(red, green, blue, alpha);
         }
 
         private static float fractional(float value) {
@@ -1041,13 +1042,13 @@ public final class ClientModEvents {
         private static void spiritVertex(VertexConsumer vertices, PoseStack.Pose pose,
                                          float x, float y, float z, int red, int green, int blue, int alpha,
                                          float u, float v, float normalX, float normalZ) {
-            vertices.vertex(pose.pose(), x, y, z)
-                    .color(red, green, blue, alpha)
-                    .uv(u, v)
-                    .overlayCoords(OverlayTexture.NO_OVERLAY)
-                    .uv2(LightTexture.FULL_BRIGHT)
-                    .normal(pose.normal(), normalX, 0.0F, normalZ)
-                    .endVertex();
+            vertices.addVertex(pose.pose(), x, y, z)
+                    .setColor(red, green, blue, alpha)
+                    .setUv(u, v)
+                    .setOverlay(OverlayTexture.NO_OVERLAY)
+                    .setLight(LightTexture.FULL_BRIGHT)
+                    .setNormal(pose, normalX, 0.0F, normalZ)
+                    ;
         }
 
         private static float radiusAt(float[] y, float[] radii, float point) {
@@ -1086,19 +1087,13 @@ public final class ClientModEvents {
             }
 
             @Override
-            public VertexConsumer color(int red, int green, int blue, int sourceAlpha) {
-                parent.color(mixWithWhite(red, whiteMix), mixWithWhite(green, whiteMix),
+            public VertexConsumer setColor(int red, int green, int blue, int sourceAlpha) {
+                parent.setColor(mixWithWhite(red, whiteMix), mixWithWhite(green, whiteMix),
                         mixWithWhite(blue, whiteMix),
                         Mth.clamp(Math.round(sourceAlpha * (alpha / 255.0F)), 0, 255));
                 return this;
             }
 
-            @Override
-            public void defaultColor(int red, int green, int blue, int sourceAlpha) {
-                parent.defaultColor(mixWithWhite(red, whiteMix), mixWithWhite(green, whiteMix),
-                        mixWithWhite(blue, whiteMix),
-                        Mth.clamp(Math.round(sourceAlpha * (alpha / 255.0F)), 0, 255));
-            }
         }
 
         private static void renderRibbonLayer(VertexConsumer vertices, Matrix4f pose, List<Vec3> path,
@@ -1137,13 +1132,13 @@ public final class ClientModEvents {
 
         private static void trailVertex(VertexConsumer vertices, Matrix4f pose, Vec3 point,
                                         int red, int green, int blue, int alpha) {
-            vertices.vertex(pose, (float) point.x, (float) point.y, (float) point.z)
-                    .color(red, green, blue, alpha).endVertex();
+            vertices.addVertex(pose, (float) point.x, (float) point.y, (float) point.z)
+                    .setColor(red, green, blue, alpha);
         }
 
         @Override
         public ResourceLocation getTextureLocation(FlyingSwordEntity entity) {
-            return new ResourceLocation("minecraft", "textures/item/"
+            return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/item/"
                     + entity.getVisualMaterial().serializedName() + "_sword.png");
         }
     }

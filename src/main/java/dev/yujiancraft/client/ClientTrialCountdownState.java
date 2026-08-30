@@ -3,6 +3,7 @@ package dev.yujiancraft.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.network.chat.Component;
 
 /** A movable large countdown; vanilla titles are fixed over the screen centre. */
@@ -23,11 +24,12 @@ public final class ClientTrialCountdownState {
         expiresAtMillis = 0L;
     }
 
-    public static void render(net.minecraftforge.client.gui.overlay.ForgeGui gui,
-                              GuiGraphics graphics, float partialTick, int width, int height) {
+    public static void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         if (seconds <= 0 || net.minecraft.Util.getMillis() > expiresAtMillis) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.options.hideGui || minecraft.screen != null) return;
+        int width = graphics.guiWidth();
+        int height = graphics.guiHeight();
         Component text = Component.literal(Integer.toString(seconds));
         float scale = seconds <= 3 ? 3.0F : 2.5F;
         int color = seconds <= 3 ? 0xFFFF6868 : 0xFFEAFBFF;

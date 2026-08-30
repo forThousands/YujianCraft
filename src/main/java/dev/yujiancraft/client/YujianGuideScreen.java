@@ -86,7 +86,7 @@ public final class YujianGuideScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int panelWidth = panelWidth();
         int panelHeight = panelHeight();
         int left = (width - panelWidth) / 2;
@@ -162,13 +162,13 @@ public final class YujianGuideScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (page != CONTENTS_PAGE && bodyMaxScroll > 0 && delta != 0.0D) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (page != CONTENTS_PAGE && bodyMaxScroll > 0 && scrollY != 0.0D) {
             double step = font.lineHeight * BODY_SCALE * 2.0D;
-            bodyScroll = Math.max(0.0D, Math.min(bodyMaxScroll, bodyScroll - delta * step));
+            bodyScroll = Math.max(0.0D, Math.min(bodyMaxScroll, bodyScroll - scrollY * step));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private Component pageBody() {

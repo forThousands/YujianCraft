@@ -4,12 +4,12 @@ import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.client.vfx.VfxLivePreviewBridge;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.combat.technique.TechniqueMode;
@@ -25,10 +25,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import org.lwjgl.glfw.GLFW;
 
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientInputEvents {
     private static final long SWORD_RIDING_DOUBLE_TAP_MS = 350L;
     private static int manualAimSyncCountdown;
@@ -66,35 +66,35 @@ public final class ClientInputEvents {
             }
         }
         while (ClientModEvents.SWITCH_FORMATION.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleFormationPacket());
+            ModNetwork.sendToServer(new ModNetwork.ToggleFormationPacket());
         }
         while (ClientModEvents.OPEN_CONFIG.consumeClick()) {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new YujianCraftConfigScreen(minecraft.screen));
         }
         while (ClientModEvents.TOGGLE_SWORDS.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSummonedSwordsPacket());
+            ModNetwork.sendToServer(new ModNetwork.ToggleSummonedSwordsPacket());
         }
         while (ClientModEvents.ARTIFACT_ACTION.consumeClick()) {
             Minecraft minecraft = Minecraft.getInstance();
             OptimizedThirdPersonController.refreshScreenCenterHit();
-            ModNetwork.CHANNEL.sendToServer(contextualActionHit(minecraft));
+            ModNetwork.sendToServer(contextualActionHit(minecraft));
         }
         while (ClientModEvents.SWITCH_TECHNIQUE.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.CycleTechniquePacket());
+            ModNetwork.sendToServer(new ModNetwork.CycleTechniquePacket());
         }
         while (ClientModEvents.ACTIVATE_SWORD_ARRAY.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ActivateSwordArrayPacket(
+            ModNetwork.sendToServer(new ModNetwork.ActivateSwordArrayPacket(
                     findSwordArrayTargetId(Minecraft.getInstance())));
         }
         while (ClientModEvents.SWITCH_SWORD_ARRAY_STYLE.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordArrayStylePacket());
+            ModNetwork.sendToServer(new ModNetwork.ToggleSwordArrayStylePacket());
         }
         while (ClientModEvents.CYCLE_COMBO_STYLE.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.CycleComboStylePacket());
+            ModNetwork.sendToServer(new ModNetwork.CycleComboStylePacket());
         }
         while (ClientModEvents.TOGGLE_COMBO.consumeClick()) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleComboPacket());
+            ModNetwork.sendToServer(new ModNetwork.ToggleComboPacket());
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
@@ -104,7 +104,7 @@ public final class ClientInputEvents {
             long now = net.minecraft.Util.getMillis();
             if (lastJumpPressMillis >= 0L && now >= lastJumpPressMillis
                     && now - lastJumpPressMillis <= SWORD_RIDING_DOUBLE_TAP_MS) {
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleSwordRidingPacket(
+                ModNetwork.sendToServer(new ModNetwork.ToggleSwordRidingPacket(
                         !ClientSwordRidingState.isActive()));
                 lastJumpPressMillis = -1L;
             } else {
@@ -152,7 +152,7 @@ public final class ClientInputEvents {
             return;
         }
         if (FlyingSwordItem.isUsableFlyingSword(minecraft.player.getMainHandItem())) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(
+            ModNetwork.sendToServer(new ModNetwork.LockCrosshairNowPacket(
                     findSwordArrayTargetId(minecraft)));
             epicFightLockHandledThisTick = true;
             // Do not cancel: outside combo stance Epic Fight's normal attack remains available.
@@ -181,7 +181,7 @@ public final class ClientInputEvents {
                 // Empty-space/block attack keeps the manual-guidance launch gesture. Clicking a
                 // living entity always remains an ordinary vanilla melee attack.
                 event.setCanceled(true);
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualLaunchPacket(
+                ModNetwork.sendToServer(new ModNetwork.ManualLaunchPacket(
                         minecraft.player.getViewVector(1.0F)));
                 return;
             }
@@ -191,7 +191,7 @@ public final class ClientInputEvents {
                 targetId = entityHit.getEntity().getId();
             }
             if (!epicFightLockHandledThisTick) {
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.LockCrosshairNowPacket(targetId));
+                ModNetwork.sendToServer(new ModNetwork.LockCrosshairNowPacket(targetId));
             }
             // Do not cancel: the same click must still swing, attack an entity or mine a block.
         } else if (event.isUseItem() && minecraft.player != null
@@ -204,7 +204,7 @@ public final class ClientInputEvents {
                 && ClientManualGuidanceState.isGuiding()) {
             event.setCanceled(true);
             event.setSwingHand(false);
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualLockPacket(findManualTargetId(minecraft)));
+            ModNetwork.sendToServer(new ModNetwork.ManualLockPacket(findManualTargetId(minecraft)));
         } else if (event.isAttack() && optimizedAim
                 && minecraft.hitResult instanceof BlockHitResult blockHit) {
             // startAttack reads hitResult after this event, but continueAttack captured the vanilla
@@ -217,13 +217,14 @@ public final class ClientInputEvents {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            blockAttackHandledThisTick = false;
-            epicFightAttackHandledThisTick = false;
-            epicFightLockHandledThisTick = false;
-            return;
-        }
+    public static void onClientTickPre(ClientTickEvent.Pre event) {
+        blockAttackHandledThisTick = false;
+        epicFightAttackHandledThisTick = false;
+        epicFightLockHandledThisTick = false;
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         // continueAttack does not fire the Forge interaction event when the vanilla player ray
         // misses. Supply exactly one screen-ray mining update in that case.
@@ -241,7 +242,7 @@ public final class ClientInputEvents {
                 == dev.yujiancraft.combat.technique.TechniqueMode.PIERCE) {
             if (manualAimSyncCountdown-- <= 0) {
                 manualAimSyncCountdown = 1;
-                ModNetwork.CHANNEL.sendToServer(new ModNetwork.ManualAimPacket(
+                ModNetwork.sendToServer(new ModNetwork.ManualAimPacket(
                         minecraft.player.getViewVector(1.0F)));
             }
         } else {
@@ -330,7 +331,7 @@ public final class ClientInputEvents {
     private static void sendComboAttack(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null) return;
         Vec3 look = currentAimDirection(minecraft);
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.ComboAttackPacket(
+        ModNetwork.sendToServer(new ModNetwork.ComboAttackPacket(
                 findSwordArrayTargetId(minecraft), look));
     }
 

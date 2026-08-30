@@ -63,9 +63,11 @@ public enum ArtifactRole {
         if (stack.getItem() instanceof SwordItem) return BLADE;
         if (stack.getItem() instanceof AxeItem) return HEAVY;
         if (stack.getItem() instanceof DiggerItem) return TOOL;
-        if (!stack.getAttributeModifiers(EquipmentSlot.MAINHAND).get(Attributes.ATTACK_DAMAGE).isEmpty()) {
-            return BLADE;
-        }
+        boolean[] hasAttackDamage = {false};
+        stack.forEachModifier(EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute.equals(Attributes.ATTACK_DAMAGE)) hasAttackDamage[0] = true;
+        });
+        if (hasAttackDamage[0]) return BLADE;
         return GENERIC;
     }
 

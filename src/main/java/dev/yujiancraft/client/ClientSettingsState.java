@@ -16,12 +16,12 @@ public final class ClientSettingsState {
     }
 
     public static void requestFromServer() {
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.RequestSettingsPacket());
+        ModNetwork.sendToServer(new ModNetwork.RequestSettingsPacket());
     }
 
     public static void update(SwordSettings updated) {
         settings = updated;
-        ModNetwork.CHANNEL.sendToServer(ModNetwork.UpdateSettingsPacket.from(updated));
+        ModNetwork.sendToServer(ModNetwork.UpdateSettingsPacket.from(updated));
     }
 
     public static boolean canEditBalance() {

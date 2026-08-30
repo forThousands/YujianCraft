@@ -21,200 +21,202 @@ import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.handling.IPayloadHandler;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-import java.util.Optional;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public final class ModNetwork {
     private static final String PROTOCOL = "26";
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(YujianCraft.MOD_ID, "main"),
-            () -> PROTOCOL,
-            PROTOCOL::equals,
-            PROTOCOL::equals
-    );
+    private static final Map<Class<?>, CustomPacketPayload.Type<?>> PAYLOAD_TYPES = new HashMap<>();
 
     private ModNetwork() {
     }
 
-    public static void register() {
-        CHANNEL.registerMessage(0, ToggleFormationPacket.class,
-                (message, buffer) -> { }, buffer -> new ToggleFormationPacket(),
-                ModNetwork::handleToggleFormation, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(1, RequestSettingsPacket.class,
-                (message, buffer) -> { }, buffer -> new RequestSettingsPacket(),
-                ModNetwork::handleRequestSettings, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(2, UpdateSettingsPacket.class,
-                UpdateSettingsPacket::encode, UpdateSettingsPacket::decode,
-                ModNetwork::handleUpdateSettings, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(3, SyncSettingsPacket.class,
-                SyncSettingsPacket::encode, SyncSettingsPacket::decode,
-                ModNetwork::handleSyncSettings, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(4, LockedTargetPacket.class,
-                LockedTargetPacket::encode, LockedTargetPacket::decode,
-                ModNetwork::handleLockedTarget, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(5, LockCrosshairNowPacket.class,
-                LockCrosshairNowPacket::encode, LockCrosshairNowPacket::decode,
-                ModNetwork::handleLockCrosshairNow, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(6, RequestBalancePacket.class,
-                (message, buffer) -> { }, buffer -> new RequestBalancePacket(),
-                ModNetwork::handleRequestBalance, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(7, SyncBalancePacket.class,
-                SyncBalancePacket::encode, SyncBalancePacket::decode,
-                ModNetwork::handleSyncBalance, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(8, UpdateBalancePacket.class,
-                UpdateBalancePacket::encode, UpdateBalancePacket::decode,
-                ModNetwork::handleUpdateBalance, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(9, UpdateEffectBalancePacket.class,
-                UpdateEffectBalancePacket::encode, UpdateEffectBalancePacket::decode,
-                ModNetwork::handleUpdateEffectBalance, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(11, ToggleSwordRidingPacket.class,
-                ToggleSwordRidingPacket::encode, ToggleSwordRidingPacket::decode,
-                ModNetwork::handleToggleSwordRiding, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(12, SwordRidingStatePacket.class,
-                SwordRidingStatePacket::encode, SwordRidingStatePacket::decode,
-                ModNetwork::handleSwordRidingState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(13, ManualLaunchPacket.class,
-                ManualLaunchPacket::encode, ManualLaunchPacket::decode,
-                ModNetwork::handleManualLaunch, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(14, ManualAimPacket.class,
-                ManualAimPacket::encode, ManualAimPacket::decode,
-                ModNetwork::handleManualAim, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(15, ManualLockPacket.class,
-                ManualLockPacket::encode, ManualLockPacket::decode,
-                ModNetwork::handleManualLock, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(16, ManualGuidanceStatePacket.class,
-                ManualGuidanceStatePacket::encode, ManualGuidanceStatePacket::decode,
-                ModNetwork::handleManualGuidanceState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(17, SwordImpactPacket.class,
-                SwordImpactPacket::encode, SwordImpactPacket::decode,
-                ModNetwork::handleSwordImpact, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(18, ToggleSummonedSwordsPacket.class,
-                (message, buffer) -> { }, buffer -> new ToggleSummonedSwordsPacket(),
-                ModNetwork::handleToggleSummonedSwords, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(19, OpenGuidePacket.class,
-                (message, buffer) -> { }, buffer -> new OpenGuidePacket(),
-                ModNetwork::handleOpenGuide, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(20, ManualTrialResultPacket.class,
-                ManualTrialResultPacket::encode, ManualTrialResultPacket::decode,
-                ModNetwork::handleManualTrialResult, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(21, ArtifactActionPacket.class,
-                ArtifactActionPacket::encode, ArtifactActionPacket::decode,
-                ModNetwork::handleArtifactAction, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(22, CycleTechniquePacket.class,
-                (message, buffer) -> { }, buffer -> new CycleTechniquePacket(),
-                ModNetwork::handleCycleTechnique, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(23, TrialCountdownPacket.class,
-                TrialCountdownPacket::encode, TrialCountdownPacket::decode,
-                ModNetwork::handleTrialCountdown, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(24, TechniqueNoticePacket.class,
-                TechniqueNoticePacket::encode, TechniqueNoticePacket::decode,
-                ModNetwork::handleTechniqueNotice, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(25, SwordArrayFinisherPacket.class,
-                SwordArrayFinisherPacket::encode, SwordArrayFinisherPacket::decode,
-                ModNetwork::handleSwordArrayFinisher, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(26, ActivateSwordArrayPacket.class,
-                ActivateSwordArrayPacket::encode, ActivateSwordArrayPacket::decode,
-                ModNetwork::handleActivateSwordArray, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(27, ToggleSwordArrayStylePacket.class,
-                (message, buffer) -> { }, buffer -> new ToggleSwordArrayStylePacket(),
-                ModNetwork::handleToggleSwordArrayStyle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(28, ToggleComboPacket.class,
-                (message, buffer) -> { }, buffer -> new ToggleComboPacket(),
-                ModNetwork::handleToggleCombo, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(29, ComboAttackPacket.class,
-                ComboAttackPacket::encode, ComboAttackPacket::decode,
-                ModNetwork::handleComboAttack, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(30, ComboStatePacket.class,
-                ComboStatePacket::encode, ComboStatePacket::decode,
-                ModNetwork::handleComboState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(31, CycleComboStylePacket.class,
-                (message, buffer) -> { }, buffer -> new CycleComboStylePacket(),
-                ModNetwork::handleCycleComboStyle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
-        CHANNEL.registerMessage(32, FormationStatePacket.class,
-                FormationStatePacket::encode, FormationStatePacket::decode,
-                ModNetwork::handleFormationState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL);
+        toServer(registrar, "toggle_formation", ToggleFormationPacket.class,
+                unit(new ToggleFormationPacket()), ModNetwork::handleToggleFormation);
+        toServer(registrar, "request_settings", RequestSettingsPacket.class,
+                unit(new RequestSettingsPacket()), ModNetwork::handleRequestSettings);
+        toServer(registrar, "update_settings", UpdateSettingsPacket.class,
+                codec(UpdateSettingsPacket::encode, UpdateSettingsPacket::decode), ModNetwork::handleUpdateSettings);
+        toClient(registrar, "sync_settings", SyncSettingsPacket.class,
+                codec(SyncSettingsPacket::encode, SyncSettingsPacket::decode), ModNetwork::handleSyncSettings);
+        toClient(registrar, "locked_target", LockedTargetPacket.class,
+                codec(LockedTargetPacket::encode, LockedTargetPacket::decode), ModNetwork::handleLockedTarget);
+        toServer(registrar, "lock_crosshair_now", LockCrosshairNowPacket.class,
+                codec(LockCrosshairNowPacket::encode, LockCrosshairNowPacket::decode), ModNetwork::handleLockCrosshairNow);
+        toServer(registrar, "request_balance", RequestBalancePacket.class,
+                unit(new RequestBalancePacket()), ModNetwork::handleRequestBalance);
+        toClient(registrar, "sync_balance", SyncBalancePacket.class,
+                codec(SyncBalancePacket::encode, SyncBalancePacket::decode), ModNetwork::handleSyncBalance);
+        toServer(registrar, "update_balance", UpdateBalancePacket.class,
+                codec(UpdateBalancePacket::encode, UpdateBalancePacket::decode), ModNetwork::handleUpdateBalance);
+        toServer(registrar, "update_effect_balance", UpdateEffectBalancePacket.class,
+                codec(UpdateEffectBalancePacket::encode, UpdateEffectBalancePacket::decode), ModNetwork::handleUpdateEffectBalance);
+        toServer(registrar, "toggle_sword_riding", ToggleSwordRidingPacket.class,
+                codec(ToggleSwordRidingPacket::encode, ToggleSwordRidingPacket::decode), ModNetwork::handleToggleSwordRiding);
+        toClient(registrar, "sword_riding_state", SwordRidingStatePacket.class,
+                codec(SwordRidingStatePacket::encode, SwordRidingStatePacket::decode), ModNetwork::handleSwordRidingState);
+        toServer(registrar, "manual_launch", ManualLaunchPacket.class,
+                codec(ManualLaunchPacket::encode, ManualLaunchPacket::decode), ModNetwork::handleManualLaunch);
+        toServer(registrar, "manual_aim", ManualAimPacket.class,
+                codec(ManualAimPacket::encode, ManualAimPacket::decode), ModNetwork::handleManualAim);
+        toServer(registrar, "manual_lock", ManualLockPacket.class,
+                codec(ManualLockPacket::encode, ManualLockPacket::decode), ModNetwork::handleManualLock);
+        toClient(registrar, "manual_guidance_state", ManualGuidanceStatePacket.class,
+                codec(ManualGuidanceStatePacket::encode, ManualGuidanceStatePacket::decode), ModNetwork::handleManualGuidanceState);
+        toClient(registrar, "sword_impact", SwordImpactPacket.class,
+                codec(SwordImpactPacket::encode, SwordImpactPacket::decode), ModNetwork::handleSwordImpact);
+        toServer(registrar, "toggle_summoned_swords", ToggleSummonedSwordsPacket.class,
+                unit(new ToggleSummonedSwordsPacket()), ModNetwork::handleToggleSummonedSwords);
+        toClient(registrar, "open_guide", OpenGuidePacket.class,
+                unit(new OpenGuidePacket()), ModNetwork::handleOpenGuide);
+        toClient(registrar, "manual_trial_result", ManualTrialResultPacket.class,
+                codec(ManualTrialResultPacket::encode, ManualTrialResultPacket::decode), ModNetwork::handleManualTrialResult);
+        toServer(registrar, "artifact_action", ArtifactActionPacket.class,
+                codec(ArtifactActionPacket::encode, ArtifactActionPacket::decode), ModNetwork::handleArtifactAction);
+        toServer(registrar, "cycle_technique", CycleTechniquePacket.class,
+                unit(new CycleTechniquePacket()), ModNetwork::handleCycleTechnique);
+        toClient(registrar, "trial_countdown", TrialCountdownPacket.class,
+                codec(TrialCountdownPacket::encode, TrialCountdownPacket::decode), ModNetwork::handleTrialCountdown);
+        toClient(registrar, "technique_notice", TechniqueNoticePacket.class,
+                codec(TechniqueNoticePacket::encode, TechniqueNoticePacket::decode), ModNetwork::handleTechniqueNotice);
+        toClient(registrar, "sword_array_finisher", SwordArrayFinisherPacket.class,
+                codec(SwordArrayFinisherPacket::encode, SwordArrayFinisherPacket::decode), ModNetwork::handleSwordArrayFinisher);
+        toServer(registrar, "activate_sword_array", ActivateSwordArrayPacket.class,
+                codec(ActivateSwordArrayPacket::encode, ActivateSwordArrayPacket::decode), ModNetwork::handleActivateSwordArray);
+        toServer(registrar, "toggle_sword_array_style", ToggleSwordArrayStylePacket.class,
+                unit(new ToggleSwordArrayStylePacket()), ModNetwork::handleToggleSwordArrayStyle);
+        toServer(registrar, "toggle_combo", ToggleComboPacket.class,
+                unit(new ToggleComboPacket()), ModNetwork::handleToggleCombo);
+        toServer(registrar, "combo_attack", ComboAttackPacket.class,
+                codec(ComboAttackPacket::encode, ComboAttackPacket::decode), ModNetwork::handleComboAttack);
+        toClient(registrar, "combo_state", ComboStatePacket.class,
+                codec(ComboStatePacket::encode, ComboStatePacket::decode), ModNetwork::handleComboState);
+        toServer(registrar, "cycle_combo_style", CycleComboStylePacket.class,
+                unit(new CycleComboStylePacket()), ModNetwork::handleCycleComboStyle);
+        toClient(registrar, "formation_state", FormationStatePacket.class,
+                codec(FormationStatePacket::encode, FormationStatePacket::decode), ModNetwork::handleFormationState);
+    }
+
+    public static void sendToServer(CustomPacketPayload payload) {
+        PacketDistributor.sendToServer(payload);
+    }
+
+    private static <T extends YujianPayload> void toServer(PayloadRegistrar registrar, String path,
+                                                            Class<T> payloadClass,
+                                                            StreamCodec<RegistryFriendlyByteBuf, T> codec,
+                                                            IPayloadHandler<T> handler) {
+        CustomPacketPayload.Type<T> type = registerType(path, payloadClass);
+        registrar.playToServer(type, codec, handler);
+    }
+
+    private static <T extends YujianPayload> void toClient(PayloadRegistrar registrar, String path,
+                                                            Class<T> payloadClass,
+                                                            StreamCodec<RegistryFriendlyByteBuf, T> codec,
+                                                            IPayloadHandler<T> handler) {
+        CustomPacketPayload.Type<T> type = registerType(path, payloadClass);
+        registrar.playToClient(type, codec, handler);
+    }
+
+    private static <T extends YujianPayload> CustomPacketPayload.Type<T> registerType(
+            String path, Class<T> payloadClass) {
+        CustomPacketPayload.Type<T> type = new CustomPacketPayload.Type<>(
+                ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID, path));
+        PAYLOAD_TYPES.put(payloadClass, type);
+        return type;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static CustomPacketPayload.Type<? extends CustomPacketPayload> typeFor(Class<?> payloadClass) {
+        CustomPacketPayload.Type<?> type = PAYLOAD_TYPES.get(payloadClass);
+        if (type == null) throw new IllegalStateException("Unregistered Yujian payload " + payloadClass.getName());
+        return (CustomPacketPayload.Type<? extends CustomPacketPayload>) type;
+    }
+
+    private static <T extends YujianPayload> StreamCodec<RegistryFriendlyByteBuf, T> codec(
+            BiConsumer<T, FriendlyByteBuf> encoder, Function<FriendlyByteBuf, T> decoder) {
+        return StreamCodec.of((buffer, payload) -> encoder.accept(payload, buffer), decoder::apply);
+    }
+
+    private static <T extends YujianPayload> StreamCodec<RegistryFriendlyByteBuf, T> unit(T payload) {
+        return StreamCodec.unit(payload);
+    }
+
+    public interface YujianPayload extends CustomPacketPayload {
+        @Override
+        default Type<? extends CustomPacketPayload> type() {
+            return ModNetwork.typeFor(getClass());
+        }
     }
 
     private static void handleToggleCombo(ToggleComboPacket message,
-                                          Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                          IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) SwordComboManager.toggle(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleComboAttack(ComboAttackPacket message,
-                                          Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                          IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) SwordComboManager.attack(sender, message.targetId(), message.look());
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleCycleComboStyle(CycleComboStylePacket message,
-                                              Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                              IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) SwordComboManager.cycleStyle(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleComboState(ComboStatePacket message,
-                                         Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientComboState.accept(message)));
-        context.setPacketHandled(true);
+                                         IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientComboState.accept(message));
     }
 
     private static void handleFormationState(FormationStatePacket message,
-                                              Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientInputEvents.onFormationState(message.deployed)));
-        context.setPacketHandled(true);
+                                              IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientInputEvents.onFormationState(message.deployed));
     }
 
     private static void handleCycleTechnique(CycleTechniquePacket message,
-                                             Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                             IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) {
                 SwordSettings settings = FlyingSwordItem.cycleTechnique(sender);
                 sendSettings(sender, settings);
             }
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleActivateSwordArray(ActivateSwordArrayPacket message,
-                                                  Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                                  IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender == null) return;
             if (FlyingSwordItem.getSettings(sender).techniqueMode()
                     != dev.yujiancraft.combat.technique.TechniqueMode.SWORD_ARRAY) {
@@ -232,14 +234,12 @@ public final class ModNetwork {
                         "message.yujiancraft.sword_array.not_ready"), true);
             }
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleToggleSwordArrayStyle(ToggleSwordArrayStylePacket message,
-                                                     Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                                     IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender == null) return;
             String key = "YujianCraftSwordArrayStyle";
             int next = sender.getPersistentData().getInt(key) == 0 ? 1 : 0;
@@ -248,99 +248,74 @@ public final class ModNetwork {
                     next == 0 ? "message.yujiancraft.sword_array.style.tricolor"
                             : "message.yujiancraft.sword_array.style.gold"), true);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleTrialCountdown(TrialCountdownPacket message,
-                                             Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientTrialCountdownState.show(message.seconds)));
-        context.setPacketHandled(true);
+                                             IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientTrialCountdownState.show(message.seconds));
     }
 
     private static void handleTechniqueNotice(TechniqueNoticePacket message,
-                                              Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientTechniqueOverlayState.showTechnique(message.technique)));
-        context.setPacketHandled(true);
+                                              IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientTechniqueOverlayState.showTechnique(message.technique));
     }
 
     private static void handleSwordArrayFinisher(SwordArrayFinisherPacket message,
-                                                  Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientTechniqueOverlayState.showFinisherFlash(
-                        message.startGameTick, message.bottom, message.top, message.maximumRadius,
-                        message.chargeTicks, message.holdTicks, message.expandTicks, message.sustainTicks)));
-        context.setPacketHandled(true);
+                                                  IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientTechniqueOverlayState.showFinisherFlash(
+                message.startGameTick, message.bottom, message.top, message.maximumRadius,
+                message.chargeTicks, message.holdTicks, message.expandTicks, message.sustainTicks));
     }
 
     private static void handleToggleFormation(ToggleFormationPacket message,
-                                               Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                               IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) FlyingSwordItem.toggleFormationMode(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleArtifactAction(ArtifactActionPacket message,
-                                             Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                             IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) ArtifactActionManager.handleAction(sender,
                     message.hasBlock ? message.blockPos : null, message.face);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleOpenGuide(OpenGuidePacket message,
-                                        Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.YujianGuideScreen.open()));
-        context.setPacketHandled(true);
+                                        IPayloadContext context) {
+        context.enqueueWork(dev.yujiancraft.client.YujianGuideScreen::open);
     }
 
     private static void handleManualTrialResult(ManualTrialResultPacket message,
-                                                Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ManualSpiritTrialResultScreen.open(
-                        message.damage, message.dps, message.mode)));
-        context.setPacketHandled(true);
+                                                IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ManualSpiritTrialResultScreen.open(
+                message.damage, message.dps, message.mode));
     }
 
 
     private static void handleToggleSummonedSwords(ToggleSummonedSwordsPacket message,
-                                                   Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                                   IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) FlyingSwordItem.toggleSummonedFormation(sender, sender.getMainHandItem());
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleRequestBalance(RequestBalancePacket message,
-                                             Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                             IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null && sender.hasPermissions(2)) sendBalances(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleUpdateBalance(UpdateBalancePacket message,
-                                            Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                            IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender == null || !sender.hasPermissions(2)) return;
             if (message.material < 0 || message.material >= FlyingSwordMaterial.values().length) return;
             FlyingSwordMaterial material = FlyingSwordMaterial.fromOrdinal(message.material);
@@ -348,25 +323,20 @@ public final class ModNetwork {
             else SwordBalanceConfig.update(material, message.damage, message.flightSpeed);
             sendBalances(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleSyncBalance(SyncBalancePacket message,
-                                          Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> {
-                    EffectBalanceConfig.acceptRemoteSnapshot(message.effectValues);
-                    ClientBalanceState.acceptFromServer(message.balances, message.effectValues);
-                }));
-        context.setPacketHandled(true);
+                                          IPayloadContext context) {
+        context.enqueueWork(() -> {
+            EffectBalanceConfig.acceptRemoteSnapshot(message.effectValues);
+            ClientBalanceState.acceptFromServer(message.balances, message.effectValues);
+        });
     }
 
     private static void handleUpdateEffectBalance(UpdateEffectBalancePacket message,
-                                                  Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                                  IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender == null || !sender.hasPermissions(2)) return;
             if (message.parameter < 0 || message.parameter >= EffectParameter.values().length) return;
             EffectParameter parameter = EffectParameter.values()[message.parameter];
@@ -374,24 +344,20 @@ public final class ModNetwork {
             else EffectBalanceConfig.update(parameter, message.value);
             sendBalances(sender);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleRequestSettings(RequestSettingsPacket message,
-                                              Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                              IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) sendSettings(sender, FlyingSwordItem.getSettings(sender));
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleUpdateSettings(UpdateSettingsPacket message,
-                                             Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                             IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) {
                 SwordSettings before = FlyingSwordItem.getSettings(sender);
                 SwordSettings requested = message.toSettings();
@@ -419,145 +385,119 @@ public final class ModNetwork {
                 }
             }
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleSyncSettings(SyncSettingsPacket message,
-                                           Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientSettingsState.acceptFromServer(message.toSettings(), message.canEditBalance)));
-        context.setPacketHandled(true);
+                                           IPayloadContext context) {
+        context.enqueueWork(() -> ClientSettingsState.acceptFromServer(message.toSettings(), message.canEditBalance));
     }
 
     private static void handleLockedTarget(LockedTargetPacket message,
-                                           Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientTargetState.setLockedTargetId(message.targetId)));
-        context.setPacketHandled(true);
+                                           IPayloadContext context) {
+        context.enqueueWork(() -> ClientTargetState.setLockedTargetId(message.targetId));
     }
 
     private static void handleLockCrosshairNow(LockCrosshairNowPacket message,
-                                               Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                               IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) TargetLockManager.lockCrosshairNow(sender, message.entityId);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleToggleSwordRiding(ToggleSwordRidingPacket message,
-                                                Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                                IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) SwordRidingManager.setRiding(sender, message.active);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleSwordRidingState(SwordRidingStatePacket message,
-                                               Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientSwordRidingState.applyServerState(message.active,
-                        message.mayfly, message.flying, message.flyingSpeed)));
-        context.setPacketHandled(true);
+                                               IPayloadContext context) {
+        context.enqueueWork(() -> ClientSwordRidingState.applyServerState(message.active,
+                message.mayfly, message.flying, message.flyingSpeed));
     }
 
     private static void handleManualLaunch(ManualLaunchPacket message,
-                                           Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                           IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) ManualGuidanceManager.launchReadySalvo(sender, message.direction());
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleManualAim(ManualAimPacket message,
-                                        Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                        IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) ManualGuidanceManager.acceptAim(sender, message.direction());
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleManualLock(ManualLockPacket message,
-                                         Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
+                                         IPayloadContext context) {
         context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
+            ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) ManualGuidanceManager.lockSalvoTarget(sender, message.entityId);
         });
-        context.setPacketHandled(true);
     }
 
     private static void handleManualGuidanceState(ManualGuidanceStatePacket message,
-                                                  Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientManualGuidanceState.setGuiding(message.guiding)));
-        context.setPacketHandled(true);
+                                                  IPayloadContext context) {
+        context.enqueueWork(() -> ClientManualGuidanceState.setGuiding(message.guiding));
     }
 
     private static void handleSwordImpact(SwordImpactPacket message,
-                                          Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> dev.yujiancraft.client.ClientImpactEffects.accept(message.position(),
-                        message.direction(), message.visualModules, message.material)));
-        context.setPacketHandled(true);
+                                          IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientImpactEffects.accept(message.position(),
+                message.direction(), message.visualModules, message.material));
     }
 
     public static void sendSettings(ServerPlayer player, SwordSettings settings) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(player,
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
     }
 
     public static void sendFormationState(ServerPlayer player, boolean deployed) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new FormationStatePacket(deployed));
+        PacketDistributor.sendToPlayer(player, new FormationStatePacket(deployed));
     }
 
     private static void sendBalances(ServerPlayer player) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(player,
                 new SyncBalancePacket(SwordBalanceConfig.snapshot(), EffectBalanceConfig.snapshot()));
     }
 
     public static void sendLockedTarget(ServerPlayer player, UUID targetId) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new LockedTargetPacket(targetId));
+        PacketDistributor.sendToPlayer(player, new LockedTargetPacket(targetId));
     }
 
     public static void sendSwordRidingState(ServerPlayer player, boolean active) {
         net.minecraft.world.entity.player.Abilities abilities = player.getAbilities();
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordRidingStatePacket(active,
+        PacketDistributor.sendToPlayer(player, new SwordRidingStatePacket(active,
                 abilities.mayfly, abilities.flying, abilities.getFlyingSpeed()));
     }
 
     public static void sendManualGuidanceState(ServerPlayer player, boolean guiding) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ManualGuidanceStatePacket(guiding));
+        PacketDistributor.sendToPlayer(player, new ManualGuidanceStatePacket(guiding));
     }
 
     public static void openGuide(ServerPlayer player) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenGuidePacket());
+        PacketDistributor.sendToPlayer(player, new OpenGuidePacket());
     }
 
     public static void sendManualTrialResult(ServerPlayer player, double damage, double dps, int mode) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(player,
                 new ManualTrialResultPacket(damage, dps, mode));
     }
 
     public static void sendTrialCountdown(ServerPlayer player, int seconds) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new TrialCountdownPacket(seconds));
+        PacketDistributor.sendToPlayer(player, new TrialCountdownPacket(seconds));
     }
 
     public static void sendTechniqueNotice(ServerPlayer player,
                                            dev.yujiancraft.combat.technique.TechniqueMode technique) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(player,
                 new TechniqueNoticePacket(technique.ordinal()));
     }
 
@@ -565,7 +505,7 @@ public final class ModNetwork {
                                                Vec3 bottom, Vec3 top,
                                                float maximumRadius, int chargeTicks, int holdTicks,
                                                int expandTicks, int sustainTicks) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SwordArrayFinisherPacket(
+        PacketDistributor.sendToPlayer(player, new SwordArrayFinisherPacket(
                 startGameTick, bottom, top, maximumRadius, chargeTicks, holdTicks, expandTicks,
                 sustainTicks));
     }
@@ -574,7 +514,7 @@ public final class ModNetwork {
                                       long startGameTick, int durationTicks, int targetId,
                                       Vec3 playerAnchor, Vec3 targetAnchor, Vec3 warpDestination,
                                       float warpYaw) {
-        CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,
                 new ComboStatePacket(player.getId(), active, styleId, stage, startGameTick, durationTicks,
                         targetId, playerAnchor, targetAnchor, warpDestination, warpYaw));
     }
@@ -589,18 +529,18 @@ public final class ModNetwork {
         Vec3 traceEnd = sword.position().add(safeDirection.scale(2.5D));
         Vec3 position = target.getBoundingBox().inflate(0.035D).clip(traceStart, traceEnd)
                 .orElse(centre.subtract(safeDirection.scale(Math.max(0.22D, target.getBbWidth() * 0.5D))));
-        CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> sword),
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(sword,
                 new SwordImpactPacket(position, safeDirection, sword.getVisualModuleMask(),
                         sword.getMaterialType().ordinal()));
     }
 
-    public record ToggleFormationPacket() {
+    public record ToggleFormationPacket() implements YujianPayload {
     }
 
-    public record ToggleSummonedSwordsPacket() {
+    public record ToggleSummonedSwordsPacket() implements YujianPayload {
     }
 
-    public record FormationStatePacket(boolean deployed) {
+    public record FormationStatePacket(boolean deployed) implements YujianPayload {
         private static void encode(FormationStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.deployed);
         }
@@ -610,10 +550,10 @@ public final class ModNetwork {
         }
     }
 
-    public record OpenGuidePacket() {
+    public record OpenGuidePacket() implements YujianPayload {
     }
 
-    public record ManualTrialResultPacket(double damage, double dps, int mode) {
+    public record ManualTrialResultPacket(double damage, double dps, int mode) implements YujianPayload {
         private static void encode(ManualTrialResultPacket message, FriendlyByteBuf buffer) {
             buffer.writeDouble(message.damage);
             buffer.writeDouble(message.dps);
@@ -626,13 +566,13 @@ public final class ModNetwork {
     }
 
 
-    public record RequestSettingsPacket() {
+    public record RequestSettingsPacket() implements YujianPayload {
     }
 
-    public record CycleTechniquePacket() {
+    public record CycleTechniquePacket() implements YujianPayload {
     }
 
-    public record ActivateSwordArrayPacket(int targetId) {
+    public record ActivateSwordArrayPacket(int targetId) implements YujianPayload {
         private static void encode(ActivateSwordArrayPacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.targetId);
         }
@@ -642,14 +582,14 @@ public final class ModNetwork {
         }
     }
 
-    public record ToggleSwordArrayStylePacket() {
+    public record ToggleSwordArrayStylePacket() implements YujianPayload {
     }
 
-    public record ToggleComboPacket() { }
+    public record ToggleComboPacket() implements YujianPayload { }
 
-    public record CycleComboStylePacket() { }
+    public record CycleComboStylePacket() implements YujianPayload { }
 
-    public record ComboAttackPacket(int targetId, float lookX, float lookY, float lookZ) {
+    public record ComboAttackPacket(int targetId, float lookX, float lookY, float lookZ) implements YujianPayload {
         public ComboAttackPacket(int targetId, Vec3 look) {
             this(targetId, (float) look.x, (float) look.y, (float) look.z);
         }
@@ -671,7 +611,7 @@ public final class ModNetwork {
 
     public record ComboStatePacket(int playerId, boolean active, String styleId, int stage, long startGameTick,
                                    int durationTicks, int targetId, Vec3 playerAnchor,
-                                   Vec3 targetAnchor, Vec3 warpDestination, float warpYaw) {
+                                   Vec3 targetAnchor, Vec3 warpDestination, float warpYaw) implements YujianPayload {
         private static void encode(ComboStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.playerId);
             buffer.writeBoolean(message.active);
@@ -701,7 +641,7 @@ public final class ModNetwork {
         }
     }
 
-    public record TrialCountdownPacket(int seconds) {
+    public record TrialCountdownPacket(int seconds) implements YujianPayload {
         private static void encode(TrialCountdownPacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.seconds);
         }
@@ -711,7 +651,7 @@ public final class ModNetwork {
         }
     }
 
-    public record TechniqueNoticePacket(int technique) {
+    public record TechniqueNoticePacket(int technique) implements YujianPayload {
         private static void encode(TechniqueNoticePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.technique);
         }
@@ -724,7 +664,7 @@ public final class ModNetwork {
     public record SwordArrayFinisherPacket(long startGameTick, Vec3 bottom, Vec3 top,
                                            float maximumRadius,
                                            int chargeTicks, int holdTicks,
-                                           int expandTicks, int sustainTicks) {
+                                           int expandTicks, int sustainTicks) implements YujianPayload {
         private static void encode(SwordArrayFinisherPacket message, FriendlyByteBuf buffer) {
             buffer.writeLong(message.startGameTick);
             buffer.writeDouble(message.bottom.x);
@@ -750,7 +690,7 @@ public final class ModNetwork {
     }
 
     public record ArtifactActionPacket(boolean hasBlock, net.minecraft.core.BlockPos blockPos,
-                                       net.minecraft.core.Direction face) {
+                                       net.minecraft.core.Direction face) implements YujianPayload {
         public static ArtifactActionPacket miss() {
             return new ArtifactActionPacket(false, net.minecraft.core.BlockPos.ZERO,
                     net.minecraft.core.Direction.UP);
@@ -771,7 +711,7 @@ public final class ModNetwork {
         }
     }
 
-    public record LockCrosshairNowPacket(int entityId) {
+    public record LockCrosshairNowPacket(int entityId) implements YujianPayload {
         private static void encode(LockCrosshairNowPacket message, FriendlyByteBuf buffer) {
             buffer.writeInt(message.entityId);
         }
@@ -781,7 +721,7 @@ public final class ModNetwork {
         }
     }
 
-    public record ToggleSwordRidingPacket(boolean active) {
+    public record ToggleSwordRidingPacket(boolean active) implements YujianPayload {
         private static void encode(ToggleSwordRidingPacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.active);
         }
@@ -792,7 +732,7 @@ public final class ModNetwork {
     }
 
     public record SwordRidingStatePacket(boolean active, boolean mayfly, boolean flying,
-                                         float flyingSpeed) {
+                                         float flyingSpeed) implements YujianPayload {
         private static void encode(SwordRidingStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.active);
             buffer.writeBoolean(message.mayfly);
@@ -806,7 +746,7 @@ public final class ModNetwork {
         }
     }
 
-    public record ManualLaunchPacket(float x, float y, float z) {
+    public record ManualLaunchPacket(float x, float y, float z) implements YujianPayload {
         public ManualLaunchPacket(Vec3 direction) {
             this((float) direction.x, (float) direction.y, (float) direction.z);
         }
@@ -824,7 +764,7 @@ public final class ModNetwork {
         }
     }
 
-    public record ManualAimPacket(float x, float y, float z) {
+    public record ManualAimPacket(float x, float y, float z) implements YujianPayload {
         public ManualAimPacket(Vec3 direction) {
             this((float) direction.x, (float) direction.y, (float) direction.z);
         }
@@ -842,7 +782,7 @@ public final class ModNetwork {
         }
     }
 
-    public record ManualLockPacket(int entityId) {
+    public record ManualLockPacket(int entityId) implements YujianPayload {
         private static void encode(ManualLockPacket message, FriendlyByteBuf buffer) {
             buffer.writeInt(message.entityId);
         }
@@ -852,7 +792,7 @@ public final class ModNetwork {
         }
     }
 
-    public record ManualGuidanceStatePacket(boolean guiding) {
+    public record ManualGuidanceStatePacket(boolean guiding) implements YujianPayload {
         private static void encode(ManualGuidanceStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.guiding);
         }
@@ -864,7 +804,7 @@ public final class ModNetwork {
 
     public record SwordImpactPacket(double x, double y, double z,
                                     float directionX, float directionY, float directionZ,
-                                    int visualModules, int material) {
+                                    int visualModules, int material) implements YujianPayload {
         public SwordImpactPacket(Vec3 position, Vec3 direction, int visualModules, int material) {
             this(position.x, position.y, position.z, (float) direction.x, (float) direction.y,
                     (float) direction.z, visualModules, material);
@@ -891,11 +831,11 @@ public final class ModNetwork {
         }
     }
 
-    public record RequestBalancePacket() {
+    public record RequestBalancePacket() implements YujianPayload {
     }
 
     public record UpdateSettingsPacket(int minimumDockTicks, double automaticRadius, double lockRadius,
-                                       int targetingMode, int attackMode, int techniqueMode) {
+                                       int targetingMode, int attackMode, int techniqueMode) implements YujianPayload {
         public static UpdateSettingsPacket from(SwordSettings settings) {
             return new UpdateSettingsPacket(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                     settings.crosshairLockRadius(), settings.targetingMode().ordinal(), settings.attackMode().ordinal(),
@@ -924,7 +864,7 @@ public final class ModNetwork {
 
     public record SyncSettingsPacket(int minimumDockTicks, double automaticRadius, double lockRadius,
                                      int targetingMode, int attackMode, int techniqueMode,
-                                     boolean canEditBalance) {
+                                     boolean canEditBalance) implements YujianPayload {
         public static SyncSettingsPacket from(SwordSettings settings, boolean canEditBalance) {
             return new SyncSettingsPacket(settings.minimumDockTicks(), settings.automaticTargetRadius(),
                     settings.crosshairLockRadius(), settings.targetingMode().ordinal(), settings.attackMode().ordinal(),
@@ -952,7 +892,7 @@ public final class ModNetwork {
         }
     }
 
-    public record UpdateBalancePacket(int material, double damage, double flightSpeed, boolean reset) {
+    public record UpdateBalancePacket(int material, double damage, double flightSpeed, boolean reset) implements YujianPayload {
         private static void encode(UpdateBalancePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.material);
             buffer.writeDouble(message.damage);
@@ -966,7 +906,7 @@ public final class ModNetwork {
         }
     }
 
-    public record UpdateEffectBalancePacket(int parameter, double value, boolean reset) {
+    public record UpdateEffectBalancePacket(int parameter, double value, boolean reset) implements YujianPayload {
         private static void encode(UpdateEffectBalancePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.parameter);
             buffer.writeDouble(message.value);
@@ -979,7 +919,7 @@ public final class ModNetwork {
     }
 
     public record SyncBalancePacket(Map<FlyingSwordMaterial, SwordBalanceConfig.Balance> balances,
-                                    Map<EffectParameter, Double> effectValues) {
+                                    Map<EffectParameter, Double> effectValues) implements YujianPayload {
         private static void encode(SyncBalancePacket message, FriendlyByteBuf buffer) {
             for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
                 SwordBalanceConfig.Balance balance = message.balances.get(material);
@@ -1005,7 +945,7 @@ public final class ModNetwork {
         }
     }
 
-    public record LockedTargetPacket(UUID targetId) {
+    public record LockedTargetPacket(UUID targetId) implements YujianPayload {
         private static void encode(LockedTargetPacket message, FriendlyByteBuf buffer) {
             buffer.writeBoolean(message.targetId != null);
             if (message.targetId != null) buffer.writeUUID(message.targetId);

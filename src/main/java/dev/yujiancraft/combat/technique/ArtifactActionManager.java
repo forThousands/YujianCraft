@@ -18,8 +18,8 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.level.BlockEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
 import java.util.Comparator;
 import java.util.List;
@@ -105,7 +105,8 @@ public final class ArtifactActionManager {
         ServerLevel level = player.serverLevel();
         BlockState state = level.getBlockState(pos);
         BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(level, pos, state, player);
-        if (MinecraftForge.EVENT_BUS.post(event)) return false;
+        NeoForge.EVENT_BUS.post(event);
+        if (event.isCanceled()) return false;
         var blockEntity = level.getBlockEntity(pos);
         Block block = state.getBlock();
         boolean harvestable = player.hasCorrectToolForDrops(state);
@@ -124,7 +125,10 @@ public final class ArtifactActionManager {
             }
         }
         level.levelEvent(2001, pos, Block.getId(state));
-        if (event.getExpToDrop() > 0) state.getBlock().popExperience(level, pos, event.getExpToDrop());
+        int experience = state.getExpDrop(level, pos, blockEntity, player, source);
+        experience = net.minecraft.world.item.enchantment.EnchantmentHelper
+                .processBlockExperience(level, source, experience);
+        if (experience > 0) state.getBlock().popExperience(level, pos, experience);
         player.awardStat(Stats.BLOCK_MINED.get(state.getBlock()));
         player.causeFoodExhaustion(0.005F);
         sword.consumeSourceDurability(player, 1);
@@ -192,10 +196,9 @@ public final class ArtifactActionManager {
                 .withParameter(LootContextParams.TOOL, source)
                 .withParameter(LootContextParams.THIS_ENTITY, player)
                 .withLuck(player.getLuck() + net.minecraft.world.item.enchantment.EnchantmentHelper
-                        .getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.FISHING_LUCK,
-                                source))
+                        .getFishingLuckBonus(level, source, player))
                 .create(LootContextParamSets.FISHING);
-        for (ItemStack loot : level.getServer().getLootData().getLootTable(BuiltInLootTables.FISHING)
+        for (ItemStack loot : level.getServer().reloadableRegistries().getLootTable(BuiltInLootTables.FISHING)
                 .getRandomItems(params)) {
             ItemStack delivered = loot.copy();
             player.getInventory().add(delivered);

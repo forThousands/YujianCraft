@@ -5,11 +5,11 @@ import dev.yujiancraft.YujianCraft;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Field;
@@ -18,7 +18,7 @@ import java.lang.reflect.Modifier;
 import java.util.function.BooleanSupplier;
 
 /** Adapts only the brightness profile; the player's independent glow on/off choice is preserved. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientShaderAdaptation {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int CHECK_INTERVAL_TICKS = 20;
@@ -31,8 +31,7 @@ public final class ClientShaderAdaptation {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) return;
         if (ticksUntilCheck-- > 0) return;

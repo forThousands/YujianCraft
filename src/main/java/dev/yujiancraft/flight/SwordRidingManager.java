@@ -12,18 +12,18 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /** Grants collision-safe vanilla flight while an extra, non-combat sword supports the player. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID)
 public final class SwordRidingManager {
     private static final float RIDING_FLIGHT_SPEED = 0.075F;
     private static final String ACTIVE_TAG = "YujianCraftRidingActive";
@@ -100,9 +100,9 @@ public final class SwordRidingManager {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide()
-                || !(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (event.getEntity().level().isClientSide()
+                || !(event.getEntity() instanceof ServerPlayer player)) return;
         RidingState state = STATES.get(player.getUUID());
         if (state == null) {
             enforceRestoredAbilities(player);

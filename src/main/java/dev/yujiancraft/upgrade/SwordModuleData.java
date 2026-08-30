@@ -1,9 +1,12 @@
 package dev.yujiancraft.upgrade;
 
 import dev.yujiancraft.combat.SwordEffectEngine;
+import dev.yujiancraft.data.SwordStackData;
 import dev.yujiancraft.wanxiang.WanxiangSwordData;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.Unbreakable;
 
 public final class SwordModuleData {
     public static final String ROOT_TAG = "SwordModules";
@@ -20,8 +23,7 @@ public final class SwordModuleData {
     }
 
     public static int getLevel(ItemStack sword, FlyingSwordModule module) {
-        if (!sword.hasTag()) return 0;
-        return getLevel(sword.getTag().getCompound(ROOT_TAG), module);
+        return getLevel(SwordStackData.copy(sword).getCompound(ROOT_TAG), module);
     }
 
     public static int getLevel(CompoundTag modules, FlyingSwordModule module) {
@@ -29,16 +31,17 @@ public final class SwordModuleData {
     }
 
     public static void setLevel(ItemStack sword, FlyingSwordModule module, int level) {
-        CompoundTag root = sword.getOrCreateTag();
-        CompoundTag modules = root.getCompound(ROOT_TAG);
         int safeLevel = Math.max(0, Math.min(module.maxLevel(), level));
-        if (safeLevel == 0) modules.remove(module.serializedName());
-        else modules.putInt(module.serializedName(), safeLevel);
-        if (modules.isEmpty()) root.remove(ROOT_TAG);
-        else root.put(ROOT_TAG, modules);
+        SwordStackData.update(sword, root -> {
+            CompoundTag modules = root.getCompound(ROOT_TAG);
+            if (safeLevel == 0) modules.remove(module.serializedName());
+            else modules.putInt(module.serializedName(), safeLevel);
+            if (modules.isEmpty()) root.remove(ROOT_TAG);
+            else root.put(ROOT_TAG, modules);
+        });
         if (module == FlyingSwordModule.UNBREAKABLE) {
-            if (safeLevel > 0) root.putBoolean("Unbreakable", true);
-            else root.remove("Unbreakable");
+            if (safeLevel > 0) sword.set(DataComponents.UNBREAKABLE, new Unbreakable(true));
+            else sword.remove(DataComponents.UNBREAKABLE);
         }
     }
 
@@ -50,14 +53,15 @@ public final class SwordModuleData {
         if (module == FlyingSwordModule.DURABILITY && WanxiangSwordData.isTempered(sword)) {
             int oldBonus = SwordEffectEngine.durabilityBonus(oldModuleLevel);
             int newBonus = SwordEffectEngine.durabilityBonus(getLevel(sword, module));
-            int oldRemaining = sword.hasTag() && sword.getTag().contains(VIRTUAL_DURABILITY_TAG)
-                    ? sword.getTag().getInt(VIRTUAL_DURABILITY_TAG) : oldBonus;
-            if (newBonus <= 0) sword.getOrCreateTag().remove(VIRTUAL_DURABILITY_TAG);
+            CompoundTag root = SwordStackData.copy(sword);
+            int oldRemaining = root.contains(VIRTUAL_DURABILITY_TAG)
+                    ? root.getInt(VIRTUAL_DURABILITY_TAG) : oldBonus;
+            if (newBonus <= 0) SwordStackData.update(sword, tag -> tag.remove(VIRTUAL_DURABILITY_TAG));
             else {
                 int newRemaining = oldBonus <= 0 ? newBonus
                         : (int) Math.round(oldRemaining * (double) newBonus / oldBonus);
-                sword.getOrCreateTag().putInt(VIRTUAL_DURABILITY_TAG,
-                        Math.max(0, Math.min(newBonus, newRemaining)));
+                SwordStackData.update(sword, tag -> tag.putInt(VIRTUAL_DURABILITY_TAG,
+                        Math.max(0, Math.min(newBonus, newRemaining))));
             }
             return;
         }
@@ -74,12 +78,13 @@ public final class SwordModuleData {
         if (cost == 0 || !WanxiangSwordData.isTempered(sword)) return cost;
         int maximum = SwordEffectEngine.durabilityBonus(getLevel(sword, FlyingSwordModule.DURABILITY));
         if (maximum <= 0) return cost;
-        CompoundTag root = sword.getOrCreateTag();
+        CompoundTag root = SwordStackData.copy(sword);
         int remaining = root.contains(VIRTUAL_DURABILITY_TAG)
                 ? Math.max(0, Math.min(maximum, root.getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
         int absorbed = Math.min(remaining, cost);
         remaining -= absorbed;
-        root.putInt(VIRTUAL_DURABILITY_TAG, remaining);
+        int finalRemaining = remaining;
+        SwordStackData.update(sword, tag -> tag.putInt(VIRTUAL_DURABILITY_TAG, finalRemaining));
         return cost - absorbed;
     }
 
@@ -87,8 +92,9 @@ public final class SwordModuleData {
         if (!WanxiangSwordData.isTempered(sword)) return 0;
         int maximum = SwordEffectEngine.durabilityBonus(getLevel(sword, FlyingSwordModule.DURABILITY));
         if (maximum <= 0) return 0;
-        return sword.hasTag() && sword.getTag().contains(VIRTUAL_DURABILITY_TAG)
-                ? Math.max(0, Math.min(maximum, sword.getTag().getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
+        CompoundTag root = SwordStackData.copy(sword);
+        return root.contains(VIRTUAL_DURABILITY_TAG)
+                ? Math.max(0, Math.min(maximum, root.getInt(VIRTUAL_DURABILITY_TAG))) : maximum;
     }
 
     public static int virtualDurabilityMaximum(ItemStack sword) {
@@ -113,7 +119,7 @@ public final class SwordModuleData {
             int remaining = virtualDurabilityRemaining(sword);
             int virtualRepair = Math.min(virtualMaximum - remaining, amount);
             if (virtualRepair > 0) {
-                sword.getOrCreateTag().putInt(VIRTUAL_DURABILITY_TAG, remaining + virtualRepair);
+                SwordStackData.update(sword, tag -> tag.putInt(VIRTUAL_DURABILITY_TAG, remaining + virtualRepair));
                 repaired += virtualRepair;
             }
         }
@@ -121,20 +127,20 @@ public final class SwordModuleData {
     }
 
     public static CompoundTag copyModules(ItemStack sword) {
-        return sword.hasTag() ? sword.getTag().getCompound(ROOT_TAG).copy() : new CompoundTag();
+        return SwordStackData.copy(sword).getCompound(ROOT_TAG).copy();
     }
 
     /** Removes every installed Yujian core. Vanilla and third-party enchantments are untouched. */
     public static void clearAll(ItemStack sword) {
-        if (!sword.hasTag()) return;
+        if (!SwordStackData.has(sword)) return;
         int oldMaximum = sword.getMaxDamage();
         int oldDamage = sword.getDamageValue();
-        CompoundTag root = sword.getTag();
         boolean moduleGrantedUnbreakable = getLevel(sword, FlyingSwordModule.UNBREAKABLE) > 0;
-        root.remove(ROOT_TAG);
-        root.remove(VIRTUAL_DURABILITY_TAG);
-        if (moduleGrantedUnbreakable) root.remove("Unbreakable");
-        if (root.isEmpty()) sword.setTag(null);
+        SwordStackData.update(sword, root -> {
+            root.remove(ROOT_TAG);
+            root.remove(VIRTUAL_DURABILITY_TAG);
+        });
+        if (moduleGrantedUnbreakable) sword.remove(DataComponents.UNBREAKABLE);
         int newMaximum = sword.getMaxDamage();
         if (oldMaximum > 0 && newMaximum > 0) {
             int scaledDamage = (int) Math.round(oldDamage * (double) newMaximum / oldMaximum);

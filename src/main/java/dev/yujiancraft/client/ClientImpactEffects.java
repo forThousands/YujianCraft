@@ -14,18 +14,18 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** Short-lived, client-rendered hit feedback. The server sends only one compact impact event. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientImpactEffects {
     private static final int LIFETIME_TICKS = 11;
     private static final int MAX_ACTIVE_IMPACTS = 48;
@@ -53,7 +53,7 @@ public final class ClientImpactEffects {
         float volume = 0.25F;
         float pitch = 1.25F;
         if (enabledLevel(modules, FlyingSwordModule.EXPLOSION, ClientOptions.explosionModuleVisual()) > 0) {
-            accent = SoundEvents.GENERIC_EXPLODE;
+            accent = SoundEvents.GENERIC_EXPLODE.value();
             volume = 0.24F;
             pitch = 1.65F;
         } else if (enabledLevel(modules, FlyingSwordModule.LIGHTNING, ClientOptions.lightningModuleVisual()) > 0) {
@@ -80,8 +80,7 @@ public final class ClientImpactEffects {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) {
             IMPACTS.clear();
@@ -99,7 +98,7 @@ public final class ClientImpactEffects {
         VertexConsumer vertices = buffers.getBuffer(RenderType.lightning());
         PoseStack poseStack = event.getPoseStack();
         Vec3 camera = event.getCamera().getPosition();
-        float partialTick = event.getPartialTick();
+        float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(true);
 
         for (Impact impact : IMPACTS) {
             float age = impact.age + partialTick;
@@ -177,8 +176,8 @@ public final class ClientImpactEffects {
 
     private static void vertex(VertexConsumer vertices, Matrix4f pose, Vec3 point,
                                int red, int green, int blue, int alpha) {
-        vertices.vertex(pose, (float) point.x, (float) point.y, (float) point.z)
-                .color(red, green, blue, alpha).endVertex();
+        vertices.addVertex(pose, (float) point.x, (float) point.y, (float) point.z)
+                .setColor(red, green, blue, alpha);
     }
 
     private static int[] accentColor(int modules, int red, int green, int blue) {

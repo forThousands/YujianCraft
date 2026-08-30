@@ -3,9 +3,9 @@ package dev.yujiancraft.data;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import net.minecraft.data.PackOutput;
-import net.minecraftforge.client.model.generators.ItemModelProvider;
-import net.minecraftforge.common.data.ExistingFileHelper;
-import net.minecraftforge.client.model.generators.ItemModelBuilder;
+import net.neoforged.neoforge.client.model.generators.ItemModelProvider;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.client.model.generators.ItemModelBuilder;
 import dev.yujiancraft.visual.FlyingSwordSeries;
 
 public final class ModItemModelProvider extends ItemModelProvider {

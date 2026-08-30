@@ -3,14 +3,14 @@ package dev.yujiancraft.client.vfx;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.client.ClientTechniqueOverlayState;
 import dev.yujiancraft.client.ClientComboState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /** Applies timeline-authored camera impulses through Forge's real camera hooks. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class CameraEffectManager {
     private static final float TAU = (float) (Math.PI * 2.0D);
 

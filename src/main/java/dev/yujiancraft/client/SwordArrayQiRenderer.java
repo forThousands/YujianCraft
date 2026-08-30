@@ -65,7 +65,7 @@ public final class SwordArrayQiRenderer extends EntityRenderer<SwordArrayQiEntit
 
     private static void vertex(VertexConsumer consumer, Matrix4f matrix, float x, float y, float z,
                                float red, float green, float blue, int alpha) {
-        consumer.vertex(matrix, x, y, z).color(red, green, blue, alpha / 255.0F).endVertex();
+        consumer.addVertex(matrix, x, y, z).setColor(red, green, blue, alpha / 255.0F);
     }
 
     private static float[] color(FlyingSwordMaterial material) {

@@ -33,7 +33,7 @@ public final class ManualSpiritTrialResultScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int left = width / 2 - 132;
         int top = height / 2 - 82;
         graphics.fill(left, top, left + 264, top + 152, 0xF0141219);

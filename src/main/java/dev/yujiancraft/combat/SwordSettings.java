@@ -1,6 +1,7 @@
 package dev.yujiancraft.combat;
 
 import dev.yujiancraft.combat.technique.TechniqueMode;
+import dev.yujiancraft.data.SwordStackData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +20,7 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
     private static final String ROOT_TAG = "SwordSettings";
 
     public static boolean hasStoredSettings(ItemStack stack) {
-        return stack.hasTag() && stack.getTag().contains(ROOT_TAG);
+        return SwordStackData.copy(stack).contains(ROOT_TAG);
     }
 
     public SwordSettings {
@@ -50,10 +51,11 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
     }
 
     public static SwordSettings read(ItemStack stack) {
-        if (!stack.hasTag() || !stack.getTag().contains(ROOT_TAG)) {
+        CompoundTag root = SwordStackData.copy(stack);
+        if (!root.contains(ROOT_TAG)) {
             return defaults();
         }
-        CompoundTag tag = stack.getTag().getCompound(ROOT_TAG);
+        CompoundTag tag = root.getCompound(ROOT_TAG);
         double automaticRadius = tag.contains("AutomaticTargetRadius")
                 ? tag.getDouble("AutomaticTargetRadius") : DEFAULT_AUTOMATIC_RADIUS;
         double lockRadius = tag.contains("CrosshairLockRadius")
@@ -71,6 +73,6 @@ public record SwordSettings(int minimumDockTicks, double automaticTargetRadius, 
         tag.putInt("TargetingMode", targetingMode.ordinal());
         tag.putInt("AttackMode", attackMode.ordinal());
         tag.putInt("TechniqueMode", techniqueMode.ordinal());
-        stack.getOrCreateTag().put(ROOT_TAG, tag);
+        SwordStackData.update(stack, root -> root.put(ROOT_TAG, tag));
     }
 }

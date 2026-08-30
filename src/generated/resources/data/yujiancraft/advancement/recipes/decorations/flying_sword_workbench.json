@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_spirit_crystal": {
+      "conditions": {
+        "items": [
+          {
+            "items": "yujiancraft:spirit_crystal"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "yujiancraft:flying_sword_workbench"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_spirit_crystal"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "yujiancraft:flying_sword_workbench"
+    ]
+  }
+}

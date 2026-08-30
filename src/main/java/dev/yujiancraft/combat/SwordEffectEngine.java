@@ -102,7 +102,7 @@ public final class SwordEffectEngine {
         if (explosion > 0) {
             level.sendParticles(ParticleTypes.EXPLOSION, position.x, position.y, position.z,
                     1, 0.08D, 0.08D, 0.08D, 0.0D);
-            level.playSound(null, soundPos, SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS,
+            level.playSound(null, soundPos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS,
                     0.22F, 1.75F);
         }
         int arrowRain = SwordModuleData.getLevel(modules, FlyingSwordModule.ARROW_RAIN);
@@ -120,7 +120,7 @@ public final class SwordEffectEngine {
             case 2 -> EffectParameter.FLAME_DURATION_II;
             default -> EffectParameter.FLAME_DURATION_III;
         });
-        target.addEffect(new MobEffectInstance(ModEffects.SWORD_BURN.get(), duration, moduleLevel - 1,
+        target.addEffect(new MobEffectInstance(ModEffects.SWORD_BURN, duration, moduleLevel - 1,
                 false, true, true));
     }
 
@@ -150,7 +150,7 @@ public final class SwordEffectEngine {
             case 2 -> EffectParameter.POISON_DURATION_II;
             default -> EffectParameter.POISON_DURATION_III;
         });
-        target.addEffect(new MobEffectInstance(ModEffects.SWORD_POISON.get(), duration, moduleLevel - 1,
+        target.addEffect(new MobEffectInstance(ModEffects.SWORD_POISON, duration, moduleLevel - 1,
                 false, true, true));
     }
 
@@ -160,7 +160,7 @@ public final class SwordEffectEngine {
         if (moduleLevel == 0) return;
         level.sendParticles(ParticleTypes.EXPLOSION, target.getX(), target.getY(0.55D), target.getZ(),
                 2 + moduleLevel, 0.25D, 0.35D, 0.25D, 0.03D);
-        level.playSound(null, target.blockPosition(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS,
+        level.playSound(null, target.blockPosition(), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS,
                 0.7F, 1.15F);
         double damage = EffectBalanceConfig.get(switch (moduleLevel) {
             case 1 -> EffectParameter.EXPLOSION_DAMAGE_I;
@@ -189,7 +189,8 @@ public final class SwordEffectEngine {
                     6.0D + (index % 3) * 0.45D, Math.sin(angle) * radius);
             Vec3 aim = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
             Vec3 velocity = aim.subtract(start).normalize();
-            Arrow arrow = new Arrow(level, owner);
+            Arrow arrow = new Arrow(level, owner,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
             arrow.setPos(start.x, start.y, start.z);
             arrow.setBaseDamage(damage);
             arrow.pickup = AbstractArrow.Pickup.DISALLOWED;

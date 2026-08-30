@@ -8,6 +8,7 @@ import dev.yujiancraft.config.EffectParameter;
 import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.registry.ModEntities;
+import dev.yujiancraft.registry.ModSounds;
 import dev.yujiancraft.upgrade.SwordModuleData;
 import dev.yujiancraft.wanxiang.FlyingSwordDamage;
 import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
@@ -39,7 +40,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -181,20 +181,20 @@ public final class SwordArrayFieldEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
-        entityData.define(DATA_OWNER, Optional.empty());
-        entityData.define(DATA_BASE_RADIUS, 18.0F);
-        entityData.define(DATA_BEAM_HEIGHT, 28.0F);
-        entityData.define(DATA_FINISHER_START, 72);
-        entityData.define(DATA_CHARGE_TICKS, 10);
-        entityData.define(DATA_HOLD_TICKS, 8);
-        entityData.define(DATA_EXPAND_TICKS, 7);
-        entityData.define(DATA_SUSTAIN_TICKS, 32);
-        entityData.define(DATA_EXPANSION, 2.25F);
-        entityData.define(DATA_BEAM_SCALE, 0.92F);
-        entityData.define(DATA_VISUAL_VARIANT, 0);
-        entityData.define(DATA_COMBO_FINISHER, false);
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        builder.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
+        builder.define(DATA_OWNER, Optional.empty());
+        builder.define(DATA_BASE_RADIUS, 18.0F);
+        builder.define(DATA_BEAM_HEIGHT, 28.0F);
+        builder.define(DATA_FINISHER_START, 72);
+        builder.define(DATA_CHARGE_TICKS, 10);
+        builder.define(DATA_HOLD_TICKS, 8);
+        builder.define(DATA_EXPAND_TICKS, 7);
+        builder.define(DATA_SUSTAIN_TICKS, 32);
+        builder.define(DATA_EXPANSION, 2.25F);
+        builder.define(DATA_BEAM_SCALE, 0.92F);
+        builder.define(DATA_VISUAL_VARIANT, 0);
+        builder.define(DATA_COMBO_FINISHER, false);
     }
 
     private void syncStaticData() {
@@ -242,9 +242,9 @@ public final class SwordArrayFieldEntity extends Entity {
         }
         int descentTick = finisherStart + chargeTicks() + holdTicks();
         if (age == descentTick) {
-            level().playSound(null, BlockPos.containing(topCentre()), SoundEvents.TRIDENT_RIPTIDE_3,
+            level().playSound(null, BlockPos.containing(topCentre()), ModSounds.SWORD_ARRAY_RIPTIDE_DESCENT.get(),
                     SoundSource.PLAYERS, 1.8F, 0.48F);
-            level().playSound(null, BlockPos.containing(topCentre()), SoundEvents.BEACON_POWER_SELECT,
+            level().playSound(null, BlockPos.containing(topCentre()), ModSounds.SWORD_ARRAY_BEACON_DESCENT.get(),
                     SoundSource.PLAYERS, 1.4F, 0.62F);
         }
         int impactTick = descentTick + expandTicks();
@@ -299,7 +299,8 @@ public final class SwordArrayFieldEntity extends Entity {
         Vec3 start = targetAnchor.add(0.0D, 0.6D, 0.0D);
         Vec3 end = new Vec3(targetAnchor.x, level.getMinBuildHeight() + 0.1D, targetAnchor.z);
         BlockHitResult hit = level.clip(new ClipContext(start, end,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, null));
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
+                (net.minecraft.world.entity.Entity) null));
         return hit.getType() == HitResult.Type.BLOCK ? hit.getLocation() : targetAnchor;
     }
 
@@ -320,11 +321,11 @@ public final class SwordArrayFieldEntity extends Entity {
 
     private void beginFinisher(ServerLevel level, ServerPlayer owner) {
         Vec3 top = topCentre();
-        level.playSound(null, BlockPos.containing(top), SoundEvents.BEACON_ACTIVATE,
+        level.playSound(null, BlockPos.containing(top), ModSounds.SWORD_ARRAY_BEACON_ACTIVATE.get(),
                 SoundSource.PLAYERS, 1.6F, 0.46F);
         level.playSound(null, blockPosition(), SoundEvents.WARDEN_SONIC_CHARGE,
                 SoundSource.PLAYERS, 1.15F, 0.62F);
-        level.playSound(null, BlockPos.containing(top), SoundEvents.AMETHYST_BLOCK_RESONATE,
+        level.playSound(null, BlockPos.containing(top), ModSounds.SWORD_ARRAY_AMETHYST_RESONATE.get(),
                 SoundSource.PLAYERS, 1.35F, 0.52F);
         ModNetwork.sendSwordArrayFinisher(owner, level.getGameTime(), position(), top,
                 maximumBeamRadius(),
@@ -357,7 +358,7 @@ public final class SwordArrayFieldEntity extends Entity {
                 96, damageRadius * 0.65D, 1.1D, damageRadius * 0.65D, 0.24D);
         level.sendParticles(ParticleTypes.SONIC_BOOM, getX(), getY() + 0.6D, getZ(),
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
-        level.playSound(null, blockPosition(), SoundEvents.GENERIC_EXPLODE,
+        level.playSound(null, blockPosition(), SoundEvents.GENERIC_EXPLODE.value(),
                 SoundSource.PLAYERS, 2.0F, 0.54F);
         // Low pitches stretch the vanilla transients into a weighty metal-and-bronze impact.
         // Layering keeps the sound original to Minecraft while avoiding a short, tinny anvil hit.
@@ -376,7 +377,7 @@ public final class SwordArrayFieldEntity extends Entity {
                 ? WanxiangWeaponCatalog.damage(owner.server, displayStack)
                 : WanxiangSwordData.pierceDamage(displayStack);
         double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
-                base + SwordEffectEngine.damageBonus(SwordModuleData.copyModules(displayStack)), target.getMobType())
+                base + SwordEffectEngine.damageBonus(SwordModuleData.copyModules(displayStack)), target)
                 * Math.max(0.0D, EffectBalanceConfig.get(comboFinisher
                         ? EffectParameter.COMBO_FINISHER_DAMAGE_SCALE
                         : EffectParameter.SWORD_ARRAY_FINISHER_DAMAGE_SCALE))
@@ -396,11 +397,11 @@ public final class SwordArrayFieldEntity extends Entity {
         if (consumedDurability) return;
         consumedDurability = true;
         ItemStack source = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
-        if (source.isEmpty() || source.getTag() != null && source.getTag().getBoolean("Unbreakable")) return;
+        if (source.isEmpty() || source.has(net.minecraft.core.component.DataComponents.UNBREAKABLE)) return;
         int cost = WanxiangSwordData.isTempered(source)
                 ? WanxiangWeaponCatalog.durabilityCost(owner.server, source) : 1;
         cost = SwordModuleData.consumeVirtualDurability(source, Math.max(0, cost));
-        if (cost > 0 && source.hurt(cost, owner.getRandom(), owner)) source.shrink(1);
+        if (cost > 0) source.hurtAndBreak(cost, owner.serverLevel(), owner, item -> { });
     }
 
     private void emitBeamMotes(ServerLevel level, int burstTick) {
@@ -496,7 +497,8 @@ public final class SwordArrayFieldEntity extends Entity {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         targetId = tag.hasUUID("Target") ? tag.getUUID("Target") : null;
         sourceBindingId = tag.hasUUID("Binding") ? tag.getUUID("Binding") : null;
-        displayStack = tag.contains("DisplayItem") ? ItemStack.of(tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
+        displayStack = tag.contains("DisplayItem")
+                ? ItemStack.parseOptional(level().registryAccess(), tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
         lastTargetAnchor = tag.contains("AnchorX")
                 ? new Vec3(tag.getDouble("AnchorX"), tag.getDouble("AnchorY"), tag.getDouble("AnchorZ")) : null;
         targetHeight = tag.getDouble("TargetHeight");
@@ -529,7 +531,7 @@ public final class SwordArrayFieldEntity extends Entity {
         if (ownerId != null) tag.putUUID("Owner", ownerId);
         if (targetId != null) tag.putUUID("Target", targetId);
         if (sourceBindingId != null) tag.putUUID("Binding", sourceBindingId);
-        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(new CompoundTag()));
+        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(level().registryAccess()));
         if (lastTargetAnchor != null) {
             tag.putDouble("AnchorX", lastTargetAnchor.x);
             tag.putDouble("AnchorY", lastTargetAnchor.y);
@@ -553,11 +555,6 @@ public final class SwordArrayFieldEntity extends Entity {
         tag.putInt("SustainTicks", sustainTicks());
         tag.putFloat("Expansion", expansion());
         tag.putFloat("BeamScale", beamScale());
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     private record TargetKey(ResourceKey<Level> dimension, UUID targetId) { }

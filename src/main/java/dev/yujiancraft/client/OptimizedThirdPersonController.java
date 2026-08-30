@@ -6,6 +6,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -25,16 +26,15 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.RenderHighlightEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RenderHighlightEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class OptimizedThirdPersonController {
     private static final double SHOULDER_OFFSET = 0.95D;
     private static final double VERTICAL_OFFSET = 0.12D;
@@ -135,7 +135,7 @@ public final class OptimizedThirdPersonController {
                 ? player.getViewVector(partialTick).normalize() : suppliedScreenDirection.normalize();
         Vec3 screenOrigin = camera.getPosition();
         double eyeToCamera = eye.distanceTo(screenOrigin);
-        double interactionRange = minecraft.gameMode.getPickRange();
+        double interactionRange = Math.max(player.blockInteractionRange(), player.entityInteractionRange());
         double livingRange = ClientSettingsState.get().targetingMode()
                 == dev.yujiancraft.combat.TargetingMode.MANUAL_GUIDANCE
                 ? 512.0D : Math.max(interactionRange, ClientSettingsState.get().crosshairLockRadius());
@@ -319,10 +319,11 @@ public final class OptimizedThirdPersonController {
                 1.0F, 1.0F, 1.0F, 0.9F));
     }
 
-    public static void renderCrosshair(ForgeGui gui, GuiGraphics graphics, float partialTick,
-                                       int screenWidth, int screenHeight) {
+    public static void renderCrosshair(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isActive(minecraft) || minecraft.options.hideGui || minecraft.screen != null) return;
+        int screenWidth = graphics.guiWidth();
+        int screenHeight = graphics.guiHeight();
         int x = screenWidth / 2;
         int y = screenHeight / 2;
         int color = aimedLivingEntityId >= 0

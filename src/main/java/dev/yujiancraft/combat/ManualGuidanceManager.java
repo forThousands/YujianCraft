@@ -11,10 +11,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Server-authoritative snapshot salvo used by the manual-guidance targeting mode. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID)
 public final class ManualGuidanceManager {
     private static final Map<UUID, GuidanceState> STATES = new HashMap<>();
 
@@ -120,9 +120,9 @@ public final class ManualGuidanceManager {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide()
-                || !(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (event.getEntity().level().isClientSide()
+                || !(event.getEntity() instanceof ServerPlayer player)) return;
         GuidanceState state = STATES.get(player.getUUID());
         if (state == null) return;
         if (!FlyingSwordItem.isUsableFlyingSword(player.getMainHandItem())

@@ -9,16 +9,16 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.joml.Matrix4f;
 
 /** Non-recursive qi silhouettes and destination previews for spatial combo transitions. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientComboWarpEffects {
     private ClientComboWarpEffects() { }
 
@@ -35,7 +35,7 @@ public final class ClientComboWarpEffects {
     public static void renderWarp(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES
                 || !ClientOptions.hitImpactVisual()) return;
-        var visuals = ClientComboState.warpVisuals(event.getPartialTick());
+        var visuals = ClientComboState.warpVisuals(event.getPartialTick().getGameTimeDeltaPartialTick(true));
         if (visuals.isEmpty()) return;
         Minecraft minecraft = Minecraft.getInstance();
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
@@ -127,6 +127,6 @@ public final class ClientComboWarpEffects {
 
     private static void vertex(VertexConsumer vertices, Matrix4f pose, float x, float y, float z,
                                int red, int green, int blue, int alpha) {
-        vertices.vertex(pose, x, y, z).color(red, green, blue, Mth.clamp(alpha, 0, 255)).endVertex();
+        vertices.addVertex(pose, x, y, z).setColor(red, green, blue, Mth.clamp(alpha, 0, 255));
     }
 }

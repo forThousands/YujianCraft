@@ -1,0 +1,42 @@
+{
+  "sword_array.beacon_activate": {
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.activate",
+        "type": "event",
+        "volume": 1.5,
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "sword_array.amethyst_resonate": {
+    "sounds": [
+      {
+        "name": "minecraft:block.amethyst_block.resonate",
+        "type": "event",
+        "volume": 1.5,
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "sword_array.riptide_descent": {
+    "sounds": [
+      {
+        "name": "minecraft:item.trident.riptide_3",
+        "type": "event",
+        "volume": 1.5,
+        "attenuation_distance": 64
+      }
+    ]
+  },
+  "sword_array.beacon_descent": {
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.power_select",
+        "type": "event",
+        "volume": 1.5,
+        "attenuation_distance": 64
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 package dev.yujiancraft.client;
 
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 /** Lightweight client-side compatibility checks without optional compile-time dependencies. */
 public final class ClientModCompatibility {

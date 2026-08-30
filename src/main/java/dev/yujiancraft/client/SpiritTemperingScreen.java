@@ -268,7 +268,7 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderPreview(graphics, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
@@ -357,11 +357,11 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (overPreview(mouseX, mouseY)) {
-            previewZoom = Math.max(0.65F, Math.min(1.75F, previewZoom + (float) delta * 0.08F));
+            previewZoom = Math.max(0.65F, Math.min(1.75F, previewZoom + (float) scrollY * 0.08F));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 }

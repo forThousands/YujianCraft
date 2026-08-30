@@ -7,8 +7,8 @@ import com.google.gson.JsonParser;
 import dev.yujiancraft.YujianCraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.recipes.FinishedRecipe;
 import net.minecraft.data.recipes.RecipeCategory;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.data.recipes.ShapelessRecipeBuilder;
@@ -23,15 +23,16 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.HolderLookup;
 
 /** Recipes are declared once in the visual control panel manifest and generated from that source. */
 public final class ModRecipeProvider extends RecipeProvider {
     private static final Path DEFINITIONS = locateDefinitions();
     private static final char[] SYMBOLS = "ABCDEFGHI".toCharArray();
 
-    public ModRecipeProvider(PackOutput output) {
-        super(output);
+    public ModRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
+        super(output, registries);
     }
 
     private static Path locateDefinitions() {
@@ -45,7 +46,7 @@ public final class ModRecipeProvider extends RecipeProvider {
     }
 
     @Override
-    protected void buildRecipes(Consumer<FinishedRecipe> output) {
+    protected void buildRecipes(RecipeOutput output) {
         try (Reader reader = Files.newBufferedReader(DEFINITIONS)) {
             JsonArray recipes = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonArray("recipes");
             for (JsonElement element : recipes) generate(output, element.getAsJsonObject());
@@ -55,7 +56,7 @@ public final class ModRecipeProvider extends RecipeProvider {
         }
     }
 
-    private static void generate(Consumer<FinishedRecipe> output, JsonObject definition) {
+    private static void generate(RecipeOutput output, JsonObject definition) {
         String recipeId = definition.get("id").getAsString();
         String type = definition.get("type").getAsString();
         RecipeCategory category = category(definition.get("category").getAsString());
@@ -66,7 +67,7 @@ public final class ModRecipeProvider extends RecipeProvider {
         Item unlockItem = item(grid.stream().filter(value -> !value.isBlank()).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(recipeId + " has no ingredients")));
         String criterion = "has_" + BuiltInRegistries.ITEM.getKey(unlockItem).getPath().replace('/', '_');
-        ResourceLocation outputId = new ResourceLocation(YujianCraft.MOD_ID, recipeId);
+        ResourceLocation outputId = ResourceLocation.fromNamespaceAndPath(YujianCraft.MOD_ID, recipeId);
 
         if ("shapeless".equals(type)) {
             ShapelessRecipeBuilder builder = ShapelessRecipeBuilder.shapeless(category, result, count);
@@ -128,7 +129,7 @@ public final class ModRecipeProvider extends RecipeProvider {
     }
 
     private static Item item(String itemId) {
-        ResourceLocation id = new ResourceLocation(itemId);
+        ResourceLocation id = ResourceLocation.parse(itemId);
         return BuiltInRegistries.ITEM.getOptional(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown recipe item " + itemId));
     }

@@ -24,7 +24,7 @@ public final class ClientBalanceState {
     }
 
     public static void requestFromServer() {
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.RequestBalancePacket());
+        ModNetwork.sendToServer(new ModNetwork.RequestBalancePacket());
     }
 
     public static void update(FlyingSwordMaterial material, double damage, double speed) {
@@ -33,12 +33,12 @@ public final class ClientBalanceState {
         double safeSpeed = Math.max(SwordBalanceConfig.MIN_SPEED,
                 Math.min(SwordBalanceConfig.MAX_SPEED, speed));
         BALANCES.put(material, new SwordBalanceConfig.Balance(safeDamage, safeSpeed));
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.UpdateBalancePacket(
+        ModNetwork.sendToServer(new ModNetwork.UpdateBalancePacket(
                 material.ordinal(), safeDamage, safeSpeed, false));
     }
 
     public static void reset(FlyingSwordMaterial material) {
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.UpdateBalancePacket(material.ordinal(), 0.0D, 0.0D, true));
+        ModNetwork.sendToServer(new ModNetwork.UpdateBalancePacket(material.ordinal(), 0.0D, 0.0D, true));
     }
 
     public static double get(EffectParameter parameter) {
@@ -49,12 +49,12 @@ public final class ClientBalanceState {
         double safe = Math.max(parameter.minimum(), Math.min(parameter.maximum(), value));
         if (parameter.integerDisplay()) safe = Math.rint(safe);
         EFFECT_VALUES.put(parameter, safe);
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.UpdateEffectBalancePacket(
+        ModNetwork.sendToServer(new ModNetwork.UpdateEffectBalancePacket(
                 parameter.ordinal(), safe, false));
     }
 
     public static void reset(EffectParameter parameter) {
-        ModNetwork.CHANNEL.sendToServer(new ModNetwork.UpdateEffectBalancePacket(
+        ModNetwork.sendToServer(new ModNetwork.UpdateEffectBalancePacket(
                 parameter.ordinal(), parameter.defaultValue(), true));
     }
 

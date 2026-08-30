@@ -15,6 +15,7 @@ import dev.yujiancraft.visual.FlyingSwordSeries;
 import dev.yujiancraft.wanxiang.WanxiangSwordData;
 import dev.yujiancraft.wanxiang.WanxiangWeaponCatalog;
 import dev.yujiancraft.wanxiang.ManualSpiritTrialManager;
+import dev.yujiancraft.data.SwordStackData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -26,6 +27,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
@@ -46,7 +48,8 @@ public final class FlyingSwordItem extends SwordItem {
         // All vanilla sword tiers use an attack-damage modifier of 3. The dynamic Yujian modifier
         // replaces that damage later, while SwordItem keeps the correct 1.6 attack speed and
         // vanilla sword-enchantment behaviour.
-        super(material.vanillaTier(), 3, -2.4F, properties);
+        super(material.vanillaTier(), properties.attributes(
+                SwordItem.createAttributes(material.vanillaTier(), 3, -2.4F)));
         this.material = material;
         this.series = series;
     }
@@ -65,7 +68,8 @@ public final class FlyingSwordItem extends SwordItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context,
+                                List<Component> tooltip, TooltipFlag flag) {
         SwordSettings settings = SwordSettings.read(stack);
         tooltip.add(Component.translatable("tooltip.yujiancraft.formation",
                 Component.translatable(getFormationMode(stack).translationKey())).withStyle(ChatFormatting.GRAY));
@@ -111,7 +115,7 @@ public final class FlyingSwordItem extends SwordItem {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        boolean entityDisplay = stack.hasTag() && stack.getTag().getBoolean(ENTITY_DISPLAY_TAG);
+        boolean entityDisplay = SwordStackData.copy(stack).getBoolean(ENTITY_DISPLAY_TAG);
         return super.isFoil(stack) || !entityDisplay && ClientOptions.inventoryGlint();
     }
 
@@ -125,7 +129,7 @@ public final class FlyingSwordItem extends SwordItem {
     }
 
     public static FormationMode getFormationMode(ItemStack stack) {
-        return stack.hasTag() ? FormationMode.fromName(stack.getTag().getString(MODE_TAG)) : FormationMode.FAN_ALIGNED;
+        return FormationMode.fromName(SwordStackData.copy(stack).getString(MODE_TAG));
     }
 
     public FlyingSwordMaterial getMaterialType() {
@@ -144,7 +148,7 @@ public final class FlyingSwordItem extends SwordItem {
         }
 
         FormationMode mode = getFormationMode(stack).next();
-        stack.getOrCreateTag().putString(MODE_TAG, mode.serializedName());
+        SwordStackData.update(stack, tag -> tag.putString(MODE_TAG, mode.serializedName()));
         getOwnedFormationSwords(player).forEach(sword -> sword.setFormationMode(mode));
         player.displayClientMessage(Component.translatable("message.yujiancraft.formation_changed",
                 Component.translatable(mode.translationKey())), true);

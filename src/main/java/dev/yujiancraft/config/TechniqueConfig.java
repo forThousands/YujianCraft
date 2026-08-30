@@ -1,53 +1,53 @@
 package dev.yujiancraft.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Server-authoritative safety, performance and balance limits for Myriad techniques. */
 public final class TechniqueConfig {
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    public static final ForgeConfigSpec SPEC;
+    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    public static final ModConfigSpec SPEC;
 
-    private static final ForgeConfigSpec.DoubleValue SWEEP_RADIUS;
-    private static final ForgeConfigSpec.IntValue SWEEP_DURATION;
-    private static final ForgeConfigSpec.DoubleValue SWEEP_ROTATIONS;
-    private static final ForgeConfigSpec.DoubleValue SWEEP_HIT_WIDTH;
-    private static final ForgeConfigSpec.IntValue SWEEP_TARGET_LIMIT;
-    private static final ForgeConfigSpec.DoubleValue SWEEP_DAMAGE_SCALE;
-    private static final ForgeConfigSpec.IntValue SWEEP_COOLDOWN;
+    private static final ModConfigSpec.DoubleValue SWEEP_RADIUS;
+    private static final ModConfigSpec.IntValue SWEEP_DURATION;
+    private static final ModConfigSpec.DoubleValue SWEEP_ROTATIONS;
+    private static final ModConfigSpec.DoubleValue SWEEP_HIT_WIDTH;
+    private static final ModConfigSpec.IntValue SWEEP_TARGET_LIMIT;
+    private static final ModConfigSpec.DoubleValue SWEEP_DAMAGE_SCALE;
+    private static final ModConfigSpec.IntValue SWEEP_COOLDOWN;
 
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_RANGE;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_WIDTH;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_SPEED;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_TARGET_LIMIT;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_DAMAGE_SCALE;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_COOLDOWN;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_GATHER_TICKS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_HOLD_TICKS;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_HEIGHT;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_RADIUS_PADDING;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_BARRAGE_TICKS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_BARRAGE_INTERVAL;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_CHARGE_TICKS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_HOLD_TICKS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_EXPAND_TICKS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_SUSTAIN_TICKS;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_EXPANSION;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_BEAM_SCALE;
-    private static final ForgeConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_RADIUS;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_TARGET_LIMIT;
-    private static final ForgeConfigSpec.IntValue SWORD_ARRAY_FINISHER_LINGER_TICKS;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_RANGE;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_WIDTH;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_SPEED;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_TARGET_LIMIT;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_DAMAGE_SCALE;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_COOLDOWN;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_GATHER_TICKS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_HOLD_TICKS;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_HEIGHT;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_RADIUS_PADDING;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_BARRAGE_TICKS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_BARRAGE_INTERVAL;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_CHARGE_TICKS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_HOLD_TICKS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_EXPAND_TICKS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_SUSTAIN_TICKS;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_EXPANSION;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_BEAM_SCALE;
+    private static final ModConfigSpec.DoubleValue SWORD_ARRAY_FINISHER_RADIUS;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_TARGET_LIMIT;
+    private static final ModConfigSpec.IntValue SWORD_ARRAY_FINISHER_LINGER_TICKS;
 
-    private static final ForgeConfigSpec.DoubleValue GUARD_REDUCTION;
-    private static final ForgeConfigSpec.IntValue GUARD_DURABILITY;
-    private static final ForgeConfigSpec.DoubleValue GUARD_DURABILITY_PER_DAMAGE;
-    private static final ForgeConfigSpec.IntValue GUARD_IMPACT_COOLDOWN;
-    private static final ForgeConfigSpec.DoubleValue GUARD_REFLECT_PERCENT;
-    private static final ForgeConfigSpec.DoubleValue GUARD_REFLECT_CAP;
+    private static final ModConfigSpec.DoubleValue GUARD_REDUCTION;
+    private static final ModConfigSpec.IntValue GUARD_DURABILITY;
+    private static final ModConfigSpec.DoubleValue GUARD_DURABILITY_PER_DAMAGE;
+    private static final ModConfigSpec.IntValue GUARD_IMPACT_COOLDOWN;
+    private static final ModConfigSpec.DoubleValue GUARD_REFLECT_PERCENT;
+    private static final ModConfigSpec.DoubleValue GUARD_REFLECT_CAP;
 
-    private static final ForgeConfigSpec.IntValue TOOL_MAX_WORK_TICKS;
-    private static final ForgeConfigSpec.IntValue FISHING_MIN_WAIT;
-    private static final ForgeConfigSpec.IntValue FISHING_MAX_WAIT;
-    private static final ForgeConfigSpec.IntValue WORK_EFFECT_COOLDOWN;
+    private static final ModConfigSpec.IntValue TOOL_MAX_WORK_TICKS;
+    private static final ModConfigSpec.IntValue FISHING_MIN_WAIT;
+    private static final ModConfigSpec.IntValue FISHING_MAX_WAIT;
+    private static final ModConfigSpec.IntValue WORK_EFFECT_COOLDOWN;
 
     static {
         BUILDER.push("sweep");

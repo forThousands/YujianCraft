@@ -30,7 +30,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -79,9 +78,9 @@ public final class SwordArrayQiEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
-        entityData.define(DATA_OWNER, Optional.empty());
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        builder.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
+        builder.define(DATA_OWNER, Optional.empty());
     }
 
     @Override
@@ -123,7 +122,7 @@ public final class SwordArrayQiEntity extends Entity {
                 ? WanxiangWeaponCatalog.damage(owner.server, displayStack)
                 : WanxiangSwordData.pierceDamage(displayStack);
         double damage = FlyingSwordDamage.currentDamage(owner, displayStack,
-                base + SwordEffectEngine.damageBonus(SwordModuleData.copyModules(displayStack)), target.getMobType())
+                base + SwordEffectEngine.damageBonus(SwordModuleData.copyModules(displayStack)), target)
                 * Math.max(0.0D, damageScale);
         boolean marked = ManualSpiritTrialManager.beginFlyingSwordDamage(owner, target, displayStack);
         boolean success;
@@ -147,11 +146,11 @@ public final class SwordArrayQiEntity extends Entity {
         if (consumedDurability) return;
         consumedDurability = true;
         ItemStack source = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
-        if (source.isEmpty() || source.getTag() != null && source.getTag().getBoolean("Unbreakable")) return;
+        if (source.isEmpty() || source.has(net.minecraft.core.component.DataComponents.UNBREAKABLE)) return;
         int cost = WanxiangSwordData.isTempered(source)
                 ? WanxiangWeaponCatalog.durabilityCost(owner.server, source) : 1;
         cost = SwordModuleData.consumeVirtualDurability(source, Math.max(0, cost));
-        if (cost > 0 && source.hurt(cost, owner.getRandom(), owner)) source.shrink(1);
+        if (cost > 0) source.hurtAndBreak(cost, owner.serverLevel(), owner, item -> { });
     }
 
     private void faceMotion(Vec3 motion) {
@@ -173,7 +172,8 @@ public final class SwordArrayQiEntity extends Entity {
     protected void readAdditionalSaveData(CompoundTag tag) {
         ownerId = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         sourceBindingId = tag.hasUUID("Binding") ? tag.getUUID("Binding") : null;
-        displayStack = tag.contains("DisplayItem") ? ItemStack.of(tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
+        displayStack = tag.contains("DisplayItem")
+                ? ItemStack.parseOptional(level().registryAccess(), tag.getCompound("DisplayItem")) : ItemStack.EMPTY;
         age = tag.getInt("Age");
         entityData.set(DATA_OWNER, Optional.ofNullable(ownerId));
         entityData.set(DATA_DISPLAY_STACK, displayStack.copy());
@@ -183,12 +183,8 @@ public final class SwordArrayQiEntity extends Entity {
     protected void addAdditionalSaveData(CompoundTag tag) {
         if (ownerId != null) tag.putUUID("Owner", ownerId);
         if (sourceBindingId != null) tag.putUUID("Binding", sourceBindingId);
-        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(new CompoundTag()));
+        if (!displayStack.isEmpty()) tag.put("DisplayItem", displayStack.save(level().registryAccess()));
         tag.putInt("Age", age);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
 }

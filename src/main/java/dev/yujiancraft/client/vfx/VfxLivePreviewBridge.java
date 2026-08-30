@@ -136,7 +136,8 @@ public final class VfxLivePreviewBridge {
                 dev.yujiancraft.registry.ModItems.getFlyingSword(
                         dev.yujiancraft.material.FlyingSwordMaterial.DIAMOND).getDefaultInstance(), authoredTick,
                 timeline == null ? dev.yujiancraft.visual.SwordArrayVisualStyle.DEFAULT : timeline.worldStyle());
-        previewLevel.putNonPlayerEntity(PREVIEW_ENTITY_ID, previewEntity);
+        previewEntity.setId(PREVIEW_ENTITY_ID);
+        previewLevel.addEntity(previewEntity);
     }
 
     private static void removePreviewEntity() {

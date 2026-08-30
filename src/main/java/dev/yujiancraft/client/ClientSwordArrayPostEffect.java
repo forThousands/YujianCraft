@@ -10,17 +10,17 @@ import net.minecraft.client.renderer.EffectInstance;
 import net.minecraft.client.renderer.PostChain;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 
 /** Data-driven full-screen VFX compositor for the Sword Array finisher. */
-@Mod.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
+@net.neoforged.fml.common.EventBusSubscriber(modid = YujianCraft.MOD_ID, value = Dist.CLIENT)
 public final class ClientSwordArrayPostEffect {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation CHAIN = ResourceLocation.fromNamespaceAndPath(
@@ -56,8 +56,8 @@ public final class ClientSwordArrayPostEffect {
                     37.0F, 10, 8, 7, 32);
         }
         ClientTechniqueOverlayState.FinisherFrame frame =
-                ClientTechniqueOverlayState.sampleFinisher(event.getPartialTick());
-        ClientComboState.Impact combo = ClientComboState.impact(event.getPartialTick());
+                ClientTechniqueOverlayState.sampleFinisher(event.getPartialTick().getGameTimeDeltaPartialTick(true));
+        ClientComboState.Impact combo = ClientComboState.impact(event.getPartialTick().getGameTimeDeltaPartialTick(true));
         if (combo != null && combo.threshold() <= 0.0001F && combo.radialBlur() <= 0.0001F
                 && combo.chromatic() <= 0.0001F && combo.blackout() <= 0.0001F) combo = null;
         if (frame == null && combo == null) {
@@ -146,13 +146,13 @@ public final class ClientSwordArrayPostEffect {
         effect.safeGetUniform("VignetteRadius").set(value(frame, combo, "vignette", "post.vignette.radius", 0.7F));
         effect.safeGetUniform("VignetteSoftness").set(value(frame, combo, "vignette", "post.vignette.softness", 0.3F));
         effect.safeGetUniform("Time").set(frame == null ? Util.getMillis() / 1000.0F : frame.ageSeconds());
-        postChain.process(event.getPartialTick());
+        postChain.process(event.getPartialTick().getGameTimeDeltaPartialTick(true));
         mainTarget.bindWrite(false);
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && Minecraft.getInstance().level == null) closeChain();
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if (Minecraft.getInstance().level == null) closeChain();
     }
 
     private static boolean ensureChain(Minecraft minecraft) {

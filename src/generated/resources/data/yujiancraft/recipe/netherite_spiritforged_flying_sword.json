@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "A": {
+      "item": "yujiancraft:spirit_crystal"
+    },
+    "B": {
+      "item": "yujiancraft:netherite_flying_sword"
+    }
+  },
+  "pattern": [
+    "AAA",
+    "ABA",
+    "AAA"
+  ],
+  "result": {
+    "count": 1,
+    "id": "yujiancraft:netherite_spiritforged_flying_sword"
+  }
+}
