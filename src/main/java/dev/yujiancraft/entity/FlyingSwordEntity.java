@@ -361,6 +361,7 @@ public final class FlyingSwordEntity extends Entity {
     }
 
     private void tickDocked(ServerPlayer owner) {
+        refreshSettingsFromSource(owner);
         if (techniqueMode == TechniqueMode.GUARD) {
             if (guardImpactTicks > 0) guardImpactTicks--;
             double impact = guardImpactTicks <= 0 ? 0.0D
@@ -384,6 +385,27 @@ public final class FlyingSwordEntity extends Entity {
         if (attackCooldown <= 0 && !techniqueMode.isPassive()) {
             findTarget(owner).ifPresent(target -> beginAttack(owner, target));
         }
+    }
+
+    /**
+     * A formation entity can outlive the client settings screen and is persisted independently
+     * from its source item.  Treat the bound item as the authority before an idle sword is allowed
+     * to acquire a target; otherwise an entity saved with AUTOMATIC can keep auto-attacking after
+     * the item has been switched back to CROSSHAIR_LOCK.
+     */
+    private void refreshSettingsFromSource(ServerPlayer owner) {
+        ItemStack source = FlyingSwordItem.findFlyingSword(owner, sourceBindingId);
+        if (source.isEmpty()) return;
+        SwordSettings current = SwordSettings.read(source);
+        if (minimumDockTicks == current.minimumDockTicks()
+                && Double.compare(automaticTargetRadius, current.automaticTargetRadius()) == 0
+                && Double.compare(crosshairLockRadius, current.crosshairLockRadius()) == 0
+                && targetingMode == current.targetingMode()
+                && attackMode == current.attackMode()
+                && techniqueMode == current.techniqueMode()) {
+            return;
+        }
+        applySettings(current);
     }
 
     /** Sword-array is one formation action, not six independent attacks. The lowest-slot sword
