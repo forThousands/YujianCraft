@@ -808,6 +808,9 @@ public final class FlyingSwordEntity extends Entity {
     private boolean damageLivingTarget(ServerPlayer owner, LivingEntity target,
                                        double damageScale, boolean consumeDurability) {
         if (!(level() instanceof ServerLevel serverLevel)) return false;
+        // Re-check immediately before damage: a target may have entered the owner's protection
+        // list after the sword locked on or after an area attack began.
+        if (!SwordTargetingRules.canActivelyTarget(owner, target)) return false;
         double baseDamage = WanxiangSwordData.isTempered(displayStack)
                 ? WanxiangWeaponCatalog.damage(serverLevel.getServer(), displayStack)
                 : WanxiangSwordData.pierceDamage(displayStack);

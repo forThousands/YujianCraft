@@ -9,7 +9,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    archivesName = "${mod_id}-forge-${minecraft_version}"
 }
 
 // Mojang ships Java 17 to end users in 1.18+, so your mod should target Java 17.
@@ -242,8 +242,9 @@ tasks.withType(JavaCompile).configureEach {
 def versionedReleaseTaskName = "archiveRelease_${mod_version.replace('.', '_')}"
 tasks.register(versionedReleaseTaskName) {
     dependsOn tasks.named('reobfJar')
-    def sourceFile = layout.buildDirectory.file("libs/${mod_id}-${mod_version}.jar")
-    def destinationFile = layout.projectDirectory.file("releases/${mod_id}-${mod_version}.jar")
+    def sourceFile = layout.buildDirectory.file("libs/${base.archivesName.get()}-${mod_version}.jar")
+    def destinationFile = layout.projectDirectory.file(
+            "releases/${mod_id}-${mod_version}-forge-${minecraft_version}.jar")
     // Releases are user-facing immutable backups, not Gradle-owned build outputs. Declaring the
     // destination as an output lets Gradle's stale-output cleanup delete the preceding version as
     // soon as mod_version changes. Keep the copy deliberately untracked and run it after each build.

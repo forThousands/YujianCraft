@@ -24,6 +24,7 @@ import net.minecraft.core.particles.DustParticleOptions;
 import org.joml.Vector3f;
 
 public final class SwordEffectEngine {
+    public static final String PROJECTILE_OWNER_TAG = "YujianCraftModuleOwner";
     private static final String LAST_EFFECT_TICK = "YujianCraftLastModuleEffectTick";
     private static final String LAST_WORK_EFFECT_TICK = "YujianCraftLastWorkModuleEffectTick";
 
@@ -50,6 +51,7 @@ public final class SwordEffectEngine {
     }
 
     public static void applyOnHit(ServerPlayer owner, LivingEntity target, CompoundTag modules) {
+        if (!SwordTargetingRules.canActivelyTarget(owner, target)) return;
         if (!SwordModuleData.hasAnyEffect(modules) || !(target.level() instanceof ServerLevel level)) return;
         long now = level.getGameTime();
         CompoundTag targetData = target.getPersistentData();
@@ -193,6 +195,7 @@ public final class SwordEffectEngine {
             arrow.setPos(start.x, start.y, start.z);
             arrow.setBaseDamage(damage);
             arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
+            arrow.getPersistentData().putUUID(PROJECTILE_OWNER_TAG, owner.getUUID());
             arrow.shoot(velocity.x, velocity.y, velocity.z, 1.65F, 0.0F);
             level.addFreshEntity(arrow);
         }

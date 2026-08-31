@@ -119,6 +119,7 @@ public final class SwordArrayQiEntity extends Entity {
     }
 
     private void hit(ServerPlayer owner, LivingEntity target, double damageScale) {
+        if (!SwordTargetingRules.canActivelyTarget(owner, target)) return;
         double base = WanxiangSwordData.isTempered(displayStack)
                 ? WanxiangWeaponCatalog.damage(owner.server, displayStack)
                 : WanxiangSwordData.pierceDamage(displayStack);

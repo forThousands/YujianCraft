@@ -7,6 +7,7 @@ import dev.yujiancraft.client.ClientTargetState;
 import dev.yujiancraft.client.ClientManualGuidanceState;
 import dev.yujiancraft.client.ClientSwordRidingState;
 import dev.yujiancraft.combat.SwordSettings;
+import dev.yujiancraft.combat.TargetProtectionManager;
 import dev.yujiancraft.config.SwordBalanceConfig;
 import dev.yujiancraft.config.EffectBalanceConfig;
 import dev.yujiancraft.config.EffectParameter;
@@ -38,10 +39,12 @@ import java.util.Optional;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "26";
+    private static final String PROTOCOL = "27";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(YujianCraft.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -149,6 +152,81 @@ public final class ModNetwork {
         CHANNEL.registerMessage(32, FormationStatePacket.class,
                 FormationStatePacket::encode, FormationStatePacket::decode,
                 ModNetwork::handleFormationState, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(33, ToggleTargetProtectionPacket.class,
+                ToggleTargetProtectionPacket::encode, ToggleTargetProtectionPacket::decode,
+                ModNetwork::handleToggleTargetProtection, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(34, RemoveTargetProtectionPacket.class,
+                RemoveTargetProtectionPacket::encode, RemoveTargetProtectionPacket::decode,
+                ModNetwork::handleRemoveTargetProtection, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(35, RequestTargetProtectionsPacket.class,
+                (message, buffer) -> { }, buffer -> new RequestTargetProtectionsPacket(),
+                ModNetwork::handleRequestTargetProtections, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(36, SyncTargetProtectionsPacket.class,
+                SyncTargetProtectionsPacket::encode, SyncTargetProtectionsPacket::decode,
+                ModNetwork::handleSyncTargetProtections, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    }
+
+    private static void handleToggleTargetProtection(ToggleTargetProtectionPacket message,
+                                                       Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender == null) return;
+            Entity raw = sender.level().getEntity(message.entityId());
+            if (!(raw instanceof LivingEntity target) || target == sender
+                    || sender.distanceToSqr(target) > 4096.0D) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.target_protection.no_target"), true);
+                return;
+            }
+            if (TargetProtectionManager.isNaturallyProtected(target)) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.target_protection.natural", target.getDisplayName()), true);
+            } else {
+                boolean protectedAfter = TargetProtectionManager.toggle(sender, target);
+                if (protectedAfter) {
+                    target.removeEffect(dev.yujiancraft.registry.ModEffects.SWORD_BURN.get());
+                    target.removeEffect(dev.yujiancraft.registry.ModEffects.SWORD_POISON.get());
+                }
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        protectedAfter ? "message.yujiancraft.target_protection.disabled"
+                                : "message.yujiancraft.target_protection.enabled",
+                        target.getDisplayName()), true);
+            }
+            sendTargetProtections(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleRemoveTargetProtection(RemoveTargetProtectionPacket message,
+                                                       Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) {
+                TargetProtectionManager.remove(sender, message.targetId());
+                sendTargetProtections(sender);
+            }
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleRequestTargetProtections(RequestTargetProtectionsPacket message,
+                                                         Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer sender = context.getSender();
+            if (sender != null) sendTargetProtections(sender);
+        });
+        context.setPacketHandled(true);
+    }
+
+    private static void handleSyncTargetProtections(SyncTargetProtectionsPacket message,
+                                                      Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> dev.yujiancraft.client.ClientTargetProtectionState.accept(message.entries())));
+        context.setPacketHandled(true);
     }
 
     private static void handleToggleCombo(ToggleComboPacket message,
@@ -519,6 +597,13 @@ public final class ModNetwork {
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
     }
 
+    public static void sendTargetProtections(ServerPlayer player) {
+        List<TargetProtectionEntry> entries = TargetProtectionManager.entries(player).stream()
+                .map(entry -> new TargetProtectionEntry(entry.uuid(), entry.name(), entry.typeId()))
+                .toList();
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncTargetProtectionsPacket(entries));
+    }
+
     public static void sendFormationState(ServerPlayer player, boolean deployed) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new FormationStatePacket(deployed));
     }
@@ -595,6 +680,51 @@ public final class ModNetwork {
     }
 
     public record ToggleFormationPacket() {
+    }
+
+    public record ToggleTargetProtectionPacket(int entityId) {
+        private static void encode(ToggleTargetProtectionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.entityId());
+        }
+        private static ToggleTargetProtectionPacket decode(FriendlyByteBuf buffer) {
+            return new ToggleTargetProtectionPacket(buffer.readVarInt());
+        }
+    }
+
+    public record RemoveTargetProtectionPacket(UUID targetId) {
+        private static void encode(RemoveTargetProtectionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeUUID(message.targetId());
+        }
+        private static RemoveTargetProtectionPacket decode(FriendlyByteBuf buffer) {
+            return new RemoveTargetProtectionPacket(buffer.readUUID());
+        }
+    }
+
+    public record RequestTargetProtectionsPacket() {
+    }
+
+    public record TargetProtectionEntry(UUID uuid, String name, String typeId) {
+        private static void encode(TargetProtectionEntry entry, FriendlyByteBuf buffer) {
+            buffer.writeUUID(entry.uuid());
+            buffer.writeUtf(entry.name(), 128);
+            buffer.writeUtf(entry.typeId(), 128);
+        }
+        private static TargetProtectionEntry decode(FriendlyByteBuf buffer) {
+            return new TargetProtectionEntry(buffer.readUUID(), buffer.readUtf(128), buffer.readUtf(128));
+        }
+    }
+
+    public record SyncTargetProtectionsPacket(List<TargetProtectionEntry> entries) {
+        private static void encode(SyncTargetProtectionsPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.entries().size());
+            message.entries().forEach(entry -> TargetProtectionEntry.encode(entry, buffer));
+        }
+        private static SyncTargetProtectionsPacket decode(FriendlyByteBuf buffer) {
+            int size = Math.min(buffer.readVarInt(), 1024);
+            List<TargetProtectionEntry> entries = new ArrayList<>(size);
+            for (int index = 0; index < size; index++) entries.add(TargetProtectionEntry.decode(buffer));
+            return new SyncTargetProtectionsPacket(List.copyOf(entries));
+        }
     }
 
     public record ToggleSummonedSwordsPacket() {

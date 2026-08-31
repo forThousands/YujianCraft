@@ -96,6 +96,10 @@ public final class ClientInputEvents {
         while (ClientModEvents.TOGGLE_COMBO.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleComboPacket());
         }
+        while (ClientModEvents.TOGGLE_TARGET_PROTECTION.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ModNetwork.ToggleTargetProtectionPacket(
+                    findManualTargetId(Minecraft.getInstance())));
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
                 && ClientOptions.swordRidingEnabled()

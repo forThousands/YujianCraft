@@ -143,6 +143,14 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_F8,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping TOGGLE_TARGET_PROTECTION = new KeyMapping(
+            "key.yujiancraft.toggle_target_protection",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.NONE,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_B,
+            "key.categories.yujiancraft"
+    );
 
     private ClientModEvents() {
     }
@@ -213,6 +221,7 @@ public final class ClientModEvents {
         event.register(SWITCH_SWORD_ARRAY_STYLE);
         event.register(TOGGLE_COMBO);
         event.register(CYCLE_COMBO_STYLE);
+        event.register(TOGGLE_TARGET_PROTECTION);
         if (VfxLivePreviewBridge.isAvailable()) event.register(RELEASE_VFX_CURSOR);
     }
 

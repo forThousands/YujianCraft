@@ -3,6 +3,7 @@ package dev.yujiancraft.combat.technique;
 import dev.yujiancraft.YujianCraft;
 import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.combat.SwordEffectEngine;
+import dev.yujiancraft.combat.SwordTargetingRules;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.formation.FormationGeometry;
 import dev.yujiancraft.item.FlyingSwordItem;
@@ -33,6 +34,16 @@ public final class FormationTechniqueEvents {
 
     @SubscribeEvent
     public static void onPlayerHurt(LivingHurtEvent event) {
+        LivingEntity victim = event.getEntity();
+        if (event.getSource().getDirectEntity() instanceof Projectile moduleProjectile
+                && moduleProjectile.getPersistentData().hasUUID(SwordEffectEngine.PROJECTILE_OWNER_TAG)
+                && victim.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && serverLevel.getPlayerByUUID(moduleProjectile.getPersistentData().getUUID(
+                        SwordEffectEngine.PROJECTILE_OWNER_TAG)) instanceof ServerPlayer swordOwner
+                && !SwordTargetingRules.canActivelyTarget(swordOwner, victim)) {
+            event.setCanceled(true);
+            return;
+        }
         if (!(event.getEntity() instanceof ServerPlayer player) || event.getAmount() <= 0.0F
                 || event.getSource().is(DamageTypeTags.BYPASSES_SHIELD)
                 || event.getSource().is(DamageTypes.THORNS)) return;
@@ -74,7 +85,8 @@ public final class FormationTechniqueEvents {
         }
 
         Entity responsible = event.getSource().getEntity();
-        if (responsible instanceof LivingEntity attacker && attacker != player && attacker.isAlive()) {
+        if (responsible instanceof LivingEntity attacker && attacker != player && attacker.isAlive()
+                && SwordTargetingRules.canActivelyTarget(player, attacker)) {
             float reflected = (float) Math.min(TechniqueConfig.guardReflectCap(),
                     original * TechniqueConfig.guardReflectPercent());
             if (reflected > 0.0F) {
