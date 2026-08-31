@@ -120,16 +120,9 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
         graphics.fill(x + 233, y + 32, x + 306, y + 136, 0xFF0D1219);
         graphics.fill(x + 234, y + 33, x + 305, y + 135, 0xFF151D27);
         graphics.fill(x + 28, y + 145, x + 202, y + 229, 0xFF202731);
-        drawSlot(graphics, x + 112, y + 31);
-        drawSlot(graphics, x + 112, y + 67);
+        YujianScreenBackground.renderSlotFrames(graphics, menu, x, y);
         graphics.fill(x + 119, y + 52, x + 125, y + 61, 0xFF4CCDE3);
         graphics.fill(x + 116, y + 56, x + 128, y + 58, 0xFF4CCDE3);
-    }
-
-    private static void drawSlot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF0C0F14);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF485363);
-        graphics.fill(x + 2, y + 2, x + 16, y + 16, 0xFF11161D);
     }
 
     @Override
@@ -171,11 +164,16 @@ public final class FlyingSwordWorkbenchScreen extends AbstractContainerScreen<Fl
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderSwordPreview(graphics, partialTick);
         renderModuleMaterials(graphics, mouseX, mouseY);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBg(graphics, partialTick, mouseX, mouseY);
     }
 
     private void renderSwordPreview(GuiGraphics graphics, float partialTick) {

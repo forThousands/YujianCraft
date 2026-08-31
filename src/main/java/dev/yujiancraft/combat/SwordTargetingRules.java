@@ -12,6 +12,7 @@ public final class SwordTargetingRules {
 
     public static boolean canActivelyTarget(ServerPlayer owner, LivingEntity target) {
         if (target == owner || !target.isAlive() || target.isSpectator()) return false;
+        if (TargetProtectionManager.isProtected(owner, target)) return false;
         if (target instanceof Player player) {
             // ServerPlayer.canHarmPlayer combines server PvP and scoreboard-team friendly-fire rules.
             return !player.getAbilities().invulnerable && owner.canHarmPlayer(player);

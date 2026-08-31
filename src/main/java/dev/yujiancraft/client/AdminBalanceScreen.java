@@ -178,6 +178,10 @@ public final class AdminBalanceScreen extends Screen {
                     ClientOptions.DEFAULT_SWORD_ENERGY_HIGHLIGHT);
             addToggleRow(controlsLeft, top + 25, controlsWidth, "screen.yujiancraft.balance.sword_outline",
                     ClientOptions::swordOutline, ClientOptions::setSwordOutline, ClientOptions.DEFAULT_SWORD_OUTLINE);
+            addToggleRow(controlsLeft, top + 50, controlsWidth,
+                    "screen.yujiancraft.balance.trial_pedestal_sword_aura",
+                    ClientOptions::trialPedestalSwordAura, ClientOptions::setTrialPedestalSwordAura,
+                    ClientOptions.DEFAULT_TRIAL_PEDESTAL_SWORD_AURA);
         } else if (presentationPage == 2) {
             addToggleRow(controlsLeft, top, controlsWidth, "screen.yujiancraft.balance.flame_module_visual",
                     ClientOptions::flameModuleVisual, ClientOptions::setFlameModuleVisual,
@@ -333,9 +337,13 @@ public final class AdminBalanceScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         graphics.drawCenteredString(font, title, width / 2, Math.max(4, height / 2 - 121), 0xFFFFFF);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override

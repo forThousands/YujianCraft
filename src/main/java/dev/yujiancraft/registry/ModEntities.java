@@ -27,9 +27,9 @@ public final class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<SpiritTrialDummyEntity>> SPIRIT_TRIAL_DUMMY = ENTITIES.register(
             "spirit_trial_dummy",
             () -> EntityType.Builder.<SpiritTrialDummyEntity>of(SpiritTrialDummyEntity::new, MobCategory.MISC)
-                    .sized(0.7F, 1.95F)
-                    .clientTrackingRange(32)
-                    .updateInterval(2)
+                    .sized(1.25F, SpiritTrialDummyEntity.PEDESTAL_HEIGHT)
+                    .clientTrackingRange(64)
+                    .updateInterval(1)
                     .build(YujianCraft.MOD_ID + ":spirit_trial_dummy")
     );
     public static final DeferredHolder<EntityType<?>, EntityType<SwordArrayQiEntity>> SWORD_ARRAY = ENTITIES.register(

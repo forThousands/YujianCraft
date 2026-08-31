@@ -77,8 +77,6 @@ public final class OptimizedThirdPersonController {
         cameraDistanceFactor = safeFactor < cameraDistanceFactor
                 ? safeFactor : Mth.lerp(0.16D, cameraDistanceFactor, safeFactor);
         Vec3 cameraPosition = eye.add(desiredTrack.scale(cameraDistanceFactor));
-        camera.setPosition(cameraPosition);
-        pseudoFirstPerson = cameraPosition.distanceTo(eye) < CRAMPED_DISTANCE;
 
         Vec3 screenDirection = ClientModCompatibility.isEpicFightLoaded()
                 ? Vec3.directionFromRotation(event.getPitch(), event.getYaw()).normalize()
@@ -95,9 +93,34 @@ public final class OptimizedThirdPersonController {
             // made those effects fight this controller during movement.
             event.setYaw(event.getYaw() + Mth.wrapDegrees(convergedYaw - ballisticYaw));
             event.setPitch(event.getPitch() + convergedPitch - ballisticPitch);
-            screenDirection = Vec3.directionFromRotation(event.getPitch(), event.getYaw()).normalize();
         }
-        updateScreenCenterAim(minecraft, player, camera, (float) event.getPartialTick(), screenDirection);
+    }
+
+    /**
+     * NeoForge 1.21.1 fires {@link ViewportEvent.ComputeCameraAngles} before vanilla assigns the
+     * camera position. Applying the shoulder offset in that event is therefore overwritten later
+     * in {@link Camera#setup}. The client-only camera mixin calls this method at setup return, once
+     * all other camera angle providers have finished and the final view direction is available.
+     */
+    public static void afterCameraSetup(Camera camera, Entity cameraEntity, float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!isActive(minecraft) || !(cameraEntity instanceof Player player)
+                || minecraft.level == null) {
+            return;
+        }
+
+        Vec3 eye = player.getEyePosition(partialTick);
+        Vec3 realLook = player.getViewVector(partialTick).normalize();
+        float playerYaw = Mth.rotLerp(partialTick, player.yRotO, player.getYRot());
+        Vec3 right = Vec3.directionFromRotation(0.0F, playerYaw + 90.0F).normalize();
+        Vec3 desiredTrack = realLook.scale(-THIRD_PERSON_DISTANCE)
+                .add(right.scale(SHOULDER_OFFSET)).add(0.0D, VERTICAL_OFFSET, 0.0D);
+        Vec3 cameraPosition = eye.add(desiredTrack.scale(cameraDistanceFactor));
+        camera.setPosition(cameraPosition);
+        pseudoFirstPerson = cameraPosition.distanceTo(eye) < CRAMPED_DISTANCE;
+
+        Vec3 screenDirection = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot()).normalize();
+        updateScreenCenterAim(minecraft, player, camera, partialTick, screenDirection);
     }
 
     private static double safeCameraDistanceFactor(Player player, Vec3 eye, Vec3 track) {

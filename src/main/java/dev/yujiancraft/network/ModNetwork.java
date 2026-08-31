@@ -7,6 +7,7 @@ import dev.yujiancraft.client.ClientTargetState;
 import dev.yujiancraft.client.ClientManualGuidanceState;
 import dev.yujiancraft.client.ClientSwordRidingState;
 import dev.yujiancraft.combat.SwordSettings;
+import dev.yujiancraft.combat.TargetProtectionManager;
 import dev.yujiancraft.config.SwordBalanceConfig;
 import dev.yujiancraft.config.EffectBalanceConfig;
 import dev.yujiancraft.config.EffectParameter;
@@ -39,11 +40,13 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "26";
+    private static final String PROTOCOL = "27";
     private static final Map<Class<?>, CustomPacketPayload.Type<?>> PAYLOAD_TYPES = new HashMap<>();
 
     private ModNetwork() {
@@ -115,6 +118,17 @@ public final class ModNetwork {
                 unit(new CycleComboStylePacket()), ModNetwork::handleCycleComboStyle);
         toClient(registrar, "formation_state", FormationStatePacket.class,
                 codec(FormationStatePacket::encode, FormationStatePacket::decode), ModNetwork::handleFormationState);
+        toServer(registrar, "toggle_target_protection", ToggleTargetProtectionPacket.class,
+                codec(ToggleTargetProtectionPacket::encode, ToggleTargetProtectionPacket::decode),
+                ModNetwork::handleToggleTargetProtection);
+        toServer(registrar, "remove_target_protection", RemoveTargetProtectionPacket.class,
+                codec(RemoveTargetProtectionPacket::encode, RemoveTargetProtectionPacket::decode),
+                ModNetwork::handleRemoveTargetProtection);
+        toServer(registrar, "request_target_protections", RequestTargetProtectionsPacket.class,
+                unit(new RequestTargetProtectionsPacket()), ModNetwork::handleRequestTargetProtections);
+        toClient(registrar, "sync_target_protections", SyncTargetProtectionsPacket.class,
+                codec(SyncTargetProtectionsPacket::encode, SyncTargetProtectionsPacket::decode),
+                ModNetwork::handleSyncTargetProtections);
     }
 
     public static void sendToServer(CustomPacketPayload payload) {
@@ -200,6 +214,53 @@ public final class ModNetwork {
     private static void handleFormationState(FormationStatePacket message,
                                               IPayloadContext context) {
         context.enqueueWork(() -> dev.yujiancraft.client.ClientInputEvents.onFormationState(message.deployed));
+    }
+
+    private static void handleToggleTargetProtection(ToggleTargetProtectionPacket message,
+                                                       IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer sender = (ServerPlayer) context.player();
+            Entity raw = sender.level().getEntity(message.entityId());
+            if (!(raw instanceof LivingEntity target) || target == sender
+                    || sender.distanceToSqr(target) > 4096.0D) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.target_protection.no_target"), true);
+                return;
+            }
+            if (TargetProtectionManager.isNaturallyProtected(target)) {
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.yujiancraft.target_protection.natural", target.getDisplayName()), true);
+            } else {
+                boolean protectedAfter = TargetProtectionManager.toggle(sender, target);
+                if (protectedAfter) {
+                    target.removeEffect(dev.yujiancraft.registry.ModEffects.SWORD_BURN);
+                    target.removeEffect(dev.yujiancraft.registry.ModEffects.SWORD_POISON);
+                }
+                sender.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        protectedAfter ? "message.yujiancraft.target_protection.disabled"
+                                : "message.yujiancraft.target_protection.enabled", target.getDisplayName()), true);
+            }
+            sendTargetProtections(sender);
+        });
+    }
+
+    private static void handleRemoveTargetProtection(RemoveTargetProtectionPacket message,
+                                                       IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer sender = (ServerPlayer) context.player();
+            TargetProtectionManager.remove(sender, message.targetId());
+            sendTargetProtections(sender);
+        });
+    }
+
+    private static void handleRequestTargetProtections(RequestTargetProtectionsPacket message,
+                                                         IPayloadContext context) {
+        context.enqueueWork(() -> sendTargetProtections((ServerPlayer) context.player()));
+    }
+
+    private static void handleSyncTargetProtections(SyncTargetProtectionsPacket message,
+                                                      IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientTargetProtectionState.accept(message.entries()));
     }
 
     private static void handleCycleTechnique(CycleTechniquePacket message,
@@ -459,6 +520,13 @@ public final class ModNetwork {
                 SyncSettingsPacket.from(settings, player.hasPermissions(2)));
     }
 
+    public static void sendTargetProtections(ServerPlayer player) {
+        List<TargetProtectionEntry> entries = TargetProtectionManager.entries(player).stream()
+                .map(entry -> new TargetProtectionEntry(entry.uuid(), entry.name(), entry.typeId()))
+                .toList();
+        PacketDistributor.sendToPlayer(player, new SyncTargetProtectionsPacket(entries));
+    }
+
     public static void sendFormationState(ServerPlayer player, boolean deployed) {
         PacketDistributor.sendToPlayer(player, new FormationStatePacket(deployed));
     }
@@ -535,6 +603,49 @@ public final class ModNetwork {
     }
 
     public record ToggleFormationPacket() implements YujianPayload {
+    }
+
+    public record ToggleTargetProtectionPacket(int entityId) implements YujianPayload {
+        private static void encode(ToggleTargetProtectionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.entityId());
+        }
+        private static ToggleTargetProtectionPacket decode(FriendlyByteBuf buffer) {
+            return new ToggleTargetProtectionPacket(buffer.readVarInt());
+        }
+    }
+
+    public record RemoveTargetProtectionPacket(UUID targetId) implements YujianPayload {
+        private static void encode(RemoveTargetProtectionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeUUID(message.targetId());
+        }
+        private static RemoveTargetProtectionPacket decode(FriendlyByteBuf buffer) {
+            return new RemoveTargetProtectionPacket(buffer.readUUID());
+        }
+    }
+
+    public record RequestTargetProtectionsPacket() implements YujianPayload {
+    }
+
+    public record TargetProtectionEntry(UUID uuid, String name, String typeId) {
+        private static void encode(TargetProtectionEntry entry, FriendlyByteBuf buffer) {
+            buffer.writeUUID(entry.uuid()); buffer.writeUtf(entry.name(), 128); buffer.writeUtf(entry.typeId(), 128);
+        }
+        private static TargetProtectionEntry decode(FriendlyByteBuf buffer) {
+            return new TargetProtectionEntry(buffer.readUUID(), buffer.readUtf(128), buffer.readUtf(128));
+        }
+    }
+
+    public record SyncTargetProtectionsPacket(List<TargetProtectionEntry> entries) implements YujianPayload {
+        private static void encode(SyncTargetProtectionsPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.entries().size());
+            message.entries().forEach(entry -> TargetProtectionEntry.encode(entry, buffer));
+        }
+        private static SyncTargetProtectionsPacket decode(FriendlyByteBuf buffer) {
+            int size = Math.min(buffer.readVarInt(), 1024);
+            List<TargetProtectionEntry> entries = new ArrayList<>(size);
+            for (int index = 0; index < size; index++) entries.add(TargetProtectionEntry.decode(buffer));
+            return new SyncTargetProtectionsPacket(List.copyOf(entries));
+        }
     }
 
     public record ToggleSummonedSwordsPacket() implements YujianPayload {

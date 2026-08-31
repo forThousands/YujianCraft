@@ -40,15 +40,8 @@ public final class SpiritReplenishingScreen extends AbstractContainerScreen<Spir
         graphics.fill(x + 5, y + 17, x + 82, y + 99, 0xFF243139);
         graphics.fill(x + 87, y + 17, x + 225, y + 99, 0xFF18252B);
         graphics.fill(x + 29, y + 103, x + 201, y + 192, 0xFF20272C);
-        slot(graphics, x + 55, y + 36);
-        slot(graphics, x + 55, y + 72);
+        YujianScreenBackground.renderSlotFrames(graphics, menu, x, y);
         graphics.fill(x + 60, y + 58, x + 68, y + 64, 0xFF58E7EC);
-    }
-
-    private static void slot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 20, y + 20, 0xFF071014);
-        graphics.fill(x + 1, y + 1, x + 19, y + 19, 0xFF53656D);
-        graphics.fill(x + 2, y + 2, x + 18, y + 18, 0xFF10191E);
     }
 
     @Override protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -68,8 +61,13 @@ public final class SpiritReplenishingScreen extends AbstractContainerScreen<Spir
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBg(graphics, partialTick, mouseX, mouseY);
     }
 }

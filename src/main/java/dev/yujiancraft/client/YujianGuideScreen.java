@@ -86,7 +86,7 @@ public final class YujianGuideScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         int panelWidth = panelWidth();
         int panelHeight = panelHeight();
         int left = (width - panelWidth) / 2;
@@ -108,6 +108,11 @@ public final class YujianGuideScreen extends Screen {
             renderBody(graphics, left, top, bottom, panelWidth);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Screen.render() invokes this after our authored book content in 1.21.1.
     }
 
     private void renderBody(GuiGraphics graphics, int left, int top, int bottom, int panelWidth) {
@@ -182,7 +187,8 @@ public final class YujianGuideScreen extends Screen {
                     ClientModEvents.ACTIVATE_SWORD_ARRAY.getTranslatedKeyMessage(),
                     ClientModEvents.SWITCH_SWORD_ARRAY_STYLE.getTranslatedKeyMessage(),
                     ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage(),
-                    ClientModEvents.ARTIFACT_ACTION.getTranslatedKeyMessage());
+                    ClientModEvents.ARTIFACT_ACTION.getTranslatedKeyMessage(),
+                    ClientModEvents.TOGGLE_TARGET_PROTECTION.getTranslatedKeyMessage());
         }
         if (page == 3) {
             return Component.translatable("guide.yujiancraft.page.3.body",

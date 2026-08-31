@@ -295,12 +295,11 @@ public final class SwordArrayFieldEntity extends Entity {
                         ? (comboPower > 1.01F ? 13.25D : 11.5D) : 18.0D));
     }
 
-    private static Vec3 groundBelow(ServerLevel level, Vec3 targetAnchor) {
+    private Vec3 groundBelow(ServerLevel level, Vec3 targetAnchor) {
         Vec3 start = targetAnchor.add(0.0D, 0.6D, 0.0D);
         Vec3 end = new Vec3(targetAnchor.x, level.getMinBuildHeight() + 0.1D, targetAnchor.z);
         BlockHitResult hit = level.clip(new ClipContext(start, end,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
-                (net.minecraft.world.entity.Entity) null));
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
         return hit.getType() == HitResult.Type.BLOCK ? hit.getLocation() : targetAnchor;
     }
 
@@ -373,6 +372,7 @@ public final class SwordArrayFieldEntity extends Entity {
     }
 
     private void hit(ServerPlayer owner, LivingEntity target, double radialScale) {
+        if (!SwordTargetingRules.canActivelyTarget(owner, target)) return;
         double base = WanxiangSwordData.isTempered(displayStack)
                 ? WanxiangWeaponCatalog.damage(owner.server, displayStack)
                 : WanxiangSwordData.pierceDamage(displayStack);

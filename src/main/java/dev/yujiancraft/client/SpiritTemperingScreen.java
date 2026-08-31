@@ -195,16 +195,9 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
         graphics.fill(x + 249, y + 16, x + 355, y + 181, 0xFF181D27);
         graphics.fill(x + 252, y + 31, x + 352, y + 178, 0xFF0D1118);
         graphics.fill(x + 93, y + 183, x + 267, y + 270, 0xFF20202A);
-        drawSlot(graphics, x + 102, y + 41);
-        drawSlot(graphics, x + 102, y + 77);
+        YujianScreenBackground.renderSlotFrames(graphics, menu, x, y);
         graphics.fill(x + 109, y + 63, x + 115, y + 72, 0xFFB86CFF);
         graphics.fill(x + 106, y + 66, x + 118, y + 69, 0xFF6DE6FF);
-    }
-
-    private static void drawSlot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF0C0F14);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF5B506C);
-        graphics.fill(x + 2, y + 2, x + 16, y + 16, 0xFF12131A);
     }
 
     @Override
@@ -268,10 +261,15 @@ public final class SpiritTemperingScreen extends AbstractContainerScreen<SpiritT
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderPreview(graphics, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBg(graphics, partialTick, mouseX, mouseY);
     }
 
     private void renderPreview(GuiGraphics graphics, float partialTick) {

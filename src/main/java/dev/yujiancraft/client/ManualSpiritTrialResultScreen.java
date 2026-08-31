@@ -33,7 +33,7 @@ public final class ManualSpiritTrialResultScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        YujianScreenBackground.render(graphics, width, height);
         int left = width / 2 - 132;
         int top = height / 2 - 82;
         graphics.fill(left, top, left + 264, top + 152, 0xF0141219);
@@ -52,6 +52,10 @@ public final class ManualSpiritTrialResultScreen extends Screen {
         graphics.drawCenteredString(font, Component.translatable("screen.yujiancraft.trial.completed_hint"),
                 width / 2, top + 119, 0xD6C7E2);
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
     }
 
     private static String format(double value) {
