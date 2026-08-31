@@ -11,9 +11,11 @@ import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.network.ModNetwork;
 import dev.yujiancraft.registry.ModEntities;
 import dev.yujiancraft.upgrade.SwordModuleData;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetExperiencePacket;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
@@ -25,9 +27,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
@@ -38,6 +40,9 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -50,8 +55,11 @@ public final class ManualSpiritTrialManager {
             new ResourceLocation(YujianCraft.MOD_ID, "spirit_trial"));
     private static final String COPY_TAG = "YujianCraftSpiritTrialCopy";
     private static final String PROJECTILE_TAG = "YujianCraftSpiritTrialProjectile";
+    private static final String RECOVERY_TAG = "YujianCraftSpiritTrialRecovery";
     private static final int DPS_DURATION_TICKS = 200;
     private static final int LIGHTNING_INTERVAL_TICKS = 20;
+    private static final int ENTRY_CONFIRM_TICKS = 5;
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
     private static final Map<UUID, Session> DUMMIES = new HashMap<>();
 
@@ -78,24 +86,32 @@ public final class ManualSpiritTrialManager {
         ServerLevel trial = player.server.getLevel(TRIAL_LEVEL);
         if (trial == null || table.getLevel() == null) return false;
 
+        UUID copyId = UUID.randomUUID();
+        SpiritTrialArenaPool.Arena arena;
+        try {
+            arena = SpiritTrialArenaPool.acquire(trial, copyId);
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to prepare a spirit trial arena for {}", player.getGameProfile().getName(), exception);
+            player.displayClientMessage(Component.translatable("message.yujiancraft.trial.entry_failed"), false);
+            return false;
+        }
+        if (arena == null) {
+            player.displayClientMessage(Component.translatable(
+                    "message.yujiancraft.trial.busy", SpiritTrialArenaPool.ARENA_COUNT), false);
+            return false;
+        }
+
         ItemStack sourceWeapon = table.inventory().extractItem(0, 1, false);
         ItemStack consumedCore = table.inventory().extractItem(1, 1, false);
         if (sourceWeapon.isEmpty() || consumedCore.isEmpty()) {
             if (!sourceWeapon.isEmpty()) table.inventory().insertItem(0, sourceWeapon, false);
             if (!consumedCore.isEmpty()) table.inventory().insertItem(1, consumedCore, false);
+            SpiritTrialArenaPool.release(trial, arena, copyId);
             return false;
-        }
-        if (!player.getAbilities().instabuild) player.giveExperienceLevels(-cost);
-
-        if (WanxiangSwordData.isUsable(sourceWeapon)) {
-            FlyingSwordItem.getOwnedFormationSwords(player).forEach(Entity::discard);
-            // Entering the realm disperses every installed Yujian core immediately.
-            SwordModuleData.clearAll(sourceWeapon);
         }
 
         int selectedSlot = player.getInventory().selected;
         ItemStack savedMain = player.getInventory().getItem(selectedSlot).copy();
-        UUID copyId = UUID.randomUUID();
         ItemStack trialCopy = sourceWeapon.copy();
         trialCopy.setCount(1);
         // Vanilla and third-party enchantments are part of the weapon and remain active throughout
@@ -104,21 +120,38 @@ public final class ManualSpiritTrialManager {
                 shape.scalePercent(), shape.auraRadiusPercent(), shape.auraLengthPercent());
         WanxiangSwordData.setRole(trialCopy, shape.artifactRole());
         trialCopy.getOrCreateTag().putUUID(COPY_TAG, copyId);
-        if (WanxiangSwordData.isUsable(trialCopy)) WanxiangSwordData.ensureBinding(trialCopy);
+        if (WanxiangSwordData.isUsable(trialCopy)) {
+            SwordModuleData.clearAll(trialCopy);
+            WanxiangSwordData.ensureBinding(trialCopy);
+        }
 
-        double laneX = player.getId() * 64.0D;
         Session session = new Session(player, player.level().dimension(), player.position(),
-                player.getYRot(), player.getXRot(), sourceWeapon, coreSword.getMaterialType(), shape,
-                selectedSlot, savedMain, trialCopy, copyId, laneX);
+                player.getYRot(), player.getXRot(), sourceWeapon, consumedCore, coreSword.getMaterialType(),
+                cost, shape, selectedSlot, savedMain, trialCopy, copyId, arena);
         SESSIONS.put(player.getUUID(), session);
-        player.getInventory().setItem(selectedSlot, trialCopy.copy());
-        player.closeContainer();
-        buildPlatform(trial, laneX);
-        session.spawnDummy(trial);
-        player.teleportTo(trial, laneX + 0.5D, 127.0D, 0.5D, 0.0F, 0.0F);
-        showInstructions(player);
-        table.setChanged();
-        return true;
+        try {
+            player.getInventory().setItem(selectedSlot, trialCopy.copy());
+            session.inventorySwapped = true;
+            persistRecovery(session, true);
+            player.closeContainer();
+            if (!session.spawnDummy(trial)) {
+                finish(session, false);
+                return false;
+            }
+            player.teleportTo(trial, arena.playerX(), 127.0D, arena.playerZ(), 0.0F, 0.0F);
+            if (!session.isInArena()) {
+                finish(session, false);
+                player.displayClientMessage(Component.translatable("message.yujiancraft.trial.entry_failed"), false);
+                return false;
+            }
+            table.setChanged();
+            return true;
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to enter the spirit trial for {}", player.getGameProfile().getName(), exception);
+            finish(session, false);
+            player.displayClientMessage(Component.translatable("message.yujiancraft.trial.entry_failed"), false);
+            return false;
+        }
     }
 
     public static boolean isParticipant(ServerPlayer player) {
@@ -228,6 +261,11 @@ public final class ManualSpiritTrialManager {
     }
 
     @SubscribeEvent
+    public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) recoverInterruptedEntry(player);
+    }
+
+    @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         for (Session session : java.util.List.copyOf(SESSIONS.values())) finish(session, false);
     }
@@ -264,6 +302,7 @@ public final class ManualSpiritTrialManager {
         }
         if (WanxiangSwordData.isTempered(result)) WanxiangWeaponCatalog.register(session.player.server, result);
         int attempt = WanxiangSwordData.temperCount(result);
+        persistRecovery(session, false);
         finish(session, true);
         session.player.connection.send(new ClientboundSetTitlesAnimationPacket(5, 55, 12));
         session.player.connection.send(new ClientboundSetTitleTextPacket(Component.translatable(
@@ -274,19 +313,25 @@ public final class ManualSpiritTrialManager {
     }
 
     private static void finish(Session session, boolean completed) {
+        if (session.closed) return;
+        session.closed = true;
         SESSIONS.remove(session.player.getUUID());
         FlyingSwordItem.getOwnedFormationSwords(session.player).forEach(Entity::discard);
         if (session.dummy != null) {
             DUMMIES.remove(session.dummy.getUUID());
             session.dummy.discard();
         }
+        ServerLevel trial = session.player.server.getLevel(TRIAL_LEVEL);
+        SpiritTrialArenaPool.release(trial, session.arena, session.copyId);
         session.restoreMainHand(session.sourceWeapon);
+        if (!session.entryCommitted) giveOrDrop(session.player, session.consumedCore.copy());
         ServerLevel origin = session.player.server.getLevel(session.originDimension);
         if (origin != null) {
             session.player.teleportTo(origin, session.origin.x, session.origin.y, session.origin.z,
                     session.originYaw, session.originPitch);
         }
-        if (!completed) {
+        clearRecovery(session.player);
+        if (!completed && session.entryCommitted) {
             session.player.displayClientMessage(Component.translatable(
                     "message.yujiancraft.trial.interrupted"), false);
         }
@@ -301,27 +346,101 @@ public final class ManualSpiritTrialManager {
                 && copyId.equals(stack.getTag().getUUID(COPY_TAG));
     }
 
-    private static void buildPlatform(ServerLevel level, double laneX) {
-        int centerX = (int) Math.floor(laneX + 0.5D);
-        BlockPos center = new BlockPos(centerX, 126, 3);
-        level.getChunkAt(center);
-        for (int yOffset = 0; yOffset >= -3; yOffset--) {
-            int radius = 8 + yOffset;
-            for (int x = -radius; x <= radius; x++) {
-                for (int z = -radius; z <= radius; z++) {
-                    if (x * x + z * z > radius * radius + 2) continue;
-                    level.setBlockAndUpdate(center.offset(x, yOffset, z), yOffset == 0
-                            ? Blocks.POLISHED_DEEPSLATE.defaultBlockState()
-                            : Blocks.DEEPSLATE_TILES.defaultBlockState());
-                }
+    private static void persistRecovery(Session session, boolean flushToDisk) {
+        CompoundTag recovery = new CompoundTag();
+        recovery.put("Source", session.sourceWeapon.copy().save(new CompoundTag()));
+        recovery.put("Core", session.consumedCore.copy().save(new CompoundTag()));
+        recovery.put("SavedMain", session.savedMain.copy().save(new CompoundTag()));
+        recovery.putInt("SelectedSlot", session.selectedSlot);
+        recovery.putUUID("CopyId", session.copyId);
+        recovery.putString("OriginDimension", session.originDimension.location().toString());
+        recovery.putDouble("OriginX", session.origin.x);
+        recovery.putDouble("OriginY", session.origin.y);
+        recovery.putDouble("OriginZ", session.origin.z);
+        recovery.putFloat("OriginYaw", session.originYaw);
+        recovery.putFloat("OriginPitch", session.originPitch);
+        recovery.putBoolean("InventorySwapped", session.inventorySwapped);
+        recovery.putBoolean("Committed", session.entryCommitted);
+        recovery.putInt("ExperienceLevel", session.initialExperienceLevel);
+        recovery.putFloat("ExperienceProgress", session.initialExperienceProgress);
+        recovery.putInt("TotalExperience", session.initialTotalExperience);
+        CompoundTag persisted = persisted(session.player);
+        persisted.put(RECOVERY_TAG, recovery);
+        session.player.getPersistentData().put(Player.PERSISTED_NBT_TAG, persisted);
+        if (flushToDisk) session.player.server.getPlayerList().saveAll();
+    }
+
+    private static void clearRecovery(ServerPlayer player) {
+        CompoundTag persisted = persisted(player);
+        if (!persisted.contains(RECOVERY_TAG, Tag.TAG_COMPOUND)) return;
+        persisted.remove(RECOVERY_TAG);
+        player.getPersistentData().put(Player.PERSISTED_NBT_TAG, persisted);
+        player.server.getPlayerList().saveAll();
+    }
+
+    private static void recoverInterruptedEntry(ServerPlayer player) {
+        CompoundTag persisted = persisted(player);
+        if (!persisted.contains(RECOVERY_TAG, Tag.TAG_COMPOUND)) return;
+        CompoundTag recovery = persisted.getCompound(RECOVERY_TAG);
+        if (!recovery.hasUUID("CopyId")) {
+            clearRecovery(player);
+            return;
+        }
+        UUID copyId = recovery.getUUID("CopyId");
+        ItemStack source = ItemStack.of(recovery.getCompound("Source"));
+        ItemStack core = ItemStack.of(recovery.getCompound("Core"));
+        ItemStack savedMain = ItemStack.of(recovery.getCompound("SavedMain"));
+        int selectedSlot = recovery.getInt("SelectedSlot");
+        boolean inventorySwapped = recovery.getBoolean("InventorySwapped");
+        restoreInventory(player, selectedSlot, inventorySwapped ? savedMain : ItemStack.EMPTY, source, copyId);
+        if (!recovery.getBoolean("Committed")) {
+            giveOrDrop(player, core);
+            player.experienceLevel = recovery.getInt("ExperienceLevel");
+            player.experienceProgress = recovery.getFloat("ExperienceProgress");
+            player.totalExperience = recovery.getInt("TotalExperience");
+            player.connection.send(new ClientboundSetExperiencePacket(
+                    player.experienceProgress, player.totalExperience, player.experienceLevel));
+        }
+        ResourceLocation originId = ResourceLocation.tryParse(recovery.getString("OriginDimension"));
+        if (originId != null) {
+            ServerLevel origin = player.server.getLevel(ResourceKey.create(Registries.DIMENSION, originId));
+            if (origin != null) {
+                player.teleportTo(origin, recovery.getDouble("OriginX"), recovery.getDouble("OriginY"),
+                        recovery.getDouble("OriginZ"), recovery.getFloat("OriginYaw"),
+                        recovery.getFloat("OriginPitch"));
             }
         }
-        for (int index = 0; index < 8; index++) {
-            double radians = Math.PI * 2.0D * index / 8.0D;
-            BlockPos light = center.offset((int) Math.round(Math.cos(radians) * 7.0D), 1,
-                    (int) Math.round(Math.sin(radians) * 7.0D));
-            level.setBlockAndUpdate(light, Blocks.SEA_LANTERN.defaultBlockState());
+        clearRecovery(player);
+        player.displayClientMessage(Component.translatable("message.yujiancraft.trial.recovered"), false);
+    }
+
+    private static CompoundTag persisted(Player player) {
+        CompoundTag root = player.getPersistentData();
+        if (!root.contains(Player.PERSISTED_NBT_TAG, Tag.TAG_COMPOUND)) {
+            root.put(Player.PERSISTED_NBT_TAG, new CompoundTag());
         }
+        return root.getCompound(Player.PERSISTED_NBT_TAG);
+    }
+
+    private static void giveOrDrop(ServerPlayer player, ItemStack stack) {
+        if (!stack.isEmpty() && !player.getInventory().add(stack)) player.drop(stack, false);
+    }
+
+    private static void restoreInventory(ServerPlayer player, int selectedSlot, ItemStack savedMain,
+                                         ItemStack result, UUID copyId) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (isTrialCopy(player.getInventory().getItem(slot), copyId)) {
+                player.getInventory().setItem(slot, ItemStack.EMPTY);
+            }
+        }
+        int safeSlot = Math.max(0, Math.min(selectedSlot, player.getInventory().getContainerSize() - 1));
+        ItemStack occupant = player.getInventory().getItem(safeSlot);
+        if (!occupant.isEmpty()) {
+            player.getInventory().setItem(safeSlot, ItemStack.EMPTY);
+            giveOrDrop(player, occupant);
+        }
+        player.getInventory().setItem(safeSlot, result);
+        giveOrDrop(player, savedMain);
     }
 
     private enum DamageChannel { NONE, MELEE, PROJECTILE, FLYING_SWORD }
@@ -333,13 +452,18 @@ public final class ManualSpiritTrialManager {
         private final float originYaw;
         private final float originPitch;
         private final ItemStack sourceWeapon;
+        private final ItemStack consumedCore;
         private final FlyingSwordMaterial coreMaterial;
+        private final int experienceCost;
+        private final int initialExperienceLevel;
+        private final float initialExperienceProgress;
+        private final int initialTotalExperience;
         private final Shape shape;
         private final int selectedSlot;
         private final ItemStack savedMain;
         private final ItemStack trialCopy;
         private final UUID copyId;
-        private final double laneX;
+        private final SpiritTrialArenaPool.Arena arena;
         private SpiritTrialDummyEntity dummy;
         private int elapsed = -1;
         private int atmosphereTicks;
@@ -348,32 +472,46 @@ public final class ManualSpiritTrialManager {
         private double totalDamage;
         private DamageChannel channel = DamageChannel.NONE;
         private boolean finished;
+        private boolean closed;
+        private boolean inventorySwapped;
+        private boolean entryCommitted;
+        private int entryConfirmTicks;
 
         private Session(ServerPlayer player, ResourceKey<Level> originDimension,
                         net.minecraft.world.phys.Vec3 origin, float originYaw, float originPitch,
-                        ItemStack sourceWeapon, FlyingSwordMaterial coreMaterial, Shape shape,
-                        int selectedSlot, ItemStack savedMain, ItemStack trialCopy, UUID copyId, double laneX) {
+                        ItemStack sourceWeapon, ItemStack consumedCore, FlyingSwordMaterial coreMaterial,
+                        int experienceCost, Shape shape, int selectedSlot, ItemStack savedMain,
+                        ItemStack trialCopy, UUID copyId, SpiritTrialArenaPool.Arena arena) {
             this.player = player;
             this.originDimension = originDimension;
             this.origin = origin;
             this.originYaw = originYaw;
             this.originPitch = originPitch;
             this.sourceWeapon = sourceWeapon;
+            this.consumedCore = consumedCore;
             this.coreMaterial = coreMaterial;
+            this.experienceCost = experienceCost;
+            this.initialExperienceLevel = player.experienceLevel;
+            this.initialExperienceProgress = player.experienceProgress;
+            this.initialTotalExperience = player.totalExperience;
             this.shape = shape;
             this.selectedSlot = selectedSlot;
             this.savedMain = savedMain;
             this.trialCopy = trialCopy;
             this.copyId = copyId;
-            this.laneX = laneX;
+            this.arena = arena;
         }
 
-        private void spawnDummy(ServerLevel level) {
+        private boolean spawnDummy(ServerLevel level) {
             dummy = new SpiritTrialDummyEntity(ModEntities.SPIRIT_TRIAL_DUMMY.get(), level);
-            dummy.setPos(laneX + 0.5D, 127.0D, 8.5D);
+            dummy.setPos(arena.playerX(), 127.0D, arena.dummyZ());
             dummy.setYRot(180.0F);
-            level.addFreshEntity(dummy);
+            if (!level.addFreshEntity(dummy)) {
+                dummy = null;
+                return false;
+            }
             DUMMIES.put(dummy.getUUID(), this);
+            return true;
         }
 
         private DamageChannel classify(Entity direct, Entity owner) {
@@ -389,12 +527,16 @@ public final class ManualSpiritTrialManager {
         }
 
         private void tick() {
-            if (!player.isAlive() || !player.level().dimension().equals(TRIAL_LEVEL)) {
+            if (!player.isAlive() || !isInArena()) {
                 finish(this, false);
                 return;
             }
+            if (!entryCommitted) {
+                if (++entryConfirmTicks >= ENTRY_CONFIRM_TICKS) commitEntry();
+                return;
+            }
             if (player.getY() < 112.0D) {
-                player.teleportTo((ServerLevel) player.level(), laneX + 0.5D, 127.0D, 0.5D,
+                player.teleportTo((ServerLevel) player.level(), arena.playerX(), 127.0D, arena.playerZ(),
                         0.0F, 0.0F);
             }
             if (!containsTrialCopy()) player.getInventory().setItem(selectedSlot, trialCopy.copy());
@@ -418,8 +560,8 @@ public final class ManualSpiritTrialManager {
             double angle = Math.PI * 2.0D * (lightningIndex++ % 8) / 8.0D;
             LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
             if (bolt == null) return;
-            bolt.moveTo(laneX + 0.5D + Math.cos(angle) * 7.0D, 127.0D,
-                    3.5D + Math.sin(angle) * 7.0D);
+            bolt.moveTo(arena.playerX() + Math.cos(angle) * 7.0D, 127.0D,
+                    arena.atmosphereZ() + Math.sin(angle) * 7.0D);
             bolt.setVisualOnly(true);
             level.addFreshEntity(bolt);
         }
@@ -432,20 +574,28 @@ public final class ManualSpiritTrialManager {
         }
 
         private void restoreMainHand(ItemStack result) {
-            for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-                if (isTrialCopy(player.getInventory().getItem(slot), copyId)) {
-                    player.getInventory().setItem(slot, ItemStack.EMPTY);
-                }
+            restoreInventory(player, selectedSlot, inventorySwapped ? savedMain : ItemStack.EMPTY,
+                    result, copyId);
+        }
+
+        private boolean isInArena() {
+            return player.level().dimension().equals(TRIAL_LEVEL)
+                    && arena.contains(player.getX(), player.getY(), player.getZ());
+        }
+
+        private void commitEntry() {
+            if (!player.getAbilities().instabuild && player.experienceLevel < experienceCost) {
+                finish(this, false);
+                return;
             }
-            ItemStack occupant = player.getInventory().getItem(selectedSlot);
-            if (!occupant.isEmpty()) {
-                player.getInventory().setItem(selectedSlot, ItemStack.EMPTY);
-                if (!player.getInventory().add(occupant)) player.drop(occupant, false);
+            if (!player.getAbilities().instabuild) player.giveExperienceLevels(-experienceCost);
+            if (WanxiangSwordData.isUsable(sourceWeapon)) {
+                FlyingSwordItem.getOwnedFormationSwords(player).forEach(Entity::discard);
+                SwordModuleData.clearAll(sourceWeapon);
             }
-            player.getInventory().setItem(selectedSlot, result);
-            if (!savedMain.isEmpty()) {
-                if (!player.getInventory().add(savedMain)) player.drop(savedMain, false);
-            }
+            entryCommitted = true;
+            persistRecovery(this, false);
+            showInstructions(player);
         }
     }
 }
