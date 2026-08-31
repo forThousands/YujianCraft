@@ -405,5 +405,8 @@
   "effect_parameter.yujiancraft.combo_finisher_damage_scale": "Combo finisher multiplier",
   "effect_parameter.yujiancraft.combo_target_suppression_enabled": "Sword-Shadow target suppression (1 on/0 off)",
   "effect_parameter.yujiancraft.combo_input_grace_ticks": "Post-stage combo grace (ticks)",
-  "effect_parameter.yujiancraft.combo_buffered_input_depth": "Maximum queued follow-up inputs"
+  "effect_parameter.yujiancraft.combo_buffered_input_depth": "Maximum queued follow-up inputs",
+  "message.yujiancraft.trial.busy": "The Trial Realm is currently occupied (up to %s simultaneous trials); please try again shortly",
+  "message.yujiancraft.trial.entry_failed": "A stable Trial Realm passage could not be established; the tempering materials were returned",
+  "message.yujiancraft.trial.recovered": "The sword spirit recovered the materials from the interrupted trial"
 }

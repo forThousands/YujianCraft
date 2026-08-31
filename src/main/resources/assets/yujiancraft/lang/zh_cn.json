@@ -405,5 +405,8 @@
   "effect_parameter.yujiancraft.combo_finisher_damage_scale": "连势终结倍率",
   "effect_parameter.yujiancraft.combo_target_suppression_enabled": "剑影遁目标镇压（1开/0关）",
   "effect_parameter.yujiancraft.combo_input_grace_ticks": "连势结束后衔接宽限（tick）",
-  "effect_parameter.yujiancraft.combo_buffered_input_depth": "最多预存后续输入段数"
+  "effect_parameter.yujiancraft.combo_buffered_input_depth": "最多预存后续输入段数",
+  "message.yujiancraft.trial.busy": "试锋境当前已有较多道友试剑（最多同时容纳%s人），请稍后再试",
+  "message.yujiancraft.trial.entry_failed": "试锋境入口未能稳定建立，本次淬灵材料已返还",
+  "message.yujiancraft.trial.recovered": "器灵已寻回上次中断的试锋淬灵材料"
 }
