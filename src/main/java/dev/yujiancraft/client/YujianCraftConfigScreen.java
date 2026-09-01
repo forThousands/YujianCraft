@@ -4,6 +4,7 @@ import dev.yujiancraft.combat.AttackMode;
 import dev.yujiancraft.combat.SwordSettings;
 import dev.yujiancraft.combat.TargetingMode;
 import dev.yujiancraft.combat.technique.TechniqueMode;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -27,6 +28,7 @@ public final class YujianCraftConfigScreen extends Screen {
     private Button swordRidingButton;
     private Button swordGlowButton;
     private Button glowBrightnessButton;
+    private Button swordTechniqueVfxButton;
     private Button developerButton;
     private boolean synced;
 
@@ -47,21 +49,26 @@ public final class YujianCraftConfigScreen extends Screen {
         serverEditingButtons.clear();
         targetingButton = attackButton = techniqueButton = null;
         thirdPersonButton = swordRidingButton = swordGlowButton = glowBrightnessButton = null;
+        swordTechniqueVfxButton = null;
         int centre = width / 2;
         int top = height / 2 - 56;
         addTab(centre - 147, top - 32, 96, Page.COMBAT, "screen.yujiancraft.config.tab.combat");
         addTab(centre - 48, top - 32, 96, Page.VISUAL, "screen.yujiancraft.config.tab.visual");
         addTab(centre + 51, top - 32, 96, Page.PROTECTION, "screen.yujiancraft.config.tab.protection");
 
-        if (page == Page.COMBAT) buildCombat(centre, top);
-        else if (page == Page.VISUAL) buildVisual(centre, top);
-        else buildProtection(centre, top);
+        swordTechniqueVfxButton = addModeRow(centre, top,
+                () -> ClientOptions.setSwordArrayPostEffect(!ClientOptions.swordArrayPostEffect()),
+                () -> ClientOptions.setSwordArrayPostEffect(ClientOptions.DEFAULT_SWORD_ARRAY_POST_EFFECT), false);
+        int contentTop = top + 24;
+        if (page == Page.COMBAT) buildCombat(centre, contentTop);
+        else if (page == Page.VISUAL) buildVisual(centre, contentTop);
+        else buildProtection(centre, contentTop);
 
         developerButton = addRenderableWidget(Button.builder(Component.translatable(
                         "screen.yujiancraft.config.developer"), button -> minecraft.setScreen(new AdminBalanceScreen(this)))
-                .bounds(centre - 145, top + 126, 140, 20).build());
+                .bounds(centre - 145, top + 132, 140, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> onClose())
-                .bounds(centre + 5, top + 126, 140, 20).build());
+                .bounds(centre + 5, top + 132, 140, 20).build());
         refreshLabels();
         setEditingEnabled(synced);
     }
@@ -109,19 +116,20 @@ public final class YujianCraftConfigScreen extends Screen {
         thirdPersonButton = addModeRow(centre, top,
                 () -> ClientOptions.setOptimizedThirdPerson(!ClientOptions.optimizedThirdPerson()),
                 () -> ClientOptions.setOptimizedThirdPerson(false), false);
-        swordRidingButton = addModeRow(centre, top + 24, this::toggleSwordRidingOption,
+        swordRidingButton = addModeRow(centre, top + 21, this::toggleSwordRidingOption,
                 () -> setSwordRidingOption(false), false);
-        swordGlowButton = addModeRow(centre, top + 48,
+        swordGlowButton = addModeRow(centre, top + 42,
                 () -> ClientOptions.setSwordBodyGlow(!ClientOptions.swordBodyGlow()),
                 () -> ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW), false);
-        glowBrightnessButton = addModeRow(centre, top + 72,
+        glowBrightnessButton = addModeRow(centre, top + 63,
                 () -> ClientOptions.setGlowBrightness(ClientOptions.glowBrightness().next()),
                 () -> ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS), false);
         addRenderableWidget(Button.builder(Component.translatable("screen.yujiancraft.config.reset_page"), button -> {
                     ClientOptions.setOptimizedThirdPerson(false); setSwordRidingOption(true);
                     ClientOptions.setSwordBodyGlow(ClientOptions.DEFAULT_SWORD_BODY_GLOW);
-                    ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS); refreshLabels();
-                }).bounds(centre - 145, top + 101, 290, 20).build());
+                    ClientOptions.setGlowBrightness(ClientOptions.DEFAULT_GLOW_BRIGHTNESS);
+                    refreshLabels();
+                }).bounds(centre - 145, top + 84, 290, 20).build());
     }
 
     private void buildProtection(int centre, int top) {
@@ -186,6 +194,10 @@ public final class YujianCraftConfigScreen extends Screen {
         if (glowBrightnessButton != null) glowBrightnessButton.setMessage(Component.translatable(
                 "screen.yujiancraft.config.glow_brightness",
                 Component.translatable(ClientOptions.glowBrightness().translationKey())));
+        if (swordTechniqueVfxButton != null) swordTechniqueVfxButton.setMessage(Component.translatable(
+                "screen.yujiancraft.config.sword_technique_vfx",
+                Component.translatable(ClientOptions.swordArrayPostEffect() ? "options.on" : "options.off"))
+                .withStyle(ChatFormatting.YELLOW));
     }
 
     @Override
@@ -198,7 +210,7 @@ public final class YujianCraftConfigScreen extends Screen {
         if (page == Page.PROTECTION) {
             int textWidth = Math.min(480, this.width - 36);
             graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.config.protection.description"),
-                    (this.width - textWidth) / 2, top + 2, textWidth, 0xD2CFD8);
+                    (this.width - textWidth) / 2, top + 28, textWidth, 0xD2CFD8);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
