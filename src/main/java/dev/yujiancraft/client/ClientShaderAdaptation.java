@@ -51,7 +51,8 @@ public final class ClientShaderAdaptation {
         if (!safetyNoticeShown) {
             safetyNoticeShown = true;
             minecraft.player.displayClientMessage(prefixedMessage(
-                    "message.yujiancraft.visual_safety_notice", ChatFormatting.YELLOW), false);
+                    "message.yujiancraft.visual_safety_notice", ChatFormatting.YELLOW,
+                    ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage()), false);
         }
     }
 
