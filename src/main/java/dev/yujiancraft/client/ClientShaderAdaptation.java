@@ -52,7 +52,7 @@ public final class ClientShaderAdaptation {
             safetyNoticeShown = true;
             minecraft.player.displayClientMessage(prefixedMessage(
                     "message.yujiancraft.visual_safety_notice", ChatFormatting.YELLOW,
-                    ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage()), false);
+                    ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage().getString().replace(" ", "")), false);
         }
     }
 
@@ -60,10 +60,10 @@ public final class ClientShaderAdaptation {
         String englishName = ModList.get().getModContainerById(YujianCraft.MOD_ID)
                 .map(container -> container.getModInfo().getDisplayName())
                 .orElse(YujianCraft.MOD_ID);
-        return Component.translatable("message.yujiancraft.prefix",
+        Component translated = Component.translatable("message.yujiancraft.prefix",
                         Component.translatable("mod.yujiancraft.chinese_name"), englishName)
-                .append(Component.translatable(messageKey, arguments))
-                .withStyle(color);
+                .append(Component.translatable(messageKey, arguments));
+        return Component.literal(translated.getString()).withStyle(color);
     }
 
     private static BooleanSupplier probe() {

@@ -1,6 +1,5 @@
 package dev.yujiancraft.client;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -179,14 +178,6 @@ public final class YujianGuideScreen extends Screen {
 
     private Component pageBody() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (page == 0) {
-            return Component.translatable("guide.yujiancraft.page.0.body")
-                    .append(Component.literal("\n\n━━━━━━━━━━━━━━━━━━━━\n")
-                            .withStyle(ChatFormatting.GOLD))
-                    .append(Component.translatable("guide.yujiancraft.page.0.safety",
-                            ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage())
-                            .withStyle(ChatFormatting.YELLOW));
-        }
         if (page == 2) {
             return Component.translatable("guide.yujiancraft.page.2.body",
                     ClientModEvents.TOGGLE_SWORDS.getTranslatedKeyMessage(),

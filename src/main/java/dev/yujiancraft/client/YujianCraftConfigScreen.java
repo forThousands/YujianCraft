@@ -5,7 +5,6 @@ import dev.yujiancraft.combat.SwordSettings;
 import dev.yujiancraft.combat.TargetingMode;
 import dev.yujiancraft.combat.technique.TechniqueMode;
 import dev.yujiancraft.network.ModNetwork;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,10 +37,13 @@ public final class YujianCraftConfigScreen extends Screen {
         addTab(centre - 147, top - 32, Page.COMBAT, "screen.yujiancraft.config.tab.combat");
         addTab(centre - 48, top - 32, Page.VISUAL, "screen.yujiancraft.config.tab.visual");
         addTab(centre + 51, top - 32, Page.PROTECTION, "screen.yujiancraft.config.tab.protection");
-        swordTechniqueVfxButton = addModeRow(centre, top,
-                () -> ClientOptions.setSwordArrayPostEffect(!ClientOptions.swordArrayPostEffect()),
-                () -> ClientOptions.setSwordArrayPostEffect(ClientOptions.DEFAULT_SWORD_ARRAY_POST_EFFECT), false);
-        int contentTop = top + 24;
+        int contentTop = top;
+        if (page != Page.PROTECTION) {
+            swordTechniqueVfxButton = addModeRow(centre, top,
+                    () -> ClientOptions.setSwordArrayPostEffect(!ClientOptions.swordArrayPostEffect()),
+                    () -> ClientOptions.setSwordArrayPostEffect(ClientOptions.DEFAULT_SWORD_ARRAY_POST_EFFECT), false);
+            contentTop += 24;
+        }
         if (page == Page.COMBAT) buildCombat(centre, contentTop);
         else if (page == Page.VISUAL) buildVisual(centre, contentTop);
         else buildProtection(centre, contentTop);
@@ -150,8 +152,7 @@ public final class YujianCraftConfigScreen extends Screen {
                 "screen.yujiancraft.config.glow_brightness", Component.translatable(ClientOptions.glowBrightness().translationKey())));
         if (swordTechniqueVfxButton != null) swordTechniqueVfxButton.setMessage(Component.translatable(
                 "screen.yujiancraft.config.sword_technique_vfx",
-                Component.translatable(ClientOptions.swordArrayPostEffect() ? "options.on" : "options.off"))
-                .withStyle(ChatFormatting.YELLOW));
+                Component.translatable(ClientOptions.swordArrayPostEffect() ? "options.on" : "options.off")));
     }
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         YujianScreenBackground.render(graphics, width, height);
@@ -162,7 +163,7 @@ public final class YujianCraftConfigScreen extends Screen {
         if (page == Page.PROTECTION) {
             int textWidth = Math.min(480, width - 36);
             graphics.drawWordWrap(font, Component.translatable("screen.yujiancraft.config.protection.description"),
-                    (width - textWidth) / 2, top + 28, textWidth, 0xD2CFD8);
+                    (width - textWidth) / 2, top + 2, textWidth, 0xD2CFD8);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
     }
