@@ -25,12 +25,12 @@ public final class ModItems {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, YujianCraft.MOD_ID);
 
-    private static final EnumMap<FlyingSwordMaterial, DeferredHolder<Item, Item>> MUTABLE_SWORDS =
-            new EnumMap<>(FlyingSwordMaterial.class);
-    private static final EnumMap<FlyingSwordMaterial, DeferredHolder<Item, Item>> MUTABLE_SPIRITFORGED_SWORDS =
-            new EnumMap<>(FlyingSwordMaterial.class);
+    private static final EnumMap<FlyingSwordSeries, Map<FlyingSwordMaterial, DeferredHolder<Item, Item>>> SWORD_SERIES =
+            new EnumMap<>(FlyingSwordSeries.class);
     public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> FLYING_SWORDS;
     public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> SPIRITFORGED_FLYING_SWORDS;
+    public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> LUMINOUS_FLYING_SWORDS;
+    public static final Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> CONDENSED_FLYING_SWORDS;
     /** Render-only creative-tab emblem; deliberately omitted from the tab contents and recipes. */
     public static final DeferredHolder<Item, Item> CREATIVE_TAB_ICON = ITEMS.register("creative_tab_icon",
             () -> new Item(new Item.Properties()));
@@ -50,17 +50,20 @@ public final class ModItems {
             () -> new YujianGuideItem(new Item.Properties().stacksTo(1)));
 
     static {
-        for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
-            MUTABLE_SWORDS.put(material, ITEMS.register(material.itemId(),
-                    () -> new FlyingSwordItem(material, FlyingSwordSeries.STANDARD,
-                            new Item.Properties().stacksTo(1).durability(material.durability()))));
-            MUTABLE_SPIRITFORGED_SWORDS.put(material,
-                    ITEMS.register(FlyingSwordSeries.SPIRITFORGED.itemId(material),
-                    () -> new FlyingSwordItem(material, FlyingSwordSeries.SPIRITFORGED,
-                            new Item.Properties().stacksTo(1).durability(material.durability()))));
+        for (FlyingSwordSeries series : FlyingSwordSeries.values()) {
+            EnumMap<FlyingSwordMaterial, DeferredHolder<Item, Item>> swords =
+                    new EnumMap<>(FlyingSwordMaterial.class);
+            for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
+                swords.put(material, ITEMS.register(series.itemId(material),
+                        () -> new FlyingSwordItem(material, series,
+                                new Item.Properties().stacksTo(1).durability(material.durability()))));
+            }
+            SWORD_SERIES.put(series, Collections.unmodifiableMap(swords));
         }
-        FLYING_SWORDS = Collections.unmodifiableMap(MUTABLE_SWORDS);
-        SPIRITFORGED_FLYING_SWORDS = Collections.unmodifiableMap(MUTABLE_SPIRITFORGED_SWORDS);
+        FLYING_SWORDS = SWORD_SERIES.get(FlyingSwordSeries.STANDARD);
+        SPIRITFORGED_FLYING_SWORDS = SWORD_SERIES.get(FlyingSwordSeries.SPIRITFORGED);
+        LUMINOUS_FLYING_SWORDS = SWORD_SERIES.get(FlyingSwordSeries.LUMINOUS);
+        CONDENSED_FLYING_SWORDS = SWORD_SERIES.get(FlyingSwordSeries.CONDENSED);
     }
 
     public static final DeferredHolder<Item, Item> IRON_FLYING_SWORD = FLYING_SWORDS.get(FlyingSwordMaterial.IRON);
@@ -72,11 +75,10 @@ public final class ModItems {
                     .title(Component.translatable("creativetab.yujiancraft.main"))
                     .icon(() -> CREATIVE_TAB_ICON.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
-                        for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
-                            output.accept(getFlyingSword(material));
-                        }
-                        for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
-                            output.accept(getFlyingSword(material, FlyingSwordSeries.SPIRITFORGED));
+                        for (FlyingSwordSeries series : FlyingSwordSeries.values()) {
+                            for (FlyingSwordMaterial material : FlyingSwordMaterial.values()) {
+                                output.accept(getFlyingSword(material, series));
+                            }
                         }
                         output.accept(FLYING_SWORD_WORKBENCH.get());
                         output.accept(SPIRIT_TEMPERING_TABLE.get());
@@ -97,8 +99,9 @@ public final class ModItems {
     }
 
     public static Item getFlyingSword(FlyingSwordMaterial material, FlyingSwordSeries series) {
-        return (series == FlyingSwordSeries.SPIRITFORGED
-                ? SPIRITFORGED_FLYING_SWORDS : FLYING_SWORDS).get(material).get();
+        Map<FlyingSwordMaterial, DeferredHolder<Item, Item>> swords = SWORD_SERIES.get(series);
+        if (swords == null) swords = FLYING_SWORDS;
+        return swords.get(material).get();
     }
 
     public static void register(IEventBus bus) {

@@ -60,7 +60,7 @@ public final class SwordComboManager {
         }
         ComboStyle style = selectedStyle(player);
         swords.forEach(FlyingSwordEntity::enterComboControl);
-        Session session = new Session(player.position(), swords, style);
+        Session session = new Session(player.position(), swords, style, player.level().getGameTime());
         SESSIONS.put(player.getUUID(), session);
         sendState(player, session, 0, -1, player.position().add(0.0D, 1.0D, 0.0D));
         player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
@@ -80,6 +80,7 @@ public final class SwordComboManager {
         }
         saveStyle(player, next);
         if (session != null) {
+            resetOrbitEpoch(session, player.level().getGameTime());
             session.style = next;
             sendState(player, session, 0, -1, player.position().add(0.0D, 1.0D, 0.0D));
         }
@@ -166,11 +167,15 @@ public final class SwordComboManager {
     }
 
     private static void startStage(ServerPlayer player, Session session, int stage, LivingEntity target) {
+        resetOrbitEpoch(session, player.level().getGameTime());
         session.stage = Mth.clamp(stage, 1, session.style.maxStage());
         session.stageTick = 0;
         session.targetId = target.getUUID();
         session.hitTargets.clear();
+        session.orbitHits.clear();
+        session.orbitTargets.clear();
         session.damageCommitted = false;
+        session.durabilityCommitted = false;
         session.finisherSpawned = false;
         session.anchor = player.position();
         session.targetAnchor = target.position();
@@ -200,7 +205,7 @@ public final class SwordComboManager {
         Vec3 targetPoint = target == null ? session.targetAnchor.add(0.0D, 0.9D, 0.0D)
                 : target.position().add(0.0D, target.getBbHeight() * 0.52D, 0.0D);
         applyWarp(player, session, definition);
-        if (session.style.targetSuppression() && target != null
+        if ((session.style.targetSuppression() || definition.targetSuppression()) && target != null
                 && EffectBalanceConfig.get(EffectParameter.COMBO_TARGET_SUPPRESSION_ENABLED) >= 0.5D) {
             suppressTarget(target, session.targetAnchor);
         }
@@ -209,23 +214,40 @@ public final class SwordComboManager {
             movePlayerToward(player, definition.rootMotion().destination(rootFrame), 0.88D);
         }
         ComboMotionFrame base = frame(session, player.position(), targetPoint, 0, definition);
+        boolean orbitDamageActive = definition.orbitSweep()
+                && session.stageTick >= definition.commitTick();
+        List<SwordSweep> sweeps = orbitDamageActive
+                ? new ArrayList<>(session.swords.size()) : List.of();
         for (int i = 0; i < session.swords.size(); i++) {
             ComboMotionFrame swordFrame = new ComboMotionFrame(base.owner(), base.playerAnchor(), base.target(),
-                    base.forward(), base.right(), i, base.tick(), base.duration());
+                    base.forward(), base.right(), i, base.tick(), base.duration(), base.worldTick(),
+                    base.orbitPhase(), base.orbitSpeed());
             Vec3 position = definition.choreography().position(swordFrame);
-            session.swords.get(i).applyComboPose(position, definition.choreography().direction(swordFrame));
+            FlyingSwordEntity sword = session.swords.get(i);
+            Vec3 previous = sword.position();
+            sword.applyComboPose(position, definition.choreography().direction(swordFrame));
+            if (orbitDamageActive) sweeps.add(new SwordSweep(i, sword, previous, position));
+        }
+        if (orbitDamageActive) {
+            applyOrbitSweepDamage(player, session, target, targetPoint, definition, sweeps);
         }
         if (definition.finisher() && !session.finisherSpawned
                 && session.stageTick >= finisherSpawnTick(definition)
                 && target != null) {
             session.finisherSpawned = true;
             FlyingSwordEntity source = session.swords.get(0);
-            SwordArrayFieldEntity.spawnCombo((ServerLevel) player.level(), player,
-                    source.getDisplayItem(), source.getSourceBindingId(), target.getUUID(),
-                    target.position(), target.getBbHeight(), target.getBbWidth(),
-                    session.style.heavyFinisher());
+            if (definition.choreography() == ComboChoreography.STAR_RING_COLLAPSE) {
+                SwordArrayFieldEntity.spawnStarRingSeal((ServerLevel) player.level(), player,
+                        source.getDisplayItem(), source.getSourceBindingId(), target.getUUID(),
+                        target.position(), target.getBbHeight(), target.getBbWidth());
+            } else if (definition.giantArrayFinisher()) {
+                SwordArrayFieldEntity.spawnCombo((ServerLevel) player.level(), player,
+                        source.getDisplayItem(), source.getSourceBindingId(), target.getUUID(),
+                        target.position(), target.getBbHeight(), target.getBbWidth(),
+                        session.style.heavyFinisher());
+            }
         }
-        if (definition.damagingAttack() && !session.damageCommitted
+        if (definition.hitProfile() == ComboHitProfile.COMMIT_AREA && !session.damageCommitted
                 && session.stageTick >= definition.commitTick()) {
             session.damageCommitted = true;
             applyStageDamage(player, session, target, targetPoint, definition);
@@ -233,6 +255,9 @@ public final class SwordComboManager {
     }
 
     private static int finisherSpawnTick(ComboStageDefinition definition) {
+        if (definition.choreography() == ComboChoreography.STAR_RING_COLLAPSE) {
+            return Math.max(0, StarRingMotion.FINALE_RISE_TICKS - 2);
+        }
         return definition.commitTick();
     }
 
@@ -246,8 +271,10 @@ public final class SwordComboManager {
 
     private static ComboMotionFrame frame(Session session, Vec3 owner, Vec3 targetPoint, int slot,
                                           ComboStageDefinition definition) {
+        double worldTick = session.level.getGameTime();
         return new ComboMotionFrame(owner, session.anchor, targetPoint, session.stageForward,
-                session.stageRight, slot, session.stageTick, definition.durationTicks());
+                session.stageRight, slot, session.stageTick, definition.durationTicks(), worldTick,
+                orbitPhase(session, worldTick), orbitSpeed(session));
     }
 
     private static void applyStageDamage(ServerPlayer player, Session session, LivingEntity primary,
@@ -271,6 +298,7 @@ public final class SwordComboManager {
         }
         if (damaged) {
             sword.consumeSourceDurability(player, 1);
+            if (session.style.starRing()) markOrbitContact(player, session, centre);
             boolean forceful = definition.vfx().thresholdAmount() > 0.001F;
             player.level().playSound(null, player.blockPosition(), SoundEvents.PLAYER_ATTACK_STRONG,
                     SoundSource.PLAYERS, forceful ? 1.35F : 0.9F,
@@ -278,16 +306,89 @@ public final class SwordComboManager {
         }
     }
 
+    private static void applyOrbitSweepDamage(ServerPlayer player, Session session, LivingEntity primary,
+                                              Vec3 targetPoint, ComboStageDefinition definition,
+                                              List<SwordSweep> sweeps) {
+        boolean damaged = false;
+        for (SwordSweep sweep : sweeps) {
+            // High angular velocity at the outer edge can legitimately move a blade well over
+            // seven blocks per tick. Only reject discontinuities large enough to be a teleport.
+            if (sweep.from.distanceToSqr(sweep.to) > 400.0D) continue;
+            AABB sweptArea = new AABB(sweep.from, sweep.to).inflate(0.72D);
+            List<LivingEntity> candidates = player.level().getEntitiesOfClass(LivingEntity.class,
+                    sweptArea, candidate -> SwordTargetingRules.canActivelyTarget(player, candidate));
+            candidates.sort(Comparator.comparingInt(candidate -> candidate == primary ? 0 : 1));
+            for (LivingEntity candidate : candidates) {
+                OrbitHitKey key = new OrbitHitKey(sweep.slot, candidate.getUUID());
+                if (session.orbitHits.contains(key)) continue;
+                if (!session.orbitTargets.contains(candidate.getUUID())
+                        && session.orbitTargets.size() >= definition.targetLimit()) continue;
+                AABB hitBox = candidate.getBoundingBox().inflate(0.38D);
+                if (!hitBox.contains(sweep.from) && !hitBox.contains(sweep.to)
+                        && hitBox.clip(sweep.from, sweep.to).isEmpty()) continue;
+                int previousInvulnerability = candidate.invulnerableTime;
+                candidate.invulnerableTime = 0;
+                boolean hit = sweep.sword.applyComboHit(player, candidate,
+                        definition.damageScale(), false);
+                if (!hit) {
+                    candidate.invulnerableTime = previousInvulnerability;
+                    continue;
+                }
+                candidate.invulnerableTime = 0;
+                session.orbitHits.add(key);
+                session.orbitTargets.add(candidate.getUUID());
+                damaged = true;
+                if (session.orbitBoostTick < 0L) {
+                    markOrbitContact(player, session, targetPoint);
+                }
+            }
+        }
+        if (damaged && !session.durabilityCommitted) {
+            session.durabilityCommitted = true;
+            session.swords.get(0).consumeSourceDurability(player, 1);
+        }
+    }
+
+    private static void markOrbitContact(ServerPlayer player, Session session, Vec3 targetPoint) {
+        if (!session.style.starRing() || session.orbitBoostTick >= 0L) return;
+        session.orbitBoostTick = player.level().getGameTime();
+        LivingEntity target = resolveTarget(player, session.targetId);
+        int targetId = target == null ? -1 : target.getId();
+        sendState(player, session, targetId, targetPoint);
+        player.level().playSound(null, player.blockPosition(), SoundEvents.AMETHYST_CLUSTER_HIT,
+                SoundSource.PLAYERS, 1.15F, 0.82F + session.stage * 0.07F);
+    }
+
+    private static double orbitPhase(Session session, double worldTick) {
+        double elapsed = Math.max(0.0D, worldTick - session.orbitEpochTick);
+        double boosted = session.orbitBoostTick < 0L ? 0.0D
+                : Math.max(0.0D, worldTick - session.orbitBoostTick);
+        return session.orbitPhaseAtEpoch + StarRingMotion.BASE_ANGULAR_SPEED * elapsed
+                + (StarRingMotion.BOOST_ANGULAR_SPEED - StarRingMotion.BASE_ANGULAR_SPEED) * boosted;
+    }
+
+    private static double orbitSpeed(Session session) {
+        return session.orbitBoostTick < 0L
+                ? StarRingMotion.BASE_ANGULAR_SPEED : StarRingMotion.BOOST_ANGULAR_SPEED;
+    }
+
+    private static void resetOrbitEpoch(Session session, long worldTick) {
+        session.orbitPhaseAtEpoch = orbitPhase(session, worldTick);
+        session.orbitEpochTick = worldTick;
+        session.orbitBoostTick = -1L;
+    }
+
     private static void idlePose(ServerPlayer player, Session session) {
-        Vec3 forward = ComboMotionMath.horizontal(player.getLookAngle(), new Vec3(0.0D, 0.0D, 1.0D));
-        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        Vec3 forward = ComboMotionMath.horizontal(Vec3.directionFromRotation(0.0F, player.getYRot()),
+                new Vec3(0.0D, 0.0D, 1.0D));
+        double worldTick = player.level().getGameTime();
+        double phase = orbitPhase(session, worldTick);
+        double speed = orbitSpeed(session);
         for (int i = 0; i < session.swords.size(); i++) {
-            double angle = Math.PI * 2.0D * i / 6.0D;
-            Vec3 pos = player.position().add(0.0D, 1.2D, 0.0D)
-                    .add(right.scale(Math.cos(angle) * 1.75D))
-                    .add(forward.scale(Math.sin(angle) * 0.72D - 0.75D))
-                    .add(0.0D, Math.sin(angle) * 1.15D, 0.0D);
-            session.swords.get(i).applyComboPose(pos, forward);
+            Vec3 pos = session.style.formation().position(player.position(), forward, i, phase, worldTick);
+            Vec3 direction = session.style.formation().direction(player.position(), forward, i,
+                    phase, speed, worldTick);
+            session.swords.get(i).applyComboPose(pos, direction);
         }
     }
 
@@ -327,6 +428,7 @@ public final class SwordComboManager {
     }
 
     private static void finishSequence(ServerPlayer player, Session session) {
+        resetOrbitEpoch(session, player.level().getGameTime());
         if (session.pendingStyle != null) {
             session.style = session.pendingStyle;
             session.pendingStyle = null;
@@ -340,6 +442,8 @@ public final class SwordComboManager {
         session.bufferedInputs = 0;
         session.bufferedTarget = null;
         session.finisherSpawned = false;
+        session.orbitHits.clear();
+        session.orbitTargets.clear();
         session.warpApplied = true;
         session.anchor = player.position();
         sendState(player, session, 0, -1, player.position().add(0.0D, 1.0D, 0.0D));
@@ -350,7 +454,8 @@ public final class SwordComboManager {
         if (session == null) return;
         session.swords.forEach(sword -> sword.leaveComboControl(6));
         ModNetwork.sendComboState(player, false, session.style.id(), 0, player.level().getGameTime(),
-                0, -1, player.position(), player.position(), player.position(), player.getYRot());
+                0, -1, player.position(), player.position(), player.position(), player.getYRot(),
+                orbitPhase(session, player.level().getGameTime()), -1L);
         if (notify) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.combo.exit"), true);
             player.level().playSound(null, player.blockPosition(), SoundEvents.TRIDENT_RETURN,
@@ -365,8 +470,9 @@ public final class SwordComboManager {
     private static void sendState(ServerPlayer player, Session session, int stage, int targetId,
                                   Vec3 targetPoint) {
         int duration = stage <= 0 ? 0 : session.style.stage(stage).durationTicks();
-        ModNetwork.sendComboState(player, true, session.style.id(), stage, player.level().getGameTime(),
-                duration, targetId, session.anchor, targetPoint, session.warpDestination, session.warpYaw);
+        ModNetwork.sendComboState(player, true, session.style.id(), stage, session.orbitEpochTick,
+                duration, targetId, session.anchor, targetPoint, session.warpDestination, session.warpYaw,
+                session.orbitPhaseAtEpoch, session.orbitBoostTick);
     }
 
     private static void applyWarp(ServerPlayer player, Session session, ComboStageDefinition definition) {
@@ -440,6 +546,8 @@ public final class SwordComboManager {
         private final ServerLevel level;
         private final List<FlyingSwordEntity> swords;
         private final Set<UUID> hitTargets = new HashSet<>();
+        private final Set<OrbitHitKey> orbitHits = new HashSet<>();
+        private final Set<UUID> orbitTargets = new HashSet<>();
         private ComboStyle style;
         private ComboStyle pendingStyle;
         private Vec3 anchor;
@@ -453,18 +561,28 @@ public final class SwordComboManager {
         private int stage;
         private int stageTick;
         private int bufferedInputs;
+        private long orbitEpochTick;
+        private long orbitBoostTick = -1L;
+        private double orbitPhaseAtEpoch;
         private boolean damageCommitted;
+        private boolean durabilityCommitted;
         private boolean finisherSpawned;
         private boolean warpApplied = true;
 
-        private Session(Vec3 anchor, List<FlyingSwordEntity> swords, ComboStyle style) {
+        private Session(Vec3 anchor, List<FlyingSwordEntity> swords, ComboStyle style, long worldTick) {
             this.level = (ServerLevel) swords.get(0).level();
             this.anchor = anchor;
             this.targetAnchor = anchor;
             this.warpDestination = anchor;
             this.warpYaw = 0.0F;
+            this.orbitEpochTick = worldTick;
+            this.orbitPhaseAtEpoch = worldTick * StarRingMotion.BASE_ANGULAR_SPEED;
             this.swords = new ArrayList<>(swords);
             this.style = style;
         }
     }
+
+    private record SwordSweep(int slot, FlyingSwordEntity sword, Vec3 from, Vec3 to) { }
+
+    private record OrbitHitKey(int slot, UUID target) { }
 }

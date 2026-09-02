@@ -21,10 +21,14 @@ public final class ModItemModelProvider extends ItemModelProvider {
             // transforms in the entity renderer; only the texture is meant to vary here.
             singleTexture(material.itemId(), mcLoc("item/handheld"), "layer0",
                     mcLoc("item/" + material.serializedName() + "_sword"));
-            ItemModelBuilder spiritforged = withExistingParent(
-                    FlyingSwordSeries.SPIRITFORGED.itemId(material),
-                    modLoc("item/flying_sword_style_formal"));
-            applyMaterialTextures(spiritforged, material);
+            for (FlyingSwordSeries series : FlyingSwordSeries.values()) {
+                if (series == FlyingSwordSeries.STANDARD) continue;
+                ItemModelBuilder model = withExistingParent(series.itemId(material), modLoc(
+                        series.usesSlenderModel()
+                                ? "item/flying_sword_style_slender"
+                                : "item/flying_sword_style_formal"));
+                applyMaterialTextures(model, material);
+            }
         }
     }
 

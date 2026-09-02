@@ -59,13 +59,16 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         float[] material = color(WanxiangSwordData.material(field.getDisplayStack()));
         SwordArrayVisualStyle style = field.visualStyle();
         float ringRadius = arrayRadius(field, age);
+        float sealHeight = field.starRingSeal() ? field.starRingSealHeight(age) : field.beamHeight();
 
-        renderTexturedCelestialSeal(field, style, material, age, ringRadius,
+        renderTexturedCelestialSeal(field, style, material, age, ringRadius, sealHeight,
                 poseStack, buffers);
 
-        renderArraySwords(field, style, ringRadius, age, partialTick, poseStack, buffers);
+        if (!field.starRingSeal()) {
+            renderArraySwords(field, style, ringRadius, age, partialTick, poseStack, buffers);
+        }
 
-        if (finisherAge >= 0.0F) {
+        if (!field.starRingSeal() && finisherAge >= 0.0F) {
             poseStack.pushPose();
             // Entity/item renderers above may have switched the shared BufferSource to another
             // vertex format. Always reacquire this consumer immediately before the colour-only
@@ -88,6 +91,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
     private static void renderTexturedCelestialSeal(SwordArrayFieldEntity field,
                                                      SwordArrayVisualStyle style,
                                                      float[] material, float age, float ringRadius,
+                                                     float sealHeight,
                                                      PoseStack poseStack, MultiBufferSource buffers) {
         String variant = field.visualVariant() == 1 ? "gold" : "tricolor";
         float planeRadius = ringRadius * 1.12F;
@@ -105,7 +109,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         for (int index = 0; index < TEXTURE_LAYERS.length; index++) {
             String layer = TEXTURE_LAYERS[index];
             poseStack.pushPose();
-            poseStack.translate(0.0D, field.beamHeight() + heights[index], 0.0D);
+            poseStack.translate(0.0D, sealHeight + heights[index], 0.0D);
             poseStack.mulPose(Axis.YP.rotationDegrees(rotations[index]));
             int baseAlpha = Math.round(238.0F * pulse * brightness);
             drawTexturedPlane(buffers.getBuffer(SpiritRenderStates.textured(
@@ -134,7 +138,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         if (ClientOptions.swordArraySpiritWisps()) {
             float[] wispColour = sealColour(material, style.outerTint(), style.brightness(), 0.86F);
             poseStack.pushPose();
-            poseStack.translate(0.0D, field.beamHeight() + 0.13D, 0.0D);
+            poseStack.translate(0.0D, sealHeight + 0.13D, 0.0D);
             // Textured seal layers use NEW_ENTITY while fragments use POSITION_COLOR. The vanilla
             // BufferSource shares one builder between them, so the correct render type must be
             // requested again after all textured draws (Embeddium may hide this mistake).
@@ -143,7 +147,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
             poseStack.popPose();
         }
         if (ClientOptions.swordArrayVolumeMist()) {
-            renderVolumeMist(field, style, age, ringRadius, poseStack, buffers);
+            renderVolumeMist(field, style, age, ringRadius, sealHeight, poseStack, buffers);
         }
     }
 
@@ -154,7 +158,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
 
     /** Low-density textured slices give the otherwise planar seal a restrained volume. */
     private static void renderVolumeMist(SwordArrayFieldEntity field, SwordArrayVisualStyle style,
-                                         float age, float radius, PoseStack poseStack,
+                                         float age, float radius, float sealHeight, PoseStack poseStack,
                                          MultiBufferSource buffers) {
         VertexConsumer mist = buffers.getBuffer(SpiritRenderStates.textured(SPIRIT_MIST, false));
         SwordArrayVisualStyle.Colour tint = style.outerTint();
@@ -169,7 +173,7 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
             float size = radius * (0.18F + (index % 3) * 0.035F);
             int alpha = Math.round(24.0F + 12.0F * (Mth.sin(age * 0.037F + seed) * 0.5F + 0.5F));
             poseStack.pushPose();
-            poseStack.translate(x, field.beamHeight() + vertical, z);
+            poseStack.translate(x, sealHeight + vertical, z);
             poseStack.mulPose(Axis.YP.rotationDegrees(index * 37.0F + age * 0.08F));
             drawTexturedPlane(mist, poseStack.last(), size,
                     Math.round(tint.red() * 255.0F), Math.round(tint.green() * 255.0F),
@@ -632,11 +636,12 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
         boolean formal = WanxiangSwordData.renderPreset(display) != WanxiangRenderPreset.VANILLA_FLAT;
         float localAuraTip = formal ? 1.33F : 1.20F;
         float profileScale = WanxiangSwordData.scalePercent(display) / 100.0F;
+        float seriesScale = WanxiangSwordData.series(display).flightModelScale();
         float auraLengthScale = WanxiangSwordData.auraLengthPercent(display) / 100.0F;
         // FlyingSwordRenderer applies its own 1.25 profile scale before drawing the aura. Matching
         // that exact transform makes the visible sword tip settle on the ground instead of using a
         // hand-tuned offset that embeds one model and leaves another hovering.
-        float tipOffset = scale * 1.25F * profileScale * auraLengthScale * localAuraTip;
+        float tipOffset = scale * 1.25F * profileScale * seriesScale * auraLengthScale * localAuraTip;
         // The aura extends visibly beyond the opaque model tip. In play tests the perceived blade
         // therefore stopped 9-10 blocks above the ground at the preferred 20-25x scale. Apply the
         // correction proportionally so custom scales retain the same grounded silhouette.
@@ -695,6 +700,9 @@ public final class SwordArrayFieldRenderer extends EntityRenderer<SwordArrayFiel
     }
 
     private static float arrayRadius(SwordArrayFieldEntity field, float age) {
+        if (field.starRingSeal()) {
+            return field.baseRadius() * (1.0F + 0.018F * Mth.sin(age * 0.22F));
+        }
         float finisherAge = age - field.finisherStartTick();
         float base = field.baseRadius();
         if (!ClientOptions.swordArrayExpansion()) {

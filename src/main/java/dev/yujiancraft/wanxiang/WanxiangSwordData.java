@@ -158,7 +158,7 @@ public final class WanxiangSwordData {
             return WanxiangRenderPreset.fromOrdinal(data.getInt(PRESET_TAG));
         }
         if (stack.getItem() instanceof FlyingSwordItem nativeSword) {
-            return nativeSword.getSeries() == FlyingSwordSeries.SPIRITFORGED
+            return nativeSword.getSeries().usesAxialModel()
                     ? WanxiangRenderPreset.AXIAL_3D : WanxiangRenderPreset.VANILLA_FLAT;
         }
         return WanxiangRenderPreset.VANILLA_FLAT;

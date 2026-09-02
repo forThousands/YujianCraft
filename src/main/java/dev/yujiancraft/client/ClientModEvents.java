@@ -321,6 +321,13 @@ public final class ClientModEvents {
                 renderYaw = Mth.rotLerp(partialTick, owner.yRotO, owner.getYRot());
                 renderPitch = 0.0F;
             }
+            Vec3 comboDirection = ClientComboState.visualSwordDirection(sword, partialTick);
+            if (comboDirection != null && comboDirection.lengthSqr() > 1.0E-8D) {
+                comboDirection = comboDirection.normalize();
+                renderYaw = (float) (Mth.atan2(-comboDirection.x, comboDirection.z) * Mth.RAD_TO_DEG);
+                renderPitch = (float) (Mth.atan2(-comboDirection.y,
+                        comboDirection.horizontalDistance()) * Mth.RAD_TO_DEG);
+            }
             Vec3 direction = Vec3.directionFromRotation(renderPitch, renderYaw);
             poseStack.mulPose(new Quaternionf().rotationTo(
                     0.0F, 1.0F, 0.0F,
@@ -341,6 +348,7 @@ public final class ClientModEvents {
             }
             WanxiangRenderPreset renderPreset = WanxiangSwordData.renderPreset(visualStack);
             WanxiangGlowMode glowMode = WanxiangSwordData.glowMode(visualStack);
+            FlyingSwordSeries swordSeries = WanxiangSwordData.series(visualStack);
             boolean flippedAxis = WanxiangSwordData.flipAxis(visualStack);
             boolean formalDimensions = renderPreset != WanxiangRenderPreset.VANILLA_FLAT;
             float axisCorrection = legacyDockPose
@@ -352,7 +360,10 @@ public final class ClientModEvents {
             // Previously the aura was rendered before this shared enlargement, causing most of
             // its already-thin shell to disappear inside the vanilla sword silhouette.
             float profileScale = WanxiangSwordData.scalePercent(visualStack) / 100.0F;
-            poseStack.scale(1.25F * profileScale, 1.25F * profileScale, 1.25F * profileScale);
+            float seriesScale = swordSeries.flightModelScale();
+            poseStack.scale(1.25F * profileScale * seriesScale,
+                    1.25F * profileScale * seriesScale,
+                    1.25F * profileScale * seriesScale);
 
             // Render the material-coloured sword first so the following translucent aura layers
             // can sit around it instead of depth-flattening it into an opaque plastic shell.
@@ -369,7 +380,8 @@ public final class ClientModEvents {
             boolean bodyGlow = ClientOptions.swordBodyGlow()
                     && glowMode == WanxiangGlowMode.FULL_BODY && !customRenderer;
             boolean auraGlow = ClientOptions.swordBodyGlow()
-                    && glowMode != WanxiangGlowMode.ORIGINAL && !sword.isVisualAuraSuppressed();
+                    && glowMode != WanxiangGlowMode.ORIGINAL && !sword.isVisualAuraSuppressed()
+                    && swordSeries.auraStyle() != FlyingSwordSeries.AuraStyle.NONE;
             int swordLight = bodyGlow ? LightTexture.FULL_BRIGHT : packedLight;
             if (bodyGlow) {
                 try {
@@ -390,11 +402,20 @@ public final class ClientModEvents {
             }
             poseStack.popPose();
 
+            if (bodyGlow && swordSeries.hasLuminousBladeCore()) {
+                poseStack.pushPose();
+                alignBladeVisualEffects(poseStack, renderPreset, flippedAxis);
+                scaleAttachedBladeEffects(poseStack, visualStack);
+                renderLuminousBladeCore(sword, partialTick, poseStack, buffers);
+                poseStack.popPose();
+            }
+
             if (auraGlow) {
                 poseStack.pushPose();
                 alignBladeVisualEffects(poseStack, renderPreset, flippedAxis);
                 scaleAttachedBladeEffects(poseStack, visualStack);
-                renderBladeAura(sword, partialTick, poseStack, buffers, formalDimensions);
+                renderBladeAura(sword, partialTick, poseStack, buffers, formalDimensions,
+                        swordSeries.auraStyle());
                 poseStack.popPose();
             }
             // Module accents are authored around the same local +Y blade axis as the aura.
@@ -795,8 +816,33 @@ public final class ClientModEvents {
             }
         }
 
+        private static void renderLuminousBladeCore(FlyingSwordEntity sword, float partialTick,
+                                                    PoseStack poseStack, MultiBufferSource buffers) {
+            int color = sword.getVisualMaterial().glowColor();
+            int red = color >> 16 & 0xFF;
+            int green = color >> 8 & 0xFF;
+            int blue = color & 0xFF;
+            float pulse = 0.92F + 0.08F * Mth.sin((sword.tickCount + partialTick) * 0.15F
+                    + sword.getVisualFormationSlot() * 0.73F);
+            float[] y = {0.24F, 0.70F, 1.08F, 1.33F};
+            float[] face = {0.052F, 0.060F, 0.050F, 0.003F};
+            float[] depth = {0.025F, 0.028F, 0.024F, 0.002F};
+            VertexConsumer glow = buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                    SPIRIT_PULSE_TEXTURE, false));
+            renderSpiritPrism(glow, poseStack.last(), y, face, depth,
+                    new float[]{0.78F, 1.0F, 0.90F, 0.08F},
+                    mixWithWhite(red, 0.58F), mixWithWhite(green, 0.58F),
+                    mixWithWhite(blue, 0.58F), Math.round(238.0F * pulse));
+            renderSpiritPrism(glow, poseStack.last(), y,
+                    new float[]{0.012F, 0.015F, 0.012F, 0.001F},
+                    new float[]{0.009F, 0.011F, 0.009F, 0.001F},
+                    new float[]{0.72F, 1.0F, 0.82F, 0.04F}, 255, 255, 255,
+                    Math.round(250.0F * pulse));
+        }
+
         private static void renderBladeAura(FlyingSwordEntity sword, float partialTick, PoseStack poseStack,
-                                            MultiBufferSource buffers, boolean formalModel) {
+                                            MultiBufferSource buffers, boolean formalModel,
+                                            FlyingSwordSeries.AuraStyle auraStyle) {
             int color = sword.getVisualMaterial().glowColor();
             int red = color >> 16 & 0xFF;
             int green = color >> 8 & 0xFF;
@@ -812,17 +858,22 @@ public final class ClientModEvents {
             int flightAge = ClientFlightEffects.flightAge(sword);
             float launchSurge = flightAge > 0 && flightAge <= 7 ? (8.0F - flightAge) / 7.0F : 0.0F;
 
-            float expansion = 1.0F + launchSurge * 0.08F;
+            boolean tight = auraStyle == FlyingSwordSeries.AuraStyle.TIGHT;
+            float expansion = 1.0F + launchSurge * (tight ? 0.02F : 0.08F);
             float base = formalModel ? -0.25F : -0.18F;
             float lowerBlade = formalModel ? 0.24F : 0.18F;
             float middle = formalModel ? 0.72F : 0.60F;
             float shoulder = formalModel ? 1.08F : 0.92F;
             float tip = formalModel ? 1.33F : 1.20F;
             float[] y = {base, lowerBlade, middle, shoulder, tip};
-            float[] faceRadius = formalModel
+            float[] faceRadius = tight
+                    ? new float[]{0.082F, 0.082F, 0.085F, 0.066F, 0.003F}
+                    : formalModel
                     ? new float[]{0.125F, 0.140F, 0.138F, 0.118F, 0.004F}
                     : new float[]{0.112F, 0.132F, 0.128F, 0.108F, 0.004F};
-            float[] depthRadius = formalModel
+            float[] depthRadius = tight
+                    ? new float[]{0.037F, 0.037F, 0.039F, 0.031F, 0.002F}
+                    : formalModel
                     ? new float[]{0.060F, 0.066F, 0.064F, 0.055F, 0.003F}
                     : new float[]{0.054F, 0.063F, 0.061F, 0.052F, 0.003F};
             for (int index = 0; index < faceRadius.length; index++) {
@@ -833,8 +884,8 @@ public final class ClientModEvents {
             float[] outerFaceRadius = faceRadius.clone();
             float[] outerDepthRadius = depthRadius.clone();
             for (int index = 0; index < outerFaceRadius.length - 1; index++) {
-                outerFaceRadius[index] *= 1.34F;
-                outerDepthRadius[index] *= 1.45F;
+                outerFaceRadius[index] *= tight ? 1.08F : 1.34F;
+                outerDepthRadius[index] *= tight ? 1.10F : 1.45F;
             }
 
             VertexConsumer shell = buffers.getBuffer(RenderType.entityTranslucentEmissive(
@@ -880,14 +931,14 @@ public final class ClientModEvents {
             float pulseEnd = Math.min(tip, pulseCenter + pulseHalfLength);
             float[] pulseY = {pulseStart, pulseCenter, pulseEnd};
             float[] pulseFace = {
-                    radiusAt(y, faceRadius, pulseStart) + 0.012F,
-                    radiusAt(y, faceRadius, pulseCenter) + 0.020F,
-                    radiusAt(y, faceRadius, pulseEnd) + 0.012F
+                    radiusAt(y, faceRadius, pulseStart) + (tight ? 0.004F : 0.012F),
+                    radiusAt(y, faceRadius, pulseCenter) + (tight ? 0.007F : 0.020F),
+                    radiusAt(y, faceRadius, pulseEnd) + (tight ? 0.004F : 0.012F)
             };
             float[] pulseDepth = {
-                    radiusAt(y, depthRadius, pulseStart) + 0.008F,
-                    radiusAt(y, depthRadius, pulseCenter) + 0.014F,
-                    radiusAt(y, depthRadius, pulseEnd) + 0.008F
+                    radiusAt(y, depthRadius, pulseStart) + (tight ? 0.003F : 0.008F),
+                    radiusAt(y, depthRadius, pulseCenter) + (tight ? 0.005F : 0.014F),
+                    radiusAt(y, depthRadius, pulseEnd) + (tight ? 0.003F : 0.008F)
             };
             int pulseAlphaScale = Mth.clamp((int) ((244.0F + launchSurge * 24.0F) * pulse), 0, 255);
             if (!brightness.usesLegacyRenderer()) {
@@ -900,8 +951,10 @@ public final class ClientModEvents {
                     mixWithWhite(red, 0.72F), mixWithWhite(green, 0.72F), mixWithWhite(blue, 0.72F),
                     pulseAlphaScale);
 
-            renderSpiritWisps(sword, partialTick, poseStack.last().pose(), buffers,
-                    y, faceRadius, depthRadius, red, green, blue, brightness);
+            if (!tight) {
+                renderSpiritWisps(sword, partialTick, poseStack.last().pose(), buffers,
+                        y, faceRadius, depthRadius, red, green, blue, brightness);
+            }
         }
 
         private static void renderSpiritWisps(FlyingSwordEntity sword, float partialTick, Matrix4f pose,

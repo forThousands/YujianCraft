@@ -8,13 +8,15 @@ import java.util.Locale;
  */
 public enum ComboStyle {
     FLOWING_BALANCE("flowing_balance", "combo_style.yujiancraft.flowing_balance",
-            flowingStages(false), false, false, false),
+            flowingStages(false), false, false, false, ComboFormationProfile.REAR_GUARD),
     FOURFOLD_BALANCE("fourfold_balance", "combo_style.yujiancraft.fourfold_balance",
-            fourfoldStages(false), false, false, false),
+            fourfoldStages(false), false, false, false, ComboFormationProfile.REAR_GUARD),
     MOUNTAIN_STRIDE("mountain_stride", "combo_style.yujiancraft.mountain_stride",
-            mountainStages(true, false, true), false, false, true),
+            mountainStages(true, false, true), false, false, true, ComboFormationProfile.REAR_GUARD),
+    METAL_STAR_RING("metal_star_ring", "combo_style.yujiancraft.metal_star_ring",
+            starRingStages(), false, false, true, ComboFormationProfile.STAR_RING),
     SWORD_SHADOW_SWIFT("sword_shadow_swift", "combo_style.yujiancraft.sword_shadow_swift",
-            shadowStages(true), true, false, true);
+            shadowStages(true), true, false, true, ComboFormationProfile.REAR_GUARD);
 
     private final String id;
     private final String translationKey;
@@ -22,15 +24,18 @@ public enum ComboStyle {
     private final boolean targetSuppression;
     private final boolean particlesOnlyWarp;
     private final boolean heavyFinisher;
+    private final ComboFormationProfile formation;
 
     ComboStyle(String id, String translationKey, ComboStageDefinition[] stages,
-               boolean targetSuppression, boolean particlesOnlyWarp, boolean heavyFinisher) {
+               boolean targetSuppression, boolean particlesOnlyWarp, boolean heavyFinisher,
+               ComboFormationProfile formation) {
         this.id = id;
         this.translationKey = translationKey;
         this.stages = stages;
         this.targetSuppression = targetSuppression;
         this.particlesOnlyWarp = particlesOnlyWarp;
         this.heavyFinisher = heavyFinisher;
+        this.formation = formation;
     }
 
     public String id() { return id; }
@@ -43,6 +48,8 @@ public enum ComboStyle {
     public boolean targetSuppression() { return targetSuppression; }
     public boolean particlesOnlyWarp() { return particlesOnlyWarp; }
     public boolean heavyFinisher() { return heavyFinisher; }
+    public ComboFormationProfile formation() { return formation; }
+    public boolean starRing() { return formation == ComboFormationProfile.STAR_RING; }
 
     public boolean hasWarpStages() {
         for (int i = 1; i < stages.length; i++) {
@@ -190,31 +197,71 @@ public enum ComboStyle {
         return new ComboVfxProfile(camera[beat], threshold[beat], radial[beat], chroma[beat], hold[beat]);
     }
 
+    private static ComboStageDefinition[] starRingStages() {
+        return new ComboStageDefinition[]{
+                null,
+                orbitAttack(20, 4, 0.90D, 12, ComboChoreography.STAR_RING_SWEEP,
+                        starRingVfx(0), false),
+                orbitAttack(20, 4, 1.02D, 12, ComboChoreography.STAR_RING_TILTED_SWEEP,
+                        starRingVfx(1), false),
+                orbitAttack(24, 5, 1.14D, 12, ComboChoreography.STAR_RING_DUAL_ORBIT,
+                        starRingVfx(2), false),
+                new ComboStageDefinition(24, 8, 8, 5.25D, 3.8D, 3.2D, 12,
+                        ComboChoreography.STAR_RING_PRISON, ComboRootMotion.NONE,
+                        ComboWarpProfile.NONE, starRingVfx(3), ComboHitProfile.COMMIT_AREA, true),
+                new ComboStageDefinition(30, StarRingMotion.FINALE_IMPACT_TICK, 8,
+                        11.25D, 4.2D, 3.6D, 12,
+                        ComboChoreography.STAR_RING_COLLAPSE, ComboRootMotion.NONE,
+                        ComboWarpProfile.NONE, starRingVfx(4), ComboHitProfile.COMMIT_AREA, true)
+        };
+    }
+
+    private static ComboVfxProfile starRingVfx(int beat) {
+        float[] camera = {0.86F, 1.02F, 1.18F, 1.48F, 2.18F};
+        float[] threshold = {0.44F, 0.52F, 0.60F, 0.72F, 0.92F};
+        float[] radial = {0.0070F, 0.0085F, 0.0105F, 0.0140F, 0.0210F};
+        float[] chroma = {0.0028F, 0.0035F, 0.0042F, 0.0058F, 0.0084F};
+        float[] hold = {2.2F, 2.4F, 2.8F, 3.4F, 5.4F};
+        return new ComboVfxProfile(camera[beat], threshold[beat], radial[beat], chroma[beat], hold[beat]);
+    }
+
+    private static ComboStageDefinition orbitAttack(int duration, int commit, double damageScale,
+                                                      int targetLimit, ComboChoreography choreography,
+                                                      ComboVfxProfile vfx, boolean suppressTarget) {
+        return new ComboStageDefinition(duration, commit, 8, damageScale, 0.8D, 1.0D,
+                targetLimit, choreography, ComboRootMotion.NONE, ComboWarpProfile.NONE, vfx,
+                ComboHitProfile.ORBIT_SWEEP, suppressTarget);
+    }
+
     private static ComboStageDefinition attack(int duration, int commit, double damageScale,
                                                 double radius, double verticalRadius, int targetLimit,
                                                 ComboChoreography choreography, ComboRootMotion rootMotion,
                                                 ComboVfxProfile vfx) {
         return new ComboStageDefinition(duration, commit, 8, damageScale, radius, verticalRadius,
-                targetLimit, choreography, rootMotion, ComboWarpProfile.NONE, vfx);
+                targetLimit, choreography, rootMotion, ComboWarpProfile.NONE, vfx,
+                ComboHitProfile.COMMIT_AREA, false);
     }
 
     private static ComboStageDefinition slowAttack(int duration, int commit, double damageScale,
                                                     double radius, double verticalRadius, int targetLimit,
                                                     ComboChoreography choreography, ComboVfxProfile vfx) {
         return new ComboStageDefinition(duration, commit, 8, damageScale, radius, verticalRadius,
-                targetLimit, choreography, ComboRootMotion.NONE, ComboWarpProfile.NONE, vfx);
+                targetLimit, choreography, ComboRootMotion.NONE, ComboWarpProfile.NONE, vfx,
+                ComboHitProfile.COMMIT_AREA, false);
     }
 
     private static ComboStageDefinition warpOnly(int duration, ComboWarpProfile warp) {
         return new ComboStageDefinition(duration, 0, 8, 0.0D, 0.0D, 0.0D,
                 0, ComboChoreography.HOLD_FORMATION, ComboRootMotion.NONE, warp,
-                new ComboVfxProfile(warp.vfxStrength(), 0.0F, 0.0F, 0.0F, 0.0F));
+                new ComboVfxProfile(warp.vfxStrength(), 0.0F, 0.0F, 0.0F, 0.0F),
+                ComboHitProfile.NONE, false);
     }
 
     private static ComboStageDefinition finisher(int duration, int commit,
                                                   ComboChoreography choreography,
                                                   ComboVfxProfile vfx) {
         return new ComboStageDefinition(duration, commit, 8, 0.0D, 0.0D, 0.0D,
-                0, choreography, ComboRootMotion.NONE, ComboWarpProfile.NONE, vfx);
+                0, choreography, ComboRootMotion.NONE, ComboWarpProfile.NONE, vfx,
+                ComboHitProfile.NONE, false);
     }
 }

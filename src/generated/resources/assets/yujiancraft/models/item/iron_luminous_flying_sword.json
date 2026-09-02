@@ -1,0 +1,12 @@
+{
+  "parent": "yujiancraft:item/flying_sword_style_slender",
+  "textures": {
+    "accent": "yujiancraft:item/formal_iron_accent",
+    "blade_dark": "yujiancraft:item/formal_iron_blade",
+    "blade_light": "yujiancraft:item/formal_iron_blade",
+    "edge": "yujiancraft:item/formal_iron_edge",
+    "grip": "yujiancraft:item/formal_iron_grip",
+    "guard": "yujiancraft:item/formal_iron_guard",
+    "particle": "yujiancraft:item/formal_iron_blade"
+  }
+}

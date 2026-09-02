@@ -2,6 +2,7 @@ package dev.yujiancraft.entity;
 
 import dev.yujiancraft.combat.SwordEffectEngine;
 import dev.yujiancraft.combat.SwordTargetingRules;
+import dev.yujiancraft.combat.combo.StarRingMotion;
 import dev.yujiancraft.config.TechniqueConfig;
 import dev.yujiancraft.config.EffectBalanceConfig;
 import dev.yujiancraft.config.EffectParameter;
@@ -82,6 +83,8 @@ public final class SwordArrayFieldEntity extends Entity {
             SynchedEntityData.defineId(SwordArrayFieldEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_COMBO_FINISHER =
             SynchedEntityData.defineId(SwordArrayFieldEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_STAR_RING_SEAL =
+            SynchedEntityData.defineId(SwordArrayFieldEntity.class, EntityDataSerializers.BOOLEAN);
 
     private UUID ownerId;
     private UUID targetId;
@@ -96,6 +99,7 @@ public final class SwordArrayFieldEntity extends Entity {
     private boolean consumedDurability;
     private int visualVariant;
     private boolean comboFinisher;
+    private boolean starRingSeal;
     private float comboPower = 1.0F;
     private float clientPreviewAge = -1.0F;
     private SwordArrayVisualStyle clientPreviewStyle = SwordArrayVisualStyle.DEFAULT;
@@ -180,6 +184,52 @@ public final class SwordArrayFieldEntity extends Entity {
         if (level.addFreshEntity(field)) ACTIVE_BY_TARGET.put(key, field.getUUID());
     }
 
+    /**
+     * Small target-centred seal used by the Metal Star Ring finisher. It deliberately reuses the
+     * proven sword-array textures and signal channel, but owns no beam, giant sword or peripheral
+     * array swords. Damage remains in the combo manager so one impact cannot be counted twice.
+     */
+    public static void spawnStarRingSeal(ServerLevel level, ServerPlayer owner, ItemStack source,
+                                         UUID bindingId, UUID targetId, Vec3 targetAnchor,
+                                         double targetHeight, double targetWidth) {
+        if (targetId == null) return;
+        TargetKey key = new TargetKey(level.dimension(), targetId);
+        UUID activeId = ACTIVE_BY_TARGET.get(key);
+        Entity active = activeId == null ? null : level.getEntity(activeId);
+        if (active instanceof SwordArrayFieldEntity && active.isAlive()) return;
+        if (activeId != null) ACTIVE_BY_TARGET.remove(key, activeId);
+        SwordArrayFieldEntity field = ModEntities.SWORD_ARRAY_FIELD.get().create(level);
+        if (field == null) return;
+        field.ownerId = owner.getUUID();
+        field.targetId = targetId;
+        field.sourceBindingId = bindingId;
+        field.displayStack = source.copy();
+        field.displayStack.setCount(1);
+        field.lastTargetAnchor = targetAnchor;
+        field.targetHeight = targetHeight;
+        field.targetWidth = targetWidth;
+        field.comboFinisher = true;
+        field.starRingSeal = true;
+        field.visualVariant = Mth.clamp(owner.getPersistentData()
+                .getInt("YujianCraftSwordArrayStyle"), 0, 1);
+        field.syncStaticData();
+        Vec3 ground = field.groundBelow(level, targetAnchor);
+        field.setPos(ground.x, ground.y + 0.025D, ground.z);
+        double highY = targetAnchor.y + targetHeight * 0.52D + StarRingMotion.FINALE_LIFT;
+        field.entityData.set(DATA_BEAM_HEIGHT, (float) Math.max(2.0D, highY - field.getY()));
+        field.entityData.set(DATA_BASE_RADIUS, 3.05F);
+        field.entityData.set(DATA_FINISHER_START, 0);
+        field.entityData.set(DATA_CHARGE_TICKS, 8);
+        field.entityData.set(DATA_HOLD_TICKS, 0);
+        field.entityData.set(DATA_EXPAND_TICKS, 8);
+        field.entityData.set(DATA_SUSTAIN_TICKS, 8);
+        field.entityData.set(DATA_EXPANSION, 1.0F);
+        field.entityData.set(DATA_BEAM_SCALE, 0.0F);
+        field.entityData.set(DATA_COMBO_FINISHER, true);
+        field.entityData.set(DATA_STAR_RING_SEAL, true);
+        if (level.addFreshEntity(field)) ACTIVE_BY_TARGET.put(key, field.getUUID());
+    }
+
     @Override
     protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
         builder.define(DATA_DISPLAY_STACK, ItemStack.EMPTY);
@@ -195,6 +245,7 @@ public final class SwordArrayFieldEntity extends Entity {
         builder.define(DATA_BEAM_SCALE, 0.92F);
         builder.define(DATA_VISUAL_VARIANT, 0);
         builder.define(DATA_COMBO_FINISHER, false);
+        builder.define(DATA_STAR_RING_SEAL, false);
     }
 
     private void syncStaticData() {
@@ -210,6 +261,7 @@ public final class SwordArrayFieldEntity extends Entity {
         entityData.set(DATA_BEAM_SCALE, (float) TechniqueConfig.swordArrayFinisherBeamScale());
         entityData.set(DATA_VISUAL_VARIANT, Mth.clamp(visualVariant, 0, 1));
         entityData.set(DATA_COMBO_FINISHER, comboFinisher);
+        entityData.set(DATA_STAR_RING_SEAL, starRingSeal);
     }
 
     @Override
@@ -225,6 +277,14 @@ public final class SwordArrayFieldEntity extends Entity {
         ServerPlayer owner = ownerId == null ? null : serverLevel.getServer().getPlayerList().getPlayer(ownerId);
         if (owner == null || !owner.isAlive() || owner.level() != level()) {
             discard();
+            return;
+        }
+
+        if (starRingSeal) {
+            suppressTarget(serverLevel);
+            tickStarRingSeal(serverLevel);
+            age++;
+            if (age >= totalLifetimeTicks()) discard();
             return;
         }
 
@@ -256,6 +316,29 @@ public final class SwordArrayFieldEntity extends Entity {
 
         age++;
         if (age >= totalLifetimeTicks()) discard();
+    }
+
+    private void tickStarRingSeal(ServerLevel level) {
+        double y = getY() + starRingSealHeight(age);
+        if (age == 0) {
+            level.playSound(null, BlockPos.containing(getX(), y, getZ()),
+                    SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 1.25F, 0.68F);
+        }
+        if (age >= 8 && age < 16 && age % 2 == 0) {
+            level.sendParticles(ParticleTypes.END_ROD, getX(), y, getZ(),
+                    8, 2.5D, 0.12D, 2.5D, 0.035D);
+        }
+        if (!burstApplied && age >= 16) {
+            burstApplied = true;
+            level.sendParticles(ParticleTypes.SONIC_BOOM, getX(), y, getZ(),
+                    1, 0.0D, 0.0D, 0.0D, 0.0D);
+            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, getX(), y, getZ(),
+                    52, 2.8D, 0.35D, 2.8D, 0.16D);
+            level.playSound(null, BlockPos.containing(getX(), y, getZ()), SoundEvents.ANVIL_LAND,
+                    SoundSource.PLAYERS, 2.0F, 0.50F);
+            level.playSound(null, BlockPos.containing(getX(), y, getZ()), SoundEvents.WARDEN_SONIC_BOOM,
+                    SoundSource.PLAYERS, 1.25F, 0.78F);
+        }
     }
 
     /**
@@ -430,10 +513,20 @@ public final class SwordArrayFieldEntity extends Entity {
     public float beamScale() { return entityData.get(DATA_BEAM_SCALE); }
     /** 0 = threefold gold/jade/cyan, 1 = all-gold. */
     public int visualVariant() { return Mth.clamp(entityData.get(DATA_VISUAL_VARIANT), 0, 1); }
+    public boolean starRingSeal() { return entityData.get(DATA_STAR_RING_SEAL); }
+    /** Local height of the small seal: eight ticks held aloft, then an eight-tick heavy press. */
+    public float starRingSealHeight(float renderAge) {
+        float high = beamHeight();
+        if (!starRingSeal() || renderAge <= 8.0F) return high;
+        float progress = Mth.clamp((renderAge - 8.0F) / 8.0F, 0.0F, 1.0F);
+        float smooth = progress * progress * (3.0F - 2.0F * progress);
+        return Mth.lerp(smooth, high, high - 4.35F);
+    }
     public float expandedArrayRadius() { return baseRadius() * expansion(); }
     public float maximumBeamRadius() { return expandedArrayRadius() * beamScale(); }
     public int burstTick() { return finisherStartTick() + chargeTicks() + holdTicks(); }
     public int totalLifetimeTicks() {
+        if (starRingSeal()) return 24;
         return burstTick() + expandTicks() + sustainTicks()
                 + TechniqueConfig.swordArrayFinisherLingerTicks();
     }
@@ -510,6 +603,7 @@ public final class SwordArrayFieldEntity extends Entity {
         consumedDurability = tag.getBoolean("ConsumedDurability");
         visualVariant = Mth.clamp(tag.getInt("VisualVariant"), 0, 1);
         comboFinisher = tag.getBoolean("ComboFinisher");
+        starRingSeal = tag.getBoolean("StarRingSeal");
         comboPower = tag.contains("ComboPower") ? Math.max(1.0F, tag.getFloat("ComboPower")) : 1.0F;
         syncStaticData();
         if (tag.contains("BaseRadius")) entityData.set(DATA_BASE_RADIUS, tag.getFloat("BaseRadius"));
@@ -524,6 +618,7 @@ public final class SwordArrayFieldEntity extends Entity {
         if (tag.contains("VisualVariant")) entityData.set(DATA_VISUAL_VARIANT,
                 Mth.clamp(tag.getInt("VisualVariant"), 0, 1));
         entityData.set(DATA_COMBO_FINISHER, comboFinisher);
+        entityData.set(DATA_STAR_RING_SEAL, starRingSeal);
     }
 
     @Override
@@ -545,6 +640,7 @@ public final class SwordArrayFieldEntity extends Entity {
         tag.putBoolean("ConsumedDurability", consumedDurability);
         tag.putInt("VisualVariant", visualVariant());
         tag.putBoolean("ComboFinisher", comboFinisher);
+        tag.putBoolean("StarRingSeal", starRingSeal);
         tag.putFloat("ComboPower", comboPower);
         tag.putFloat("BaseRadius", baseRadius());
         tag.putFloat("BeamHeight", beamHeight());
