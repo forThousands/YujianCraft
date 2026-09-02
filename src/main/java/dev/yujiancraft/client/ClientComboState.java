@@ -8,6 +8,7 @@ import dev.yujiancraft.combat.combo.ComboStageDefinition;
 import dev.yujiancraft.combat.combo.ComboStyle;
 import dev.yujiancraft.combat.combo.ComboVfxProfile;
 import dev.yujiancraft.combat.combo.ComboWarpProfile;
+import dev.yujiancraft.combat.combo.StarRingMotion;
 import dev.yujiancraft.entity.FlyingSwordEntity;
 import dev.yujiancraft.network.ModNetwork;
 import net.minecraft.Util;
@@ -50,6 +51,7 @@ public final class ClientComboState {
         STATES.put(packet.playerId(), new State(true, style, packet.stage(), packet.startGameTick(),
                 packet.durationTicks(), packet.targetId(), packet.playerAnchor(), packet.targetAnchor(),
                 packet.warpDestination(), packet.warpYaw(),
+                packet.orbitPhase(), packet.orbitBoostTick(),
                 previous == null || !previous.active ? now : previous.transitionAt, 0L));
         if (packet.stage() == 0) assistedStage = -1;
         if (minecraft.player != null && packet.playerId() == minecraft.player.getId()
@@ -69,6 +71,18 @@ public final class ClientComboState {
     }
 
     public static Vec3 visualSwordPosition(FlyingSwordEntity sword, float partialTick) {
+        VisualSwordPose pose = visualSwordPose(sword, partialTick);
+        return pose == null ? null : pose.position();
+    }
+
+    /** Uses the same partial-tick reconstruction as position so a fast orbit cannot visibly outrun
+     * the server-synchronised Euler angles and make the blade look radial or stutter. */
+    public static Vec3 visualSwordDirection(FlyingSwordEntity sword, float partialTick) {
+        VisualSwordPose pose = visualSwordPose(sword, partialTick);
+        return pose == null ? null : pose.direction();
+    }
+
+    private static VisualSwordPose visualSwordPose(FlyingSwordEntity sword, float partialTick) {
         if (!sword.isVisualComboControlled()) return null;
         var owner = sword.getVisualOwner();
         if (owner == null || owner.level() == null) return null;
@@ -79,19 +93,30 @@ public final class ClientComboState {
         float ownerYaw = Mth.rotLerp(partialTick, owner.yRotO, owner.getYRot());
         Vec3 ownerLook = Vec3.directionFromRotation(0.0F, ownerYaw);
         int slot = Math.floorMod(sword.getVisualFormationSlot(), 6);
-        if (state.stage <= 0) return idlePosition(ownerPosition, ownerLook, slot);
-
         Minecraft minecraft = Minecraft.getInstance();
-        float age = minecraft.level == null ? 0.0F
-                : minecraft.level.getGameTime() + partialTick - state.startTick;
+        double worldTick = minecraft.level == null ? state.startTick
+                : minecraft.level.getGameTime() + partialTick;
+        double phase = orbitPhase(state, worldTick);
+        double speed = orbitSpeed(state);
+        if (state.stage <= 0) {
+            return new VisualSwordPose(
+                    state.style.formation().position(ownerPosition, ownerLook, slot, phase, worldTick),
+                    state.style.formation().direction(ownerPosition, ownerLook, slot, phase, speed, worldTick));
+        }
+
+        float age = (float) (worldTick - state.startTick);
         double tick = Mth.clamp(age, 0.0F, Math.max(0, state.durationTicks - 0.001F));
         Vec3 targetPoint = resolveTargetPoint(minecraft, state, partialTick);
         Vec3 forward = ComboMotionMath.horizontal(state.targetAnchor.subtract(state.playerAnchor), ownerLook);
         Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
         ComboStageDefinition definition = state.style.stage(state.stage);
-        return definition.choreography().position(new ComboMotionFrame(ownerPosition, state.playerAnchor,
-                targetPoint, forward, right, slot, tick, state.durationTicks));
+        ComboMotionFrame frame = new ComboMotionFrame(ownerPosition, state.playerAnchor,
+                targetPoint, forward, right, slot, tick, state.durationTicks, worldTick, phase, speed);
+        return new VisualSwordPose(definition.choreography().position(frame),
+                definition.choreography().direction(frame));
     }
+
+    private record VisualSwordPose(Vec3 position, Vec3 direction) { }
 
     private static Vec3 resolveTargetPoint(Minecraft minecraft, State state, float partialTick) {
         Vec3 targetPoint = state.targetAnchor;
@@ -103,16 +128,6 @@ public final class ClientComboState {
             }
         }
         return targetPoint;
-    }
-
-    private static Vec3 idlePosition(Vec3 owner, Vec3 look, int slot) {
-        Vec3 forward = ComboMotionMath.horizontal(look, new Vec3(0.0D, 0.0D, 1.0D));
-        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
-        double angle = Math.PI * 2.0D * slot / 6.0D;
-        return owner.add(0.0D, 1.2D, 0.0D)
-                .add(right.scale(Math.cos(angle) * 1.75D))
-                .add(forward.scale(Math.sin(angle) * 0.72D - 0.75D))
-                .add(0.0D, Math.sin(angle) * 1.15D, 0.0D);
     }
 
     private static Vec3 interpolatedPosition(Entity entity, float partialTick) {
@@ -150,21 +165,26 @@ public final class ClientComboState {
         }
         if (!definition.damagingAttack()) return null;
         ComboVfxProfile vfx = definition.vfx();
+        if (state.style.starRing() && state.orbitBoostTick < state.startTick) return null;
+        float impactTick = definition.commitTick();
+        if (state.style.starRing() && state.orbitBoostTick >= state.startTick) {
+            impactTick = state.orbitBoostTick - state.startTick;
+        }
         float envelope;
         if (vfx.thresholdHoldTicks() > 0.0F) {
-            envelope = heldEnvelope(age, definition.commitTick(), vfx.thresholdHoldTicks(), 3.2F);
+            envelope = heldEnvelope(age, impactTick, vfx.thresholdHoldTicks(), 3.2F);
         } else {
             float width = definition.vfx().thresholdAmount() <= 0.001F ? 2.4F : 1.65F;
-            float distance = Math.abs(age - definition.commitTick());
+            float distance = Math.abs(age - impactTick);
             if (distance > width) return null;
             envelope = 1.0F - distance / width;
         }
         if (envelope <= 0.001F) return null;
         float cameraEnvelope = vfx.thresholdHoldTicks() > 0.0F
-                ? triangular(age, definition.commitTick() - 0.45F,
-                definition.commitTick() + 0.35F, definition.commitTick() + 3.8F)
+                ? triangular(age, impactTick - 0.45F,
+                impactTick + 0.35F, impactTick + 3.8F)
                 : envelope;
-        float shakePhase = Mth.clamp((age - (definition.commitTick() - 0.45F)) / 4.25F,
+        float shakePhase = Mth.clamp((age - (impactTick - 0.45F)) / 4.25F,
                 0.0F, 1.0F);
         return new Impact(cameraEnvelope * vfx.cameraStrength(), envelope * vfx.thresholdAmount(),
                 envelope * vfx.radialBlurStrength(), envelope * vfx.chromaticStrength(),
@@ -273,13 +293,28 @@ public final class ClientComboState {
         Vec3 fallback = Vec3.directionFromRotation(0.0F, minecraft.player.getYRot());
         Vec3 forward = ComboMotionMath.horizontal(state.targetAnchor.subtract(state.playerAnchor), fallback);
         Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        double worldTick = minecraft.level.getGameTime();
         ComboMotionFrame frame = new ComboMotionFrame(minecraft.player.position(), state.playerAnchor,
-                state.targetAnchor, forward, right, 0, tick, state.durationTicks);
+                state.targetAnchor, forward, right, 0, tick, state.durationTicks, worldTick,
+                orbitPhase(state, worldTick), orbitSpeed(state));
         Vec3 destination = definition.rootMotion().destination(frame);
         minecraft.player.move(MoverType.SELF, destination.subtract(minecraft.player.position()).scale(0.88D));
         minecraft.player.setDeltaMovement(Vec3.ZERO);
         minecraft.player.fallDistance = 0.0F;
         return false;
+    }
+
+    private static double orbitPhase(State state, double worldTick) {
+        double elapsed = Math.max(0.0D, worldTick - state.startTick);
+        double boosted = state.orbitBoostTick < state.startTick ? 0.0D
+                : Math.max(0.0D, worldTick - state.orbitBoostTick);
+        return state.orbitPhase + StarRingMotion.BASE_ANGULAR_SPEED * elapsed
+                + (StarRingMotion.BOOST_ANGULAR_SPEED - StarRingMotion.BASE_ANGULAR_SPEED) * boosted;
+    }
+
+    private static double orbitSpeed(State state) {
+        return state.orbitBoostTick < state.startTick
+                ? StarRingMotion.BASE_ANGULAR_SPEED : StarRingMotion.BOOST_ANGULAR_SPEED;
     }
 
     public static void clear() {
@@ -348,13 +383,16 @@ public final class ClientComboState {
         private final Vec3 targetAnchor;
         private final Vec3 warpDestination;
         private final float warpYaw;
+        private final double orbitPhase;
+        private final long orbitBoostTick;
         private final long transitionAt;
         private final long endedAt;
         private boolean localWarpApplied;
 
         private State(boolean active, ComboStyle style, int stage, long startTick, int durationTicks,
                       int targetId, Vec3 playerAnchor, Vec3 targetAnchor, Vec3 warpDestination,
-                      float warpYaw, long transitionAt, long endedAt) {
+                      float warpYaw, double orbitPhase, long orbitBoostTick,
+                      long transitionAt, long endedAt) {
             this.active = active;
             this.style = style;
             this.stage = stage;
@@ -365,6 +403,8 @@ public final class ClientComboState {
             this.targetAnchor = targetAnchor;
             this.warpDestination = warpDestination;
             this.warpYaw = warpYaw;
+            this.orbitPhase = orbitPhase;
+            this.orbitBoostTick = orbitBoostTick;
             this.transitionAt = transitionAt;
             this.endedAt = endedAt;
             this.localWarpApplied = stage <= 0 || style.stage(Math.max(1, stage)).warp() == ComboWarpProfile.NONE;
@@ -372,7 +412,8 @@ public final class ClientComboState {
 
         private State end(long now) {
             return new State(false, style, 0, startTick, durationTicks, -1, playerAnchor,
-                    targetAnchor, warpDestination, warpYaw, transitionAt, now);
+                    targetAnchor, warpDestination, warpYaw, orbitPhase, orbitBoostTick,
+                    transitionAt, now);
         }
     }
 }

@@ -658,10 +658,11 @@ public final class ModNetwork {
     public static void sendComboState(ServerPlayer player, boolean active, String styleId, int stage,
                                       long startGameTick, int durationTicks, int targetId,
                                       Vec3 playerAnchor, Vec3 targetAnchor, Vec3 warpDestination,
-                                      float warpYaw) {
+                                      float warpYaw, double orbitPhase, long orbitBoostTick) {
         CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
                 new ComboStatePacket(player.getId(), active, styleId, stage, startGameTick, durationTicks,
-                        targetId, playerAnchor, targetAnchor, warpDestination, warpYaw));
+                        targetId, playerAnchor, targetAnchor, warpDestination, warpYaw,
+                        orbitPhase, orbitBoostTick));
     }
 
     public static void sendSwordImpact(FlyingSwordEntity sword, LivingEntity target, Vec3 direction) {
@@ -801,7 +802,8 @@ public final class ModNetwork {
 
     public record ComboStatePacket(int playerId, boolean active, String styleId, int stage, long startGameTick,
                                    int durationTicks, int targetId, Vec3 playerAnchor,
-                                   Vec3 targetAnchor, Vec3 warpDestination, float warpYaw) {
+                                   Vec3 targetAnchor, Vec3 warpDestination, float warpYaw,
+                                   double orbitPhase, long orbitBoostTick) {
         private static void encode(ComboStatePacket message, FriendlyByteBuf buffer) {
             buffer.writeVarInt(message.playerId);
             buffer.writeBoolean(message.active);
@@ -814,12 +816,15 @@ public final class ModNetwork {
             writeVec(buffer, message.targetAnchor);
             writeVec(buffer, message.warpDestination);
             buffer.writeFloat(message.warpYaw);
+            buffer.writeDouble(message.orbitPhase);
+            buffer.writeLong(message.orbitBoostTick);
         }
 
         private static ComboStatePacket decode(FriendlyByteBuf buffer) {
             return new ComboStatePacket(buffer.readVarInt(), buffer.readBoolean(), buffer.readUtf(48),
                     buffer.readVarInt(), buffer.readLong(), buffer.readVarInt(), buffer.readVarInt(),
-                    readVec(buffer), readVec(buffer), readVec(buffer), buffer.readFloat());
+                    readVec(buffer), readVec(buffer), readVec(buffer), buffer.readFloat(),
+                    buffer.readDouble(), buffer.readLong());
         }
 
         private static void writeVec(FriendlyByteBuf buffer, Vec3 value) {

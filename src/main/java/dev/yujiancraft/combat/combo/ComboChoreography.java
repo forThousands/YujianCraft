@@ -19,14 +19,55 @@ public enum ComboChoreography {
     BREAKER_SWEEP_RIGHT { @Override public Vec3 position(ComboMotionFrame f) { return breakerSweep(f, false); } },
     BREAKER_LUNGE_RING { @Override public Vec3 position(ComboMotionFrame f) { return breakerLunge(f); } },
     BREAKER_APEX_RELEASE { @Override public Vec3 position(ComboMotionFrame f) { return sixRelease(f, true); } },
-    HEAVY_GIANT_ARRAY { @Override public Vec3 position(ComboMotionFrame f) { return giantStation(f, 11.2D, 16.5D, 6.0D); } };
+    HEAVY_GIANT_ARRAY { @Override public Vec3 position(ComboMotionFrame f) { return giantStation(f, 11.2D, 16.5D, 6.0D); } },
+    STAR_RING_SWEEP {
+        @Override public Vec3 position(ComboMotionFrame f) {
+            return StarRingMotion.position(StarRingMotion.Pattern.SWEEP, f);
+        }
+        @Override public Vec3 direction(ComboMotionFrame f) {
+            return StarRingMotion.direction(StarRingMotion.Pattern.SWEEP, f);
+        }
+    },
+    STAR_RING_TILTED_SWEEP {
+        @Override public Vec3 position(ComboMotionFrame f) {
+            return StarRingMotion.position(StarRingMotion.Pattern.TILTED_SWEEP, f);
+        }
+        @Override public Vec3 direction(ComboMotionFrame f) {
+            return StarRingMotion.direction(StarRingMotion.Pattern.TILTED_SWEEP, f);
+        }
+    },
+    STAR_RING_DUAL_ORBIT {
+        @Override public Vec3 position(ComboMotionFrame f) {
+            return StarRingMotion.position(StarRingMotion.Pattern.DUAL_ORBIT, f);
+        }
+        @Override public Vec3 direction(ComboMotionFrame f) {
+            return StarRingMotion.direction(StarRingMotion.Pattern.DUAL_ORBIT, f);
+        }
+    },
+    STAR_RING_PRISON {
+        @Override public Vec3 position(ComboMotionFrame f) {
+            return StarRingMotion.position(StarRingMotion.Pattern.PRISON, f);
+        }
+        @Override public Vec3 direction(ComboMotionFrame f) {
+            return StarRingMotion.direction(StarRingMotion.Pattern.PRISON, f);
+        }
+    },
+    STAR_RING_COLLAPSE {
+        @Override public Vec3 position(ComboMotionFrame f) {
+            return StarRingMotion.position(StarRingMotion.Pattern.COLLAPSE, f);
+        }
+        @Override public Vec3 direction(ComboMotionFrame f) {
+            return StarRingMotion.direction(StarRingMotion.Pattern.COLLAPSE, f);
+        }
+    };
 
     public abstract Vec3 position(ComboMotionFrame frame);
 
     public Vec3 direction(ComboMotionFrame frame) {
         ComboMotionFrame next = new ComboMotionFrame(frame.owner(), frame.playerAnchor(), frame.target(),
                 frame.forward(), frame.right(), frame.slot(), Math.min(frame.duration() - 0.001D,
-                frame.tick() + 0.2D), frame.duration());
+                frame.tick() + 0.2D), frame.duration(), frame.worldTick() + 0.2D,
+                frame.orbitPhase() + frame.orbitSpeed() * 0.2D, frame.orbitSpeed());
         Vec3 direction = position(next).subtract(position(frame));
         return direction.lengthSqr() < 1.0E-6D ? frame.forward() : direction.normalize();
     }
