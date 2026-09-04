@@ -1,6 +1,7 @@
 package dev.yujiancraft.client;
 
 import dev.yujiancraft.combat.technique.TechniqueMode;
+import dev.yujiancraft.combat.combo.ComboStyle;
 import dev.yujiancraft.client.vfx.VfxTimelineDefinition;
 import dev.yujiancraft.client.vfx.VfxLivePreviewBridge;
 import net.minecraft.Util;
@@ -98,9 +99,13 @@ public final class ClientTechniqueOverlayState {
         int screenWidth = graphics.guiWidth();
         int screenHeight = graphics.guiHeight();
         long now = Util.getMillis();
+        Component comboStatus = comboStatus();
+        int comboStatusTop = comboStatus == null ? -1
+                : Math.max(8, screenHeight - 42 - (Minecraft.getInstance().font.lineHeight + 10));
         renderTechnique(graphics, screenWidth, screenHeight, now);
         renderComboStyle(graphics, screenWidth, screenHeight, now);
-        renderControlGuide(graphics, screenWidth, screenHeight, now);
+        renderControlGuide(graphics, screenWidth, screenHeight, now, comboStatusTop);
+        renderComboStatus(graphics, screenWidth, comboStatus, comboStatusTop);
     }
 
     private static void renderTechnique(GuiGraphics graphics, int width, int height, long now) {
@@ -125,7 +130,8 @@ public final class ClientTechniqueOverlayState {
                 Component.translatable(comboStyleTranslationKey).getString(), age, 0.84F);
     }
 
-    private static void renderControlGuide(GuiGraphics graphics, int width, int height, long now) {
+    private static void renderControlGuide(GuiGraphics graphics, int width, int height, long now,
+                                           int comboStatusTop) {
         if (controlGuide == null) return;
         long age = now - controlGuideStartedAt;
         if (age < 0L || age >= CONTROL_GUIDE_DURATION_MS) {
@@ -142,8 +148,11 @@ public final class ClientTechniqueOverlayState {
         int lineHeight = font.lineHeight + 6;
         int panelHeight = controlGuide.length * lineHeight + 12;
         // Keep the controls below the technique/style calligraphy columns, which occupy the
-        // vertical centre on the right. Clamp for short windows so the panel stays on-screen.
-        int top = Math.min(height - panelHeight - 24, Math.max(18, Math.round(height * 0.70F)));
+        // vertical centre on the right. When combo status is present, stack this temporary panel
+        // above it; on very short windows the persistent status takes priority over this hint.
+        int bottomLimit = comboStatusTop >= 0 ? comboStatusTop - 10 : height - 24;
+        if (bottomLimit - panelHeight < 18) return;
+        int top = Math.min(bottomLimit - panelHeight, Math.max(18, Math.round(height * 0.70F)));
         int left = right - maxWidth - 18;
         graphics.fill(left, top - 9, right + 8, top + controlGuide.length * lineHeight + 3,
                 (Math.round(alpha * 0.38F) << 24) | 0x071B22);
@@ -155,6 +164,27 @@ public final class ClientTechniqueOverlayState {
             graphics.drawString(font, controlGuide[index], left + 9,
                     top + index * lineHeight, color, false);
         }
+    }
+
+    private static Component comboStatus() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.options.hideGui || minecraft.screen != null || !ClientComboState.isLocalActive()) {
+            return null;
+        }
+        ComboStyle style = ClientComboState.localStyle();
+        return style == null ? null : Component.translatable("overlay.yujiancraft.combo_status",
+                Component.translatable(style.translationKey()));
+    }
+
+    private static void renderComboStatus(GuiGraphics graphics, int width, Component status, int top) {
+        if (status == null || top < 0) return;
+        Font font = Minecraft.getInstance().font;
+        int right = width - 18;
+        int left = Math.max(8, right - font.width(status) - 18);
+        int bottom = top + font.lineHeight + 10;
+        graphics.fill(left, top, right + 8, bottom, 0x9C071B22);
+        graphics.fill(right + 5, top + 2, right + 7, bottom - 2, 0xE078E8E1);
+        graphics.drawString(font, status, left + 9, top + 5, 0xFFD9FAF6, false);
     }
 
     private static void renderCalligraphy(GuiGraphics graphics, int width, int height,

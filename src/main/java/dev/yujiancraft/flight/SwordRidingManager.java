@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -57,8 +58,12 @@ public final class SwordRidingManager {
         RESTORE_GUARDS.remove(player.getUUID());
         ItemStack stack = FlyingSwordItem.findFlyingSword(player);
         if (!FlyingSwordItem.isUsableFlyingSword(stack)) {
-            player.displayClientMessage(Component.translatable("message.yujiancraft.riding_need_sword"), true);
-            ModNetwork.sendSwordRidingState(player, false);
+            // A stale/racing request must not overwrite vanilla Creative flight after its
+            // double-jump has already toggled the local flying flag.
+            if (!player.isCreative()) {
+                player.displayClientMessage(Component.translatable("message.yujiancraft.riding_need_sword"), true);
+                ModNetwork.sendSwordRidingState(player, false);
+            }
             return;
         }
         FlyingSwordEntity support = ModEntities.FLYING_SWORD.get().create(player.serverLevel());
@@ -69,7 +74,7 @@ public final class SwordRidingManager {
 
         Abilities abilities = player.getAbilities();
         RidingState state = new RidingState(support.getUUID(), abilities.mayfly, abilities.flying,
-                abilities.getFlyingSpeed());
+                abilities.getFlyingSpeed(), player.gameMode.getGameModeForPlayer());
         STATES.put(player.getUUID(), state);
         writeRecoveryData(player, state);
         abilities.mayfly = true;
@@ -91,9 +96,13 @@ public final class SwordRidingManager {
         Entity support = player.serverLevel().getEntity(state.supportSwordId);
         if (support != null) support.discard();
         restoreAbilities(player, state.oldMayfly, state.oldFlying, state.oldFlyingSpeed);
-        RESTORE_GUARDS.put(player.getUUID(), new AbilityRestoreGuard(
-                state.oldMayfly, state.oldFlying && state.oldMayfly, state.oldFlyingSpeed,
-                RESTORE_GUARD_TICKS));
+        if (player.isCreative() || player.isSpectator()) {
+            RESTORE_GUARDS.remove(player.getUUID());
+        } else {
+            RESTORE_GUARDS.put(player.getUUID(), new AbilityRestoreGuard(
+                    state.oldMayfly, state.oldFlying && state.oldMayfly, state.oldFlyingSpeed,
+                    state.gameMode, RESTORE_GUARD_TICKS));
+        }
         clearRecoveryData(player);
         ModNetwork.sendSwordRidingState(player, false);
         if (notify) player.displayClientMessage(Component.translatable("message.yujiancraft.riding_stopped"), true);
@@ -106,6 +115,10 @@ public final class SwordRidingManager {
         RidingState state = STATES.get(player.getUUID());
         if (state == null) {
             enforceRestoredAbilities(player);
+            return;
+        }
+        if (player.gameMode.getGameModeForPlayer() != state.gameMode) {
+            stopAfterGameModeChange(player);
             return;
         }
         if (!player.isAlive() || player.isSpectator()
@@ -174,15 +187,36 @@ public final class SwordRidingManager {
         player.onUpdateAbilities();
     }
 
+    /**
+     * Vanilla has already installed the new game mode's abilities by the end-of-tick callback.
+     * Remove only Yujian's support state here; restoring the previous mode's snapshot would leak
+     * Creative flight into Survival (or strip Spectator flight).
+     */
+    private static void stopAfterGameModeChange(ServerPlayer player) {
+        RidingState state = STATES.remove(player.getUUID());
+        if (state != null) {
+            Entity support = player.serverLevel().getEntity(state.supportSwordId);
+            if (support != null) support.discard();
+        }
+        RESTORE_GUARDS.remove(player.getUUID());
+        clearRecoveryData(player);
+        ModNetwork.sendSwordRidingState(player, false);
+    }
+
     private static void enforceRestoredAbilities(ServerPlayer player) {
         AbilityRestoreGuard guard = RESTORE_GUARDS.get(player.getUUID());
         if (guard == null) return;
+        if (player.gameMode.getGameModeForPlayer() != guard.gameMode) {
+            RESTORE_GUARDS.remove(player.getUUID());
+            return;
+        }
         Abilities abilities = player.getAbilities();
+        boolean preserveVanillaFlying = player.isCreative();
         boolean changed = abilities.mayfly != guard.mayfly
-                || abilities.flying != guard.flying
+                || !preserveVanillaFlying && abilities.flying != guard.flying
                 || Math.abs(abilities.getFlyingSpeed() - guard.flyingSpeed) > 1.0E-5F;
         abilities.mayfly = guard.mayfly;
-        abilities.flying = guard.flying && guard.mayfly;
+        if (!preserveVanillaFlying) abilities.flying = guard.flying && guard.mayfly;
         abilities.setFlyingSpeed(guard.flyingSpeed);
         player.fallDistance = 0.0F;
         if (changed) player.onUpdateAbilities();
@@ -199,13 +233,13 @@ public final class SwordRidingManager {
     }
 
     private record RidingState(UUID supportSwordId, boolean oldMayfly, boolean oldFlying,
-                               float oldFlyingSpeed) {
+                               float oldFlyingSpeed, GameType gameMode) {
     }
 
     private record AbilityRestoreGuard(boolean mayfly, boolean flying, float flyingSpeed,
-                                       int remainingTicks) {
+                                       GameType gameMode, int remainingTicks) {
         private AbilityRestoreGuard tick() {
-            return new AbilityRestoreGuard(mayfly, flying, flyingSpeed, remainingTicks - 1);
+            return new AbilityRestoreGuard(mayfly, flying, flyingSpeed, gameMode, remainingTicks - 1);
         }
     }
 }
