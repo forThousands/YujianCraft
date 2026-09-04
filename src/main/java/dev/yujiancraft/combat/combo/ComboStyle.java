@@ -13,9 +13,10 @@ public enum ComboStyle {
             fourfoldStages(false), false, false, false, ComboFormationProfile.REAR_GUARD),
     MOUNTAIN_STRIDE("mountain_stride", "combo_style.yujiancraft.mountain_stride",
             mountainStages(true, false, true), false, false, true, ComboFormationProfile.REAR_GUARD),
-    METAL_STAR_RING("metal_star_ring", "combo_style.yujiancraft.metal_star_ring",
+    // Keep the legacy serialized id/key so existing player data and resource packs remain valid.
+    LIUHE_STAR_RING("metal_star_ring", "combo_style.yujiancraft.metal_star_ring",
             starRingStages(), false, false, true, ComboFormationProfile.STAR_RING),
-    SWORD_SHADOW_SWIFT("sword_shadow_swift", "combo_style.yujiancraft.sword_shadow_swift",
+    SWORD_SHADOW_SHIFTING("sword_shadow_swift", "combo_style.yujiancraft.sword_shadow_swift",
             shadowStages(true), true, false, true, ComboFormationProfile.REAR_GUARD);
 
     private final String id;
@@ -64,7 +65,7 @@ public enum ComboStyle {
             for (ComboStyle style : values()) if (style.id.equals(normalized)) return style;
             // Archived pre-release variants migrate to their closest retained choreography.
             return switch (normalized) {
-                case "sword_shadow_escape", "sword_shadow_traceless" -> SWORD_SHADOW_SWIFT;
+                case "sword_shadow_escape", "sword_shadow_traceless" -> SWORD_SHADOW_SHIFTING;
                 case "flowing_radiance" -> FLOWING_BALANCE;
                 case "fourfold_radiance" -> FOURFOLD_BALANCE;
                 case "mountain_breaker", "mountain_quake", "mountain_rush" -> MOUNTAIN_STRIDE;

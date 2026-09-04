@@ -185,7 +185,7 @@ public final class SwordArrayFieldEntity extends Entity {
     }
 
     /**
-     * Small target-centred seal used by the Metal Star Ring finisher. It deliberately reuses the
+     * Small target-centred seal used by the Liuhe Star Ring finisher. It deliberately reuses the
      * proven sword-array textures and signal channel, but owns no beam, giant sword or peripheral
      * array swords. Damage remains in the combo manager so one impact cannot be counted twice.
      */

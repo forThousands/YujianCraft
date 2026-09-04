@@ -15,7 +15,10 @@ import dev.yujiancraft.item.FlyingSwordItem;
 import dev.yujiancraft.combat.TargetLockManager;
 import dev.yujiancraft.combat.ManualGuidanceManager;
 import dev.yujiancraft.combat.technique.ArtifactActionManager;
+import dev.yujiancraft.combat.technique.TechniqueMode;
+import dev.yujiancraft.combat.combo.ComboStyle;
 import dev.yujiancraft.combat.combo.SwordComboManager;
+import dev.yujiancraft.formation.FormationMode;
 import dev.yujiancraft.flight.SwordRidingManager;
 import dev.yujiancraft.material.FlyingSwordMaterial;
 import dev.yujiancraft.entity.FlyingSwordEntity;
@@ -46,7 +49,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public final class ModNetwork {
-    private static final String PROTOCOL = "27";
+    private static final String PROTOCOL = "28";
     private static final Map<Class<?>, CustomPacketPayload.Type<?>> PAYLOAD_TYPES = new HashMap<>();
 
     private ModNetwork() {
@@ -129,6 +132,12 @@ public final class ModNetwork {
         toClient(registrar, "sync_target_protections", SyncTargetProtectionsPacket.class,
                 codec(SyncTargetProtectionsPacket::encode, SyncTargetProtectionsPacket::decode),
                 ModNetwork::handleSyncTargetProtections);
+        toServer(registrar, "quick_switch_action", QuickSwitchActionPacket.class,
+                codec(QuickSwitchActionPacket::encode, QuickSwitchActionPacket::decode),
+                ModNetwork::handleQuickSwitchAction);
+        toClient(registrar, "quick_switch_state", QuickSwitchStatePacket.class,
+                codec(QuickSwitchStatePacket::encode, QuickSwitchStatePacket::decode),
+                ModNetwork::handleQuickSwitchState);
     }
 
     public static void sendToServer(CustomPacketPayload payload) {
@@ -180,6 +189,48 @@ public final class ModNetwork {
         default Type<? extends CustomPacketPayload> type() {
             return ModNetwork.typeFor(getClass());
         }
+    }
+
+    private static void handleQuickSwitchAction(QuickSwitchActionPacket message,
+                                                 IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer sender = (ServerPlayer) context.player();
+            switch (message.action()) {
+                case QuickSwitchActionPacket.SELECT_FORMATION -> {
+                    if (SwordComboManager.isActive(sender)) {
+                        showQuickSwitchLocked(sender);
+                    } else if (message.value() >= 0 && message.value() < FormationMode.values().length) {
+                        FlyingSwordItem.selectFormationMode(sender, FormationMode.values()[message.value()]);
+                    }
+                }
+                case QuickSwitchActionPacket.SELECT_TECHNIQUE -> {
+                    if (SwordComboManager.isActive(sender)) {
+                        showQuickSwitchLocked(sender);
+                    } else if (message.value() >= 0 && message.value() < TechniqueMode.values().length) {
+                        sendSettings(sender, FlyingSwordItem.selectTechnique(
+                                sender, TechniqueMode.values()[message.value()]));
+                    }
+                }
+                case QuickSwitchActionPacket.TOGGLE_COMBO -> SwordComboManager.toggleDefault(sender);
+                case QuickSwitchActionPacket.SELECT_COMBO_STYLE -> {
+                    if (message.value() >= 0 && message.value() < ComboStyle.values().length) {
+                        SwordComboManager.selectAndActivate(sender, ComboStyle.values()[message.value()]);
+                    }
+                }
+                default -> { }
+            }
+            sendQuickSwitchState(sender);
+        });
+    }
+
+    private static void handleQuickSwitchState(QuickSwitchStatePacket message,
+                                                IPayloadContext context) {
+        context.enqueueWork(() -> dev.yujiancraft.client.ClientQuickSwitchState.accept(message));
+    }
+
+    private static void showQuickSwitchLocked(ServerPlayer player) {
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                "message.yujiancraft.quick_switch.combo_locked"), true);
     }
 
     private static void handleToggleCombo(ToggleComboPacket message,
@@ -268,6 +319,11 @@ public final class ModNetwork {
         context.enqueueWork(() -> {
             ServerPlayer sender = (ServerPlayer) context.player();
             if (sender != null) {
+                if (SwordComboManager.isActive(sender)) {
+                    showQuickSwitchLocked(sender);
+                    sendSettings(sender, FlyingSwordItem.getSettings(sender));
+                    return;
+                }
                 SwordSettings settings = FlyingSwordItem.cycleTechnique(sender);
                 sendSettings(sender, settings);
             }
@@ -332,7 +388,10 @@ public final class ModNetwork {
                                                IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer sender = (ServerPlayer) context.player();
-            if (sender != null) FlyingSwordItem.toggleFormationMode(sender);
+            if (sender != null) {
+                if (SwordComboManager.isActive(sender)) showQuickSwitchLocked(sender);
+                else FlyingSwordItem.toggleFormationMode(sender);
+            }
         });
     }
 
@@ -437,6 +496,13 @@ public final class ModNetwork {
                             applied.crosshairLockRadius(), applied.targetingMode(), applied.attackMode(),
                             effective);
                 }
+                if (SwordComboManager.isActive(sender)
+                        && applied.techniqueMode() != before.techniqueMode()) {
+                    showQuickSwitchLocked(sender);
+                    applied = new SwordSettings(applied.minimumDockTicks(), applied.automaticTargetRadius(),
+                            applied.crosshairLockRadius(), applied.targetingMode(), applied.attackMode(),
+                            before.techniqueMode());
+                }
                 FlyingSwordItem.setSettings(sender, applied);
                 sendSettings(sender, applied);
                 if (before.techniqueMode() != applied.techniqueMode()) {
@@ -529,6 +595,15 @@ public final class ModNetwork {
 
     public static void sendFormationState(ServerPlayer player, boolean deployed) {
         PacketDistributor.sendToPlayer(player, new FormationStatePacket(deployed));
+    }
+
+    public static void sendQuickSwitchState(ServerPlayer player) {
+        net.minecraft.world.item.ItemStack sword = FlyingSwordItem.findFlyingSword(player);
+        int formation = sword.isEmpty() ? -1 : FlyingSwordItem.getFormationMode(sword).ordinal();
+        SwordSettings settings = FlyingSwordItem.getSettings(player);
+        PacketDistributor.sendToPlayer(player, new QuickSwitchStatePacket(
+                formation, settings.techniqueMode().ordinal(),
+                SwordComboManager.selectedStyleFor(player).id()));
     }
 
     private static void sendBalances(ServerPlayer player) {
@@ -659,6 +734,36 @@ public final class ModNetwork {
 
         private static FormationStatePacket decode(FriendlyByteBuf buffer) {
             return new FormationStatePacket(buffer.readBoolean());
+        }
+    }
+
+    public record QuickSwitchActionPacket(int action, int value) implements YujianPayload {
+        public static final int REQUEST_STATE = 0;
+        public static final int SELECT_FORMATION = 1;
+        public static final int SELECT_TECHNIQUE = 2;
+        public static final int TOGGLE_COMBO = 3;
+        public static final int SELECT_COMBO_STYLE = 4;
+
+        private static void encode(QuickSwitchActionPacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.action);
+            buffer.writeVarInt(message.value);
+        }
+
+        private static QuickSwitchActionPacket decode(FriendlyByteBuf buffer) {
+            return new QuickSwitchActionPacket(buffer.readVarInt(), buffer.readVarInt());
+        }
+    }
+
+    public record QuickSwitchStatePacket(int formation, int technique,
+                                         String comboStyleId) implements YujianPayload {
+        private static void encode(QuickSwitchStatePacket message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.formation);
+            buffer.writeVarInt(message.technique);
+            buffer.writeUtf(message.comboStyleId, 48);
+        }
+
+        private static QuickSwitchStatePacket decode(FriendlyByteBuf buffer) {
+            return new QuickSwitchStatePacket(buffer.readVarInt(), buffer.readVarInt(), buffer.readUtf(48));
         }
     }
 

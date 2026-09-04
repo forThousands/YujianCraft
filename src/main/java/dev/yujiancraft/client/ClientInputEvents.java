@@ -51,6 +51,7 @@ public final class ClientInputEvents {
         formationPresentLastTick = deployed;
         if (deployed) {
             ClientTechniqueOverlayState.showFormationControls(
+                    ClientModEvents.OPEN_QUICK_SWITCH.getTranslatedKeyMessage(),
                     ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage(),
                     ClientModEvents.SWITCH_TECHNIQUE.getTranslatedKeyMessage());
         } else {
@@ -71,6 +72,10 @@ public final class ClientInputEvents {
         while (ClientModEvents.OPEN_CONFIG.consumeClick()) {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new YujianCraftConfigScreen(minecraft.screen));
+        }
+        while (ClientModEvents.OPEN_QUICK_SWITCH.consumeClick()) {
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.setScreen(new YujianQuickSwitchScreen());
         }
         while (ClientModEvents.TOGGLE_SWORDS.consumeClick()) {
             ModNetwork.sendToServer(new ModNetwork.ToggleSummonedSwordsPacket());
@@ -364,12 +369,14 @@ public final class ClientInputEvents {
         }
         if (formation && !formationPresentLastTick) {
             ClientTechniqueOverlayState.showFormationControls(
+                    ClientModEvents.OPEN_QUICK_SWITCH.getTranslatedKeyMessage(),
                     ClientModEvents.TOGGLE_COMBO.getTranslatedKeyMessage(),
                     ClientModEvents.SWITCH_TECHNIQUE.getTranslatedKeyMessage());
             pendingSwordArrayHintTicks = technique == TechniqueMode.SWORD_ARRAY ? 70 : -1;
         }
         if (comboActive && !comboActiveLastTick) {
             ClientTechniqueOverlayState.showComboControls(
+                    ClientModEvents.OPEN_QUICK_SWITCH.getTranslatedKeyMessage(),
                     ClientModEvents.CYCLE_COMBO_STYLE.getTranslatedKeyMessage());
         } else if (formation && technique == TechniqueMode.SWORD_ARRAY
                 && techniqueLastTick != TechniqueMode.SWORD_ARRAY) {
@@ -406,6 +413,7 @@ public final class ClientInputEvents {
         ClientManualGuidanceState.setGuiding(false);
         ClientSwordRidingState.setActive(false);
         ClientComboState.clear();
+        ClientQuickSwitchState.clear();
         lastJumpPressMillis = -1L;
         heldFlyingSwordLastTick = false;
         formationPresentLastTick = false;
