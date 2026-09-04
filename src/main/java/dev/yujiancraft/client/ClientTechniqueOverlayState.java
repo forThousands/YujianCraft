@@ -49,16 +49,19 @@ public final class ClientTechniqueOverlayState {
     }
 
     /** Shows contextual controls in a dedicated right-side column, independent of the action bar. */
-    public static void showFormationControls(Component comboKey, Component techniqueKey) {
+    public static void showFormationControls(Component quickSwitchKey, Component comboKey,
+                                             Component techniqueKey) {
         controlGuide = new Component[]{
+                Component.translatable("overlay.yujiancraft.guide.quick_switch", quickSwitchKey),
                 Component.translatable("overlay.yujiancraft.guide.combo", comboKey),
                 Component.translatable("overlay.yujiancraft.guide.technique", techniqueKey)
         };
         controlGuideStartedAt = Util.getMillis();
     }
 
-    public static void showComboControls(Component styleKey) {
+    public static void showComboControls(Component quickSwitchKey, Component styleKey) {
         controlGuide = new Component[]{
+                Component.translatable("overlay.yujiancraft.guide.quick_switch", quickSwitchKey),
                 Component.translatable("overlay.yujiancraft.guide.combo_style", styleKey)
         };
         controlGuideStartedAt = Util.getMillis();

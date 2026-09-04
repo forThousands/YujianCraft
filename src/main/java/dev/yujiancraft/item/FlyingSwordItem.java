@@ -143,12 +143,23 @@ public final class FlyingSwordItem extends SwordItem {
             return;
         }
 
-        FormationMode mode = getFormationMode(stack).next();
+        selectFormationMode(player, getFormationMode(stack).next());
+    }
+
+    /** Selects an exact docking geometry for direct-access controls such as the quick switch. */
+    public static boolean selectFormationMode(ServerPlayer player, FormationMode mode) {
+        ItemStack stack = findFlyingSword(player);
+        if (stack.isEmpty()) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.no_sword"), true);
+            return false;
+        }
+        if (mode == null) return false;
         stack.getOrCreateTag().putString(MODE_TAG, mode.serializedName());
         getOwnedFormationSwords(player).forEach(sword -> sword.setFormationMode(mode));
         player.displayClientMessage(Component.translatable("message.yujiancraft.formation_changed",
                 Component.translatable(mode.translationKey())), true);
         playFormationChime(player, 1.35F);
+        return true;
     }
 
     public static SwordSettings getSettings(ServerPlayer player) {
@@ -191,6 +202,30 @@ public final class FlyingSwordItem extends SwordItem {
                 Component.translatable(next.translationKey())), true);
         playFormationChime(player, 1.42F);
         ModNetwork.sendTechniqueNotice(player, next);
+        return updated;
+    }
+
+    /** Selects one exact art while still applying the server's implement catalogue restrictions. */
+    public static SwordSettings selectTechnique(ServerPlayer player,
+                                                 dev.yujiancraft.combat.technique.TechniqueMode requested) {
+        ItemStack stack = findFlyingSword(player);
+        if (stack.isEmpty()) {
+            player.displayClientMessage(Component.translatable("message.yujiancraft.no_sword"), true);
+            return SwordSettings.defaults();
+        }
+        SwordSettings current = validatedSettings(player, stack);
+        dev.yujiancraft.combat.technique.TechniqueMode selected = requested == null
+                ? current.techniqueMode() : requested;
+        if (WanxiangSwordData.isTempered(stack)) {
+            selected = WanxiangWeaponCatalog.effectiveTechnique(player.server, stack, selected);
+        }
+        SwordSettings updated = new SwordSettings(current.minimumDockTicks(), current.automaticTargetRadius(),
+                current.crosshairLockRadius(), current.targetingMode(), current.attackMode(), selected);
+        setSettings(player, updated);
+        player.displayClientMessage(Component.translatable("message.yujiancraft.technique.changed",
+                Component.translatable(selected.translationKey())), true);
+        playFormationChime(player, 1.42F);
+        ModNetwork.sendTechniqueNotice(player, selected);
         return updated;
     }
 

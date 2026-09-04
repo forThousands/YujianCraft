@@ -177,6 +177,7 @@ public final class YujianGuideScreen extends Screen {
             return Component.translatable("guide.yujiancraft.page.2.body",
                     ClientModEvents.TOGGLE_SWORDS.getTranslatedKeyMessage(),
                     ClientModEvents.SWITCH_FORMATION.getTranslatedKeyMessage(),
+                    ClientModEvents.OPEN_QUICK_SWITCH.getTranslatedKeyMessage(),
                     ClientModEvents.OPEN_CONFIG.getTranslatedKeyMessage(),
                     ClientModEvents.SWITCH_TECHNIQUE.getTranslatedKeyMessage(),
                     ClientModEvents.ACTIVATE_SWORD_ARRAY.getTranslatedKeyMessage(),

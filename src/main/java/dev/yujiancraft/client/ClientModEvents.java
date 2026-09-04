@@ -127,6 +127,14 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_X,
             "key.categories.yujiancraft"
     );
+    public static final KeyMapping OPEN_QUICK_SWITCH = new KeyMapping(
+            "key.yujiancraft.open_quick_switch",
+            KeyConflictContext.IN_GAME,
+            KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            "key.categories.yujiancraft"
+    );
     public static final KeyMapping CYCLE_COMBO_STYLE = new KeyMapping(
             "key.yujiancraft.cycle_combo_style",
             KeyConflictContext.IN_GAME,
@@ -214,6 +222,7 @@ public final class ClientModEvents {
     public static void registerKeys(RegisterKeyMappingsEvent event) {
         event.register(SWITCH_FORMATION);
         event.register(OPEN_CONFIG);
+        event.register(OPEN_QUICK_SWITCH);
         event.register(TOGGLE_SWORDS);
         event.register(ARTIFACT_ACTION);
         event.register(SWITCH_TECHNIQUE);

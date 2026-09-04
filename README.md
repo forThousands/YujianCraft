@@ -138,9 +138,9 @@ The Spirit Tempering Table accepts native Yujian swords and non-stackable weapon
 
 ### 万象御器术式 / Myriad Implement Arts
 
-器物“定性”决定每次展开剑阵时自动采用的术式和盾牌等特殊模型的安全姿态：兵刃默认穿刺、重器默认环斩、远兵默认剑阵、盾器默认护阵、工具默认役器、钓具默认灵钓，未定性器物使用穿刺。之后仍可在 `Ctrl+I` 或用 `Ctrl+J` 切换，服务端管理员也可按物品 ID 设置白名单。术式与 A/B/C 阵型相互独立：前者决定“做什么”，后者决定“停在哪里、如何离阵”。
+器物“定性”决定每次展开剑阵时自动采用的术式和盾牌等特殊模型的安全姿态：兵刃默认穿刺、重器默认环斩、远兵默认剑阵、盾器默认护阵、工具默认役器、钓具默认灵钓，未定性器物使用穿刺。之后仍可用 `Ctrl+G` 快捷面板直接选择，或在 `Ctrl+I` 设置中调整、用 `Ctrl+J` 轮换；服务端管理员也可按物品 ID 设置白名单。术式与 A/B/C 阵型相互独立：前者决定“做什么”，后者决定“停在哪里、如何离阵”。
 
-An implement's nature selects its art whenever the array deploys: blades default to Piercing, heavy weapons to Sweep, ranged weapons to Sword Array, shields to Guard, tools to Toolcraft, rods to Spirit Fishing, and unclassified implements to Piercing. Players can still switch afterwards through `Ctrl+I` or `Ctrl+J`, unless the server applies an item-specific allow-list. Arts and A/B/C formations remain independent.
+An implement's nature selects its art whenever the array deploys: blades default to Piercing, heavy weapons to Sweep, ranged weapons to Sword Array, shields to Guard, tools to Toolcraft, rods to Spirit Fishing, and unclassified implements to Piercing. Players can select directly through the `Ctrl+G` quick switch, adjust through `Ctrl+I`, or cycle with `Ctrl+J`, unless the server applies an item-specific allow-list. Arts and A/B/C formations remain independent.
 
 | 术式 / Art | 行为 / Behaviour |
 | --- | --- |
@@ -151,9 +151,9 @@ An implement's nature selects its art whenever the array deploys: blades default
 | **役器 / Spirit Toolcraft** | 每次 `G` 派出下一件就绪御器，最多六件并发采掘，速度与掉落遵循原版工具规则 / Every `G` dispatches the next ready implement; up to six jobs follow vanilla tool rules |
 | **灵钓 / Spirit Fishing** | 可直接瞄准水面连续派出六件钓具，收获直接返回背包 / Aim at water and dispatch up to six concurrent fishing implements; loot returns to inventory |
 
-`Ctrl+J` 可不打开设置界面直接切换服务端允许的御器术式。补灵台每消耗一枚灵晶，会恢复飞剑实体耐久与耐久核心灵性耐久总和的 25%。
+`Ctrl+G` 会打开半透明快捷面板，可直接选择三种阵型、六种御器术式与五套御剑连势；`Ctrl+J` 仍可不打开界面轮换服务端允许的术式。补灵台每消耗一枚灵晶，会恢复飞剑实体耐久与耐久核心灵性耐久总和的 25%。
 
-`Ctrl+J` cycles server-permitted arts without opening the settings screen. The Spirit Replenishing Table consumes one Spirit Crystal to restore 25% of combined physical and module durability.
+`Ctrl+G` opens a translucent quick switch for the three formations, six arts and five combo sets; `Ctrl+J` still cycles server-permitted arts without a screen. The Spirit Replenishing Table consumes one Spirit Crystal to restore 25% of combined physical and module durability.
 
 环斩、剑阵、护阵、役器和灵钓的范围、伤害倍率、冷却、目标数量与等待时间保存在世界级 `serverconfig/yujiancraft-techniques-server.toml`，由服务端单独裁决。役器与灵钓会以服务端限频触发已装配核心的非破坏性工作回响；灵钓继承玩家幸运、海之眷顾和饵钓。优化第三人称会提交屏幕中央的方块，但服务端仍复核距离、区块和遮挡。
 
@@ -206,8 +206,8 @@ Spirit Tempering Table: place a smithing table in the centre, Spirit Crystals on
    Craft any base flying sword, hold it in the main hand, then press `V` to deploy or recall six swords.
 2. 默认准心锁定模式下，将准心指向生物并左键锁定。<br>
    In the default Crosshair Lock mode, aim at a creature and left-click to lock it.
-3. 按 `Ctrl+R` 切换阵型，按 `Ctrl+J` 切换术式；剑阵术式对准目标按 `H`，役器或灵钓对准方块/水域按 `G`。<br>
-   Press `Ctrl+R` to change formation and `Ctrl+J` to cycle arts. Aim and press `H` for Sword Array or `G` for Toolcraft/Spirit Fishing.
+3. 按 `Ctrl+G` 直接选择阵型、术式或连势，也可继续用 `Ctrl+R`、`Ctrl+J` 轮换；剑阵术式对准目标按 `H`，役器或灵钓对准方块/水域按 `G`。<br>
+   Press `Ctrl+G` to select a formation, art or combo set directly; `Ctrl+R` and `Ctrl+J` still cycle them. Aim and press `H` for Sword Array or `G` for Toolcraft/Spirit Fishing.
 4. 六器展开时按 `X` 进入御剑连势，连续左键衔接五段攻击。<br>
    With all six implements deployed, press `X` for Combo Stance and chain five attacks with left click.
 5. 在设置中启用御剑飞行后，背包中有飞剑时双击空格起飞或落下。<br>
@@ -215,8 +215,8 @@ Spirit Tempering Table: place a smithing table in the centre, Spirit Crystals on
 6. 可选：在淬灵台中融合一个外部模组器物与一柄本模组飞剑，完成试锋后按 `V` 使用万象飞剑。<br>
    Optional: temper a third-party weapon with one native flying sword, then press `V` to command its Myriad formation.
 
-完整默认键位：`V` 展开/收回、`Ctrl+R` 阵型、`Ctrl+I` 设置、`Ctrl+J` 术式、`H` 剑阵、`Ctrl+K` 剑阵形态、`X` 连势、`G` 役器/灵钓。以上均可在 Minecraft 的“选项 → 控制 → 按键绑定”中修改。<br>
-Default bindings: `V` deploy/recall, `Ctrl+R` formation, `Ctrl+I` settings, `Ctrl+J` art, `H` Sword Array, `Ctrl+K` array style, `X` Combo Stance, and `G` Toolcraft/Fishing. All are rebindable under Minecraft **Options → Controls → Key Binds**.
+完整默认键位：`V` 展开/收回、`Ctrl+G` 快捷切换、`Ctrl+R` 阵型、`Ctrl+I` 设置、`Ctrl+J` 术式、`H` 剑阵、`Ctrl+K` 剑阵形态、`X` 连势、`G` 役器/灵钓。以上均可在 Minecraft 的“选项 → 控制 → 按键绑定”中修改。<br>
+Default bindings: `V` deploy/recall, `Ctrl+G` quick switch, `Ctrl+R` formation, `Ctrl+I` settings, `Ctrl+J` art, `H` Sword Array, `Ctrl+K` array style, `X` Combo Stance, and `G` Toolcraft/Fishing. All are rebindable under Minecraft **Options → Controls → Key Binds**.
 
 ## 安装与兼容 / Installation & Compatibility
 

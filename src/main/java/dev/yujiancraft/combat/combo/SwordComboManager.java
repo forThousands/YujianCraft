@@ -53,12 +53,49 @@ public final class SwordComboManager {
             stop(player, true);
             return;
         }
+        start(player, selectedStyle(player));
+    }
+
+    /** Quick-switch master toggle always starts from the documented default Flowing Balance set. */
+    public static void toggleDefault(ServerPlayer player) {
+        if (isActive(player)) {
+            stop(player, true);
+            return;
+        }
+        start(player, ComboStyle.FLOWING_BALANCE);
+    }
+
+    /** Selects a set directly and enters combo stance; an active sequence returns to its idle pose. */
+    public static void selectAndActivate(ServerPlayer player, ComboStyle style) {
+        if (style == null) return;
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) {
+            start(player, style);
+            return;
+        }
+        session.style = style;
+        session.pendingStyle = null;
+        saveStyle(player, style);
+        finishSequence(player, session);
+        player.displayClientMessage(Component.translatable("message.yujiancraft.combo.style_selected",
+                Component.translatable(style.translationKey())), true);
+        player.level().playSound(null, player.blockPosition(), SoundEvents.AMETHYST_BLOCK_RESONATE,
+                SoundSource.PLAYERS, 0.9F, style.heavyFinisher() ? 0.72F : 1.15F);
+    }
+
+    public static ComboStyle selectedStyleFor(ServerPlayer player) {
+        if (player == null) return ComboStyle.FLOWING_BALANCE;
+        Session session = SESSIONS.get(player.getUUID());
+        return session == null ? selectedStyle(player) : session.style;
+    }
+
+    private static boolean start(ServerPlayer player, ComboStyle style) {
         List<FlyingSwordEntity> swords = readyFormation(player);
         if (swords.size() != FlyingSwordItem.FORMATION_SIZE) {
             player.displayClientMessage(Component.translatable("message.yujiancraft.combo.need_six"), true);
-            return;
+            return false;
         }
-        ComboStyle style = selectedStyle(player);
+        saveStyle(player, style);
         swords.forEach(FlyingSwordEntity::enterComboControl);
         Session session = new Session(player.position(), swords, style, player.level().getGameTime());
         SESSIONS.put(player.getUUID(), session);
@@ -67,6 +104,7 @@ public final class SwordComboManager {
                 SoundSource.PLAYERS, 0.95F, 1.62F);
         player.displayClientMessage(Component.translatable("message.yujiancraft.combo.enter_style",
                 Component.translatable(style.translationKey())), true);
+        return true;
     }
 
     public static void cycleStyle(ServerPlayer player) {

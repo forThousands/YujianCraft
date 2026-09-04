@@ -65,6 +65,13 @@ public final class ClientComboState {
         return minecraft.player != null && isActive(minecraft.player.getId());
     }
 
+    public static ComboStyle localStyle() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) return null;
+        State state = STATES.get(minecraft.player.getId());
+        return state == null ? null : state.style;
+    }
+
     public static boolean isActive(int playerId) {
         State state = STATES.get(playerId);
         return state != null && state.active;
