@@ -106,10 +106,16 @@ public final class ClientInputEvents {
                     findManualTargetId(Minecraft.getInstance())));
         }
         Minecraft minecraft = Minecraft.getInstance();
-        if (event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null && minecraft.player != null
-                && ClientOptions.swordRidingEnabled()
-                && hasFlyingSword(minecraft.player)
-                && minecraft.options.keyJump.matches(event.getKey(), event.getScanCode())) {
+        boolean jumpPressed = event.getAction() == GLFW.GLFW_PRESS && minecraft.screen == null
+                && minecraft.player != null
+                && minecraft.options.keyJump.matches(event.getKey(), event.getScanCode());
+        boolean hasRidingSword = jumpPressed && hasFlyingSword(minecraft.player);
+        if (jumpPressed && !hasRidingSword) {
+            // Without a usable sword, leave the jump gesture and all flight state to vanilla.
+            lastJumpPressMillis = -1L;
+            return;
+        }
+        if (jumpPressed && ClientOptions.swordRidingEnabled() && hasRidingSword) {
             long now = net.minecraft.Util.getMillis();
             if (lastJumpPressMillis >= 0L && now >= lastJumpPressMillis
                     && now - lastJumpPressMillis <= SWORD_RIDING_DOUBLE_TAP_MS) {
@@ -155,8 +161,12 @@ public final class ClientInputEvents {
         if (ClientComboState.isLocalActive()) {
             sendComboAttack(minecraft);
             epicFightAttackHandledThisTick = true;
+            if (shouldShowHeldItemEmptySwing(minecraft)) {
+                minecraft.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+            }
             // Combo stance deliberately owns attack input. Prevent Epic Fight and vanilla from
-            // starting a second attack animation for the same physical click.
+            // applying a second attack for the same physical click. A non-flying held item may
+            // still show its harmless empty-space swing above.
             event.setCanceled(true);
             return;
         }
@@ -174,7 +184,7 @@ public final class ClientInputEvents {
         boolean optimizedAim = OptimizedThirdPersonController.refreshScreenCenterHit();
         if (event.isAttack() && minecraft.player != null && ClientComboState.isLocalActive()) {
             event.setCanceled(true);
-            event.setSwingHand(false);
+            event.setSwingHand(shouldShowHeldItemEmptySwing(minecraft));
             if (!epicFightAttackHandledThisTick) sendComboAttack(minecraft);
             return;
         }
@@ -273,6 +283,14 @@ public final class ClientInputEvents {
             minecraft.particleEngine.addBlockHitEffects(hit.getBlockPos(), hit);
             minecraft.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         }
+    }
+
+    /** Keeps ordinary held items visually responsive without releasing combo-owned attack input. */
+    private static boolean shouldShowHeldItemEmptySwing(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.hitResult == null
+                || minecraft.hitResult.getType() != HitResult.Type.MISS) return false;
+        var held = minecraft.player.getMainHandItem();
+        return !held.isEmpty() && !FlyingSwordItem.isUsableFlyingSword(held);
     }
 
     private static boolean hasFlyingSword(net.minecraft.world.entity.player.Player player) {

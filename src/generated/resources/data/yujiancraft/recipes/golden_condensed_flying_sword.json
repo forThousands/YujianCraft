@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "A": {
+      "item": "yujiancraft:spirit_crystal"
+    },
+    "B": {
+      "item": "yujiancraft:golden_flying_sword"
+    }
+  },
+  "pattern": [
+    "A A",
+    "ABA",
+    "A A"
+  ],
+  "result": {
+    "item": "yujiancraft:golden_condensed_flying_sword"
+  },
+  "show_notification": true
+}

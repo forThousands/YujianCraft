@@ -428,6 +428,7 @@
   "overlay.yujiancraft.guide.quick_switch": "Press %s for the quick switch",
   "overlay.yujiancraft.guide.technique": "Press %s to switch arts",
   "overlay.yujiancraft.guide.combo_style": "Press %s to switch combo styles",
+  "overlay.yujiancraft.combo_status": "Yujian Combo: %s",
   "config_group.yujiancraft.finishers": "Finisher Damage",
   "effect_parameter.yujiancraft.sword_array_finisher_damage_scale": "Sword Array finisher multiplier",
   "effect_parameter.yujiancraft.combo_finisher_damage_scale": "Combo finisher multiplier",

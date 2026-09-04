@@ -254,6 +254,222 @@
       ]
     },
     {
+      "id": "wooden_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:wooden_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:wooden_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "wooden_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:wooden_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:wooden_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "stone_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:stone_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:stone_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "stone_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:stone_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:stone_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "iron_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:iron_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:iron_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "iron_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:iron_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:iron_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "golden_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:golden_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:golden_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "golden_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:golden_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:golden_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "diamond_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:diamond_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:diamond_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "diamond_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:diamond_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:diamond_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
+      "id": "netherite_luminous_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:netherite_luminous_flying_sword",
+      "count": 1,
+      "grid": [
+        "",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:netherite_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        ""
+      ]
+    },
+    {
+      "id": "netherite_condensed_flying_sword",
+      "type": "shaped",
+      "category": "combat",
+      "result": "yujiancraft:netherite_condensed_flying_sword",
+      "count": 1,
+      "grid": [
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:netherite_flying_sword",
+        "yujiancraft:spirit_crystal",
+        "yujiancraft:spirit_crystal",
+        "",
+        "yujiancraft:spirit_crystal"
+      ]
+    },
+    {
       "id": "spirit_replenishing_table",
       "type": "shaped",
       "category": "decorations",

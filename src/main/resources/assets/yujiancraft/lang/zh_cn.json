@@ -428,6 +428,7 @@
   "overlay.yujiancraft.guide.quick_switch": "按 %s 打开快捷切换",
   "overlay.yujiancraft.guide.technique": "按 %s 切换术式",
   "overlay.yujiancraft.guide.combo_style": "按 %s 切换剑势",
+  "overlay.yujiancraft.combo_status": "御剑连势：%s",
   "config_group.yujiancraft.finishers": "终结伤害",
   "effect_parameter.yujiancraft.sword_array_finisher_damage_scale": "剑阵术式终结倍率",
   "effect_parameter.yujiancraft.combo_finisher_damage_scale": "连势终结倍率",
